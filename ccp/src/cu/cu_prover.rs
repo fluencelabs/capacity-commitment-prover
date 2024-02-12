@@ -86,45 +86,46 @@ impl CUProver {
         unimplemented!()
     }
 
-    pub(crate) async fn stop<'tasks>(&'tasks mut self) -> CUResult<()> {
+    pub(crate) async fn stop<'threads>(&'threads mut self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, task: &'tasks mut ProvingThread| task.stop().boxed_local();
+        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed_local();
         self.run_on_all_threads(closure).await
     }
 
     async fn ensure_database_allocated(&mut self, flags: RandomXFlags) -> CUResult<()> {
         if let None = self.dataset {
-            let task = &mut self.threads.head;
-            let dataset = task.allocate_dataset(flags).await?;
+            let thread = &mut self.threads.head;
+            let dataset = thread.allocate_dataset(flags).await?;
             self.dataset = Some(dataset);
         }
         Ok(())
     }
 
-    async fn initialize_dataset<'tasks>(
-        &'tasks mut self,
+    async fn initialize_dataset<'threads>(
+        &'threads mut self,
         cache: CacheHandle,
         dataset: DatasetHandle,
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let task_init_length = dataset.items_count() / (self.threads.len() as u64);
-        let closure = |task_id: usize, task: &'tasks mut ProvingThread| {
-            task.initialize_dataset(
-                cache.clone(),
-                dataset.clone(),
-                task_id as u64 * task_init_length,
-                task_init_length,
-            )
-            .boxed_local()
+        let thread_init_length = dataset.items_count() / (self.threads.len() as u64);
+        let closure = |thread_id: usize, thread: &'threads mut ProvingThread| {
+            thread
+                .initialize_dataset(
+                    cache.clone(),
+                    dataset.clone(),
+                    thread_id as u64 * thread_init_length,
+                    thread_init_length,
+                )
+                .boxed_local()
         };
 
         self.run_on_all_threads(closure).await
     }
 
-    async fn run_proving_jobs<'tasks>(
-        &'tasks mut self,
+    async fn run_proving_jobs<'threads>(
+        &'threads mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
         difficulty: Difficulty,
@@ -132,8 +133,9 @@ impl CUProver {
         use futures::FutureExt;
 
         let (inlet, outlet) = mpsc::channel(100);
-        let closure = |_: usize, task: &'tasks mut ProvingThread| {
-            task.run_cc_job(dataset.clone(), flags, difficulty, inlet.clone())
+        let closure = |_: usize, thread: &'threads mut ProvingThread| {
+            thread
+                .run_cc_job(dataset.clone(), flags, difficulty, inlet.clone())
                 .boxed_local()
         };
         self.run_on_all_threads(closure).await?;
@@ -141,11 +143,11 @@ impl CUProver {
         Ok(outlet)
     }
 
-    async fn run_on_all_threads<'tasks, 'future: 'tasks, T, E>(
-        &'tasks mut self,
+    async fn run_on_all_threads<'thread, 'future: 'thread, T, E>(
+        &'thread mut self,
         closure: impl Fn(
             usize,
-            &'tasks mut ProvingThread,
+            &'thread mut ProvingThread,
         ) -> futures::future::LocalBoxFuture<'future, Result<T, E>>,
     ) -> CUResult<()>
     where
@@ -155,25 +157,25 @@ impl CUProver {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
-        let (_, task_errors): (Vec<_>, Vec<_>) = self
+        let (_, thread_errors): (Vec<_>, Vec<_>) = self
             .threads
             .iter_mut()
             .enumerate()
-            .map(|(task_id, task)| closure(task_id, task))
+            .map(|(thread_id, thread)| closure(thread_id, thread))
             .collect::<FuturesUnordered<_>>()
             .collect::<Vec<_>>()
             .await
             .into_iter()
             .partition(Result::is_ok);
 
-        if task_errors.is_empty() {
+        if thread_errors.is_empty() {
             return Ok(());
         }
 
-        let task_errors = task_errors
+        let thread_errors = thread_errors
             .into_iter()
             .map(Result::unwrap_err)
             .collect::<Vec<_>>();
-        Err(task_errors.into())
+        Err(thread_errors.into())
     }
 }

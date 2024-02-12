@@ -67,9 +67,12 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut task = ProvingThread::new(2);
-    let actual_cache = task.create_cache(global_nonce, cu_id, flags).await.unwrap();
-    task.stop().await.unwrap();
+    let mut thread = ProvingThread::new(2);
+    let actual_cache = thread
+        .create_cache(global_nonce, cu_id, flags)
+        .await
+        .unwrap();
+    thread.stop().await.unwrap();
 
     let actual_vm = RandomXVM::light(&actual_cache, flags).unwrap();
     let actual_result_hash = actual_vm.hash(&local_nonce);
@@ -89,18 +92,22 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut task = ProvingThread::new(2);
-    let actual_dataset = task.allocate_dataset(flags).await.unwrap();
-    let actual_cache = task.create_cache(global_nonce, cu_id, flags).await.unwrap();
-    task.initialize_dataset(
-        actual_cache.handle(),
-        actual_dataset.handle(),
-        0,
-        actual_dataset.items_count(),
-    )
-    .await
-    .unwrap();
-    task.stop().await.unwrap();
+    let mut thread = ProvingThread::new(2);
+    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
+    let actual_cache = thread
+        .create_cache(global_nonce, cu_id, flags)
+        .await
+        .unwrap();
+    thread
+        .initialize_dataset(
+            actual_cache.handle(),
+            actual_dataset.handle(),
+            0,
+            actual_dataset.items_count(),
+        )
+        .await
+        .unwrap();
+    thread.stop().await.unwrap();
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(&actual_dataset, flags).unwrap();
@@ -121,30 +128,35 @@ async fn prover_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let mut task = ProvingThread::new(2);
-    let actual_dataset = task.allocate_dataset(flags).await.unwrap();
-    let actual_cache = task.create_cache(global_nonce, cu_id, flags).await.unwrap();
-    task.initialize_dataset(
-        actual_cache.handle(),
-        actual_dataset.handle(),
-        0,
-        actual_dataset.items_count(),
-    )
-    .await
-    .unwrap();
+    let mut thread = ProvingThread::new(2);
+    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
+    let actual_cache = thread
+        .create_cache(global_nonce, cu_id, flags)
+        .await
+        .unwrap();
+    thread
+        .initialize_dataset(
+            actual_cache.handle(),
+            actual_dataset.handle(),
+            0,
+            actual_dataset.items_count(),
+        )
+        .await
+        .unwrap();
     let test_difficulty = [
         0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
     let (inlet, mut outlet) = mpsc::channel(1000);
-    task.run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+    thread
+        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
         .await
         .unwrap();
 
     let proof = outlet.recv().await.unwrap();
     println!("proof: {proof:?}");
 
-    task.stop().await.unwrap();
+    thread.stop().await.unwrap();
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let flags = RandomXFlags::recommended();
@@ -163,28 +175,33 @@ async fn cc_job_stopable() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut task = ProvingThread::new(2);
-    let actual_dataset = task.allocate_dataset(flags).await.unwrap();
-    let actual_cache = task.create_cache(global_nonce, cu_id, flags).await.unwrap();
-    task.initialize_dataset(
-        actual_cache.handle(),
-        actual_dataset.handle(),
-        0,
-        actual_dataset.items_count(),
-    )
-    .await
-    .unwrap();
+    let mut thread = ProvingThread::new(2);
+    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
+    let actual_cache = thread
+        .create_cache(global_nonce, cu_id, flags)
+        .await
+        .unwrap();
+    thread
+        .initialize_dataset(
+            actual_cache.handle(),
+            actual_dataset.handle(),
+            0,
+            actual_dataset.items_count(),
+        )
+        .await
+        .unwrap();
     let test_difficulty = [
         0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
     let (inlet, mut outlet) = mpsc::channel(100);
-    task.run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+    thread
+        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
         .await
         .unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(2));
-    task.stop().await.unwrap();
+    thread.stop().await.unwrap();
     std::thread::sleep(std::time::Duration::from_secs(2));
     let result = outlet.try_recv();
     println!("result {result:?}");

@@ -7,7 +7,10 @@ use ccp_shared::types::CUID;
 
 /// Computes global nonce specific for a particular CU by
 /// keccak(global_nonce + cu_id)
-pub fn compute_global_nonce_cu(global_nonce: &GlobalNonce, cu_id: &CUID) -> CtOutput<CoreWrapper<Keccak256Core>> {
+pub fn compute_global_nonce_cu(
+    global_nonce: &GlobalNonce,
+    cu_id: &CUID,
+) -> CtOutput<CoreWrapper<Keccak256Core>> {
     use sha3::Digest;
 
     let mut hasher = sha3::Keccak256::new();

@@ -50,8 +50,8 @@ impl ProvingThread {
         let (ptt_inlet, ptt_outlet) = mpsc::channel::<ProverToThreadMessage>(1);
         let (ttp_inlet, ttp_outlet) = mpsc::channel::<ThreadToProverMessage>(1);
 
-        let task_closure = Self::create_task_closure(ptt_outlet, ttp_inlet);
-        let handle = thread::spawn(task_closure);
+        let thread_closure = Self::create_thread_closure(ptt_outlet, ttp_inlet);
+        let handle = thread::spawn(thread_closure);
 
         Self {
             inlet: ptt_inlet,
@@ -60,7 +60,7 @@ impl ProvingThread {
         }
     }
 
-    fn create_task_closure(
+    fn create_thread_closure(
         mut ptt_outlet: mpsc::Receiver<ProverToThreadMessage>,
         ttp_inlet: mpsc::Sender<ThreadToProverMessage>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
@@ -71,11 +71,11 @@ impl ProvingThread {
                     .ok_or(ProvingThreadError::channel_error(
                         "async part of the ptt channel is dropped",
                     ))?;
-            let mut task_state = Self::handle_prover_message(ptt_message, &ttp_inlet)?;
+            let mut thread_state = Self::handle_prover_message(ptt_message, &ttp_inlet)?;
 
             loop {
-                println!("loop state: {task_state:?}");
-                task_state = match task_state {
+                println!("loop state: {thread_state:?}");
+                thread_state = match thread_state {
                     ThreadState::Stop => {
                         return Ok(());
                     }
@@ -84,7 +84,7 @@ impl ProvingThread {
                         let ptt_message = ptt_outlet
                             .blocking_recv()
                             .ok_or(ProvingThreadError::channel_error(
-                            "TaskState::WaitForMessage: async part of the ptt channel is dropped",
+                            "ThreadState::WaitForMessage: async part of the ptt channel is dropped",
                         ))?;
                         Self::handle_prover_message(ptt_message, &ttp_inlet)?
                     }
@@ -155,13 +155,13 @@ impl ProvingThread {
         }
     }
 
-    fn cc_prove(task_parameters: RandomXJobParams) -> PTResult<RandomXJobParams> {
+    fn cc_prove(job_parameters: RandomXJobParams) -> PTResult<RandomXJobParams> {
         let RandomXJobParams {
             vm,
             mut local_nonce,
             difficulty,
             proof_receiver_inlet,
-        } = task_parameters;
+        } = job_parameters;
 
         vm.hash_first(local_nonce.get());
 
@@ -182,9 +182,9 @@ impl ProvingThread {
             }
         }
 
-        let task_parameters =
+        let job_parameters =
             RandomXJobParams::from_vm(vm, local_nonce, difficulty, proof_receiver_inlet);
-        Ok(task_parameters)
+        Ok(job_parameters)
     }
 }
 
@@ -262,7 +262,7 @@ impl ProvingThreadAPI for ProvingThread {
         self.inlet.send(message).await.map_err(Into::into)
     }
 
-    async fn pin_task(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {
+    async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {
         todo!()
     }
 

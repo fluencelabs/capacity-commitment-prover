@@ -54,7 +54,7 @@ pub trait ProvingThreadAPI {
         proof_receiver_inlet: mpsc::Sender<RawProof>,
     ) -> Result<(), Self::Error>;
 
-    async fn pin_task(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
+    async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
 
     async fn stop(&self) -> Result<(), Self::Error>;
 }

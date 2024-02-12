@@ -21,5 +21,5 @@ use crate::cu::CUProverError;
 #[derive(ThisError, Debug)]
 pub enum CCProverErrors {
     #[error(transparent)]
-    CUProverError(#[from] CUProverError)
+    CUProverError(#[from] CUProverError),
 }
