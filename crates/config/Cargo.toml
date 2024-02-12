@@ -1,0 +1,11 @@
+[package]
+name = "ccp-config"
+description = "Config for the Fluence CCP application"
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+publish = true
+
+[dependencies]
+randomx-rust-wrapper = { workspace = true }
+serde = { worspace = true }

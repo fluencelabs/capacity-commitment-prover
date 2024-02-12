@@ -1,0 +1,11 @@
+[package]
+name = "ccp-utils"
+description = "Various utility functions for the Fluence CCP"
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+publish = true
+
+[dependencies]
+ccp-shared = {workspace = true}
+sha3 = { workspace = true }

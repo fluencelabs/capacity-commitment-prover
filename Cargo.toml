@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "ccp",
+    "crates/config",
+    "crates/shared",
+    "crates/utils",
+]
+
+[workspace.dependencies]
+ccp-config = { path = "./crates/config", version = "0.1.0" }
+ccp-shared = { path = "./crates/shared", version = "0.1.0" }
+ccp-utils = { path = "./crates/utils", version = "0.1.0" }
+
+fluence-keypair = "0.10.3"
+randomx-rust-wrapper = { path = "../randomx-rust-wrapper" }
+
+tokio = { version = "1.36", features = ["sync", "rt", "macros"] }
+futures = "0.3"
+
+anyhow = "1.0"
+byteorder = "1.5"
+chrono = "0.4"
+rand = "0.8"
+nonempty = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha3 = "0.10"
+thiserror = "1.0"

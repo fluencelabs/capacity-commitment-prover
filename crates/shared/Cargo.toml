@@ -1,0 +1,13 @@
+[package]
+name = "ccp-shared"
+description = "CCP shared types and definition"
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+serde = { workspace = true }

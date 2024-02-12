@@ -1,0 +1,31 @@
+[package]
+name = "capacity-commitment-prover"
+description = ""
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+publish = true
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+ccp-shared = { workspace = true }
+ccp-config = { workspace = true }
+ccp-utils = { workspace = true }
+
+fluence-keypair = { workspace = true }
+randomx-rust-wrapper = { workspace = true }
+
+tokio = { workspace = true }
+futures = { workspace = true }
+
+anyhow = { workspace = true }
+byteorder = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+nonempty = {workspace = true}
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
