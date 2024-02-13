@@ -169,9 +169,9 @@ impl ProvingThread {
             local_nonce.next();
 
             let result_hash = if hash_id == HASH_PER_ROUND - 1 {
-                vm.hash_next(local_nonce.get())
-            } else {
                 vm.hash_last()
+            } else {
+                vm.hash_next(local_nonce.get())
             };
 
             if result_hash.as_ref() < &difficulty {
@@ -179,6 +179,8 @@ impl ProvingThread {
                 println!("golden result hash {result_hash:?}");
                 let proof = RawProof::new(*local_nonce.get());
                 proof_receiver_inlet.blocking_send(proof)?;
+
+                local_nonce.next();
             }
         }
 
