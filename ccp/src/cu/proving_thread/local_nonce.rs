@@ -114,6 +114,7 @@ mod tests {
         let nonce_first = nonce.get().to_owned();
 
         nonce.prev();
+        assert_ne!(&nonce_first, nonce.get());
         nonce.next();
 
         let nonce_second = nonce.get();
@@ -125,6 +126,7 @@ mod tests {
         let nonce_first = nonce.get().to_owned();
 
         nonce.next();
+        assert_ne!(&nonce_first, nonce.get());
         nonce.prev();
 
         let nonce_second = nonce.get();
