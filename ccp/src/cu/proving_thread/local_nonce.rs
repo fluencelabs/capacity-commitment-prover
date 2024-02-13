@@ -120,6 +120,7 @@ mod tests {
         let nonce_second = nonce.get();
         assert_eq!(&nonce_first, nonce_second);
     }
+
     #[test]
     fn prev_next_idempotent() {
         let mut nonce = LocalNonce::random();
