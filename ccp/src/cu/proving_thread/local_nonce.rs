@@ -43,7 +43,7 @@ impl LocalNonce {
                 .try_into()
                 .unwrap(),
         );
-        nonce_as_u64 += 1;
+        nonce_as_u64 = nonce_as_u64.wrapping_add(1);
         self.nonce[0..std::mem::size_of::<u64>()].copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
     }
 
@@ -53,7 +53,7 @@ impl LocalNonce {
                 .try_into()
                 .unwrap(),
         );
-        nonce_as_u64 -= 1;
+        nonce_as_u64 = nonce_as_u64.wrapping_sub(1);
         self.nonce[0..std::mem::size_of::<u64>()].copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
     }
 
@@ -85,5 +85,52 @@ mod tests {
         );
 
         assert_eq!(nonce_first_as_u64 + 1, nonce_second_as_u64);
+    }
+
+    #[test]
+    fn prev_works() {
+        let mut nonce = LocalNonce::random();
+        let nonce_first = nonce.get();
+        let nonce_first_as_u64 = u64::from_le_bytes(
+            nonce_first[0..std::mem::size_of::<u64>()]
+                .try_into()
+                .unwrap(),
+        );
+
+        nonce.prev();
+        let nonce_second = nonce.get();
+        let nonce_second_as_u64 = u64::from_le_bytes(
+            nonce_second[0..std::mem::size_of::<u64>()]
+                .try_into()
+                .unwrap(),
+        );
+
+        assert_eq!(nonce_first_as_u64 - 1, nonce_second_as_u64);
+    }
+
+    #[test]
+    fn next_prev_idempotent() {
+        let mut nonce = LocalNonce::random();
+        let nonce_first = nonce.get().to_owned();
+
+        nonce.prev();
+        assert_ne!(&nonce_first, nonce.get());
+        nonce.next();
+
+        let nonce_second = nonce.get();
+        assert_eq!(&nonce_first, nonce_second);
+    }
+
+    #[test]
+    fn prev_next_idempotent() {
+        let mut nonce = LocalNonce::random();
+        let nonce_first = nonce.get().to_owned();
+
+        nonce.next();
+        assert_ne!(&nonce_first, nonce.get());
+        nonce.prev();
+
+        let nonce_second = nonce.get();
+        assert_eq!(&nonce_first, nonce_second);
     }
 }
