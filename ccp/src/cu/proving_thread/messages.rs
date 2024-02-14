@@ -21,6 +21,7 @@ pub(crate) use ptt_structs::*;
 pub(crate) use ttp_structs::*;
 
 use ccp_shared::types::LocalNonce;
+use ccp_shared::types::CUID;
 
 #[derive(Debug)]
 pub(crate) enum ProverToThreadMessage {
@@ -41,10 +42,11 @@ pub(crate) enum ThreadToProverMessage {
 #[derive(Debug)]
 pub(crate) struct RawProof {
     pub(crate) local_nonce: LocalNonce,
+    pub(crate) cu_id: CUID,
 }
 
 impl RawProof {
-    pub(crate) fn new(local_nonce: LocalNonce) -> Self {
-        Self { local_nonce }
+    pub(crate) fn new(local_nonce: LocalNonce, cu_id: CUID) -> Self {
+        Self { local_nonce, cu_id }
     }
 }

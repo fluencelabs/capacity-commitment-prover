@@ -38,6 +38,7 @@ pub struct CUProver {
     cu_id: Option<CUID>,
 }
 
+#[derive(Clone, Debug)]
 pub struct CUProverConfig {
     pub randomx_flags: randomx::RandomXFlags,
     /// Defines how many threads will be assigned to a specific physical core,
@@ -46,9 +47,13 @@ pub struct CUProverConfig {
 }
 
 impl CUProver {
-    pub(crate) fn new(config: CUProverConfig, core_id: PhysicalCoreId) -> Self {
+    pub(crate) fn new(
+        config: CUProverConfig,
+        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        core_id: PhysicalCoreId,
+    ) -> Self {
         let threads = (0..config.threads_per_physical_core.into())
-            .map(|_| ProvingThread::new(core_id))
+            .map(|_| ProvingThread::new(core_id, proof_receiver_inlet.clone()))
             .collect::<Vec<_>>();
         let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
 
@@ -66,7 +71,7 @@ impl CUProver {
         cu_id: CUID,
         difficulty: Difficulty,
         flags: RandomXFlags,
-    ) -> CUResult<mpsc::Receiver<RawProof>> {
+    ) -> CUResult<()> {
         self.cu_id = Some(cu_id);
 
         let thread = &mut self.threads.head;
@@ -129,18 +134,18 @@ impl CUProver {
         dataset: DatasetHandle,
         flags: RandomXFlags,
         difficulty: Difficulty,
-    ) -> CUResult<mpsc::Receiver<RawProof>> {
+    ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let (inlet, outlet) = mpsc::channel(100);
+        let cu_id = self.cu_id.unwrap().clone();
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread
-                .run_cc_job(dataset.clone(), flags, difficulty, inlet.clone())
+                .run_cc_job(dataset.clone(), flags, difficulty, cu_id)
                 .boxed_local()
         };
         self.run_on_all_threads(closure).await?;
 
-        Ok(outlet)
+        Ok(())
     }
 
     async fn run_on_all_threads<'thread, 'future: 'thread, T, E>(
@@ -176,6 +181,7 @@ impl CUProver {
             .into_iter()
             .map(Result::unwrap_err)
             .collect::<Vec<_>>();
+
         Err(thread_errors.into())
     }
 }

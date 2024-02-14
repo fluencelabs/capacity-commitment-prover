@@ -20,8 +20,8 @@ use randomx_rust_wrapper::RandomXFlags;
 
 #[derive(Clone, Debug)]
 pub struct CCPConfig {
-    jobs_per_physical_core: std::num::NonZeroUsize,
-    randomx_flags: RandomXFlags,
-    dir_to_store_proofs: PathBuf,
-    dir_to_store_persistant_state: PathBuf,
+    pub threads_per_physical_core: std::num::NonZeroUsize,
+    pub randomx_flags: RandomXFlags,
+    pub dir_to_store_proofs: PathBuf,
+    pub dir_to_store_persistant_state: PathBuf,
 }

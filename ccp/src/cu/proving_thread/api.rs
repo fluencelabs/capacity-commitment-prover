@@ -51,7 +51,7 @@ pub trait ProvingThreadAPI {
         dataset: DatasetHandle,
         flags: RandomXFlags,
         difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        cu_id: CUID,
     ) -> Result<(), Self::Error>;
 
     async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;

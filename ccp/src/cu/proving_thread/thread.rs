@@ -39,6 +39,9 @@ use crate::CUID;
 
 const HASH_PER_ROUND: usize = 1024;
 
+const CHANNEL_DROPPED_MESSAGE: &str =
+    "ThreadState::WaitForMessage async part of the ptt channel is dropped";
+
 pub(crate) struct ProvingThread {
     inlet: mpsc::Sender<ProverToThreadMessage>,
     outlet: mpsc::Receiver<ThreadToProverMessage>,
@@ -46,11 +49,15 @@ pub(crate) struct ProvingThread {
 }
 
 impl ProvingThread {
-    pub(crate) fn new(core_id: LogicalCoreId) -> Self {
+    pub(crate) fn new(
+        core_id: LogicalCoreId,
+        proof_receiver_inlet: mpsc::Sender<RawProof>,
+    ) -> Self {
         let (ptt_inlet, ptt_outlet) = mpsc::channel::<ProverToThreadMessage>(1);
         let (ttp_inlet, ttp_outlet) = mpsc::channel::<ThreadToProverMessage>(1);
 
-        let thread_closure = Self::create_thread_closure(ptt_outlet, ttp_inlet);
+        let thread_closure =
+            Self::create_thread_closure(ptt_outlet, ttp_inlet, proof_receiver_inlet);
         let handle = thread::spawn(thread_closure);
 
         Self {
@@ -63,14 +70,12 @@ impl ProvingThread {
     fn create_thread_closure(
         mut ptt_outlet: mpsc::Receiver<ProverToThreadMessage>,
         ttp_inlet: mpsc::Sender<ThreadToProverMessage>,
+        proof_receiver_inlet: mpsc::Sender<RawProof>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
         Box::new(move || -> PTResult<()> {
-            let ptt_message =
-                ptt_outlet
-                    .blocking_recv()
-                    .ok_or(ProvingThreadError::channel_error(
-                        "async part of the ptt channel is dropped",
-                    ))?;
+            let ptt_message = ptt_outlet
+                .blocking_recv()
+                .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
             let mut thread_state = Self::handle_prover_message(ptt_message, &ttp_inlet)?;
 
             loop {
@@ -83,15 +88,13 @@ impl ProvingThread {
                         // block on the channel till it returns a new message
                         let ptt_message = ptt_outlet
                             .blocking_recv()
-                            .ok_or(ProvingThreadError::channel_error(
-                            "ThreadState::WaitForMessage: async part of the ptt channel is dropped",
-                        ))?;
+                            .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
                         Self::handle_prover_message(ptt_message, &ttp_inlet)?
                     }
                     ThreadState::CCJob { parameters } => {
                         use tokio::sync::mpsc::error::TryRecvError;
 
-                        let parameters = Self::cc_prove(parameters)?;
+                        let parameters = Self::cc_prove(parameters, proof_receiver_inlet.clone())?;
                         match ptt_outlet.try_recv() {
                             Ok(message) => Self::handle_prover_message(message, &ttp_inlet)?,
                             Err(TryRecvError::Empty) => ThreadState::CCJob { parameters },
@@ -144,8 +147,8 @@ impl ProvingThread {
                 let parameters = RandomXJobParams::new(
                     params.dataset,
                     params.flags,
+                    params.cu_id,
                     params.difficulty,
-                    params.proof_receiver_inlet,
                 )?;
 
                 Ok(ThreadState::CCJob { parameters })
@@ -155,12 +158,15 @@ impl ProvingThread {
         }
     }
 
-    fn cc_prove(job_parameters: RandomXJobParams) -> PTResult<RandomXJobParams> {
+    fn cc_prove(
+        job_parameters: RandomXJobParams,
+        proof_receiver_inlet: mpsc::Sender<RawProof>,
+    ) -> PTResult<RandomXJobParams> {
         let RandomXJobParams {
             vm,
             mut local_nonce,
             difficulty,
-            proof_receiver_inlet,
+            cu_id,
         } = job_parameters;
 
         vm.hash_first(local_nonce.get());
@@ -177,15 +183,14 @@ impl ProvingThread {
             if result_hash.as_ref() < &difficulty {
                 local_nonce.prev();
                 println!("golden result hash {result_hash:?}");
-                let proof = RawProof::new(*local_nonce.get());
+                let proof = RawProof::new(*local_nonce.get(), cu_id);
                 proof_receiver_inlet.blocking_send(proof)?;
 
                 local_nonce.next();
             }
         }
 
-        let job_parameters =
-            RandomXJobParams::from_vm(vm, local_nonce, difficulty, proof_receiver_inlet);
+        let job_parameters = RandomXJobParams::from_vm(vm, local_nonce, cu_id, difficulty);
         Ok(job_parameters)
     }
 }
@@ -257,9 +262,9 @@ impl ProvingThreadAPI for ProvingThread {
         dataset: DatasetHandle,
         flags: RandomXFlags,
         difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(dataset, flags, difficulty, proof_receiver_inlet);
+        let message = NewCCJob::new(dataset, flags, difficulty, cu_id);
         let message = ProverToThreadMessage::NewCCJob(message);
         self.inlet.send(message).await.map_err(Into::into)
     }

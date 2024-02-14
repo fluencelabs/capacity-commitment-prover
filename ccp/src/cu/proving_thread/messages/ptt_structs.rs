@@ -49,7 +49,7 @@ pub(crate) struct NewCCJob {
     pub(crate) dataset: DatasetHandle,
     pub(crate) flags: RandomXFlags,
     pub(crate) difficulty: Difficulty,
-    pub(crate) proof_receiver_inlet: mpsc::Sender<RawProof>,
+    pub(crate) cu_id: CUID,
 }
 
 impl CreateCache {
@@ -89,13 +89,13 @@ impl NewCCJob {
         dataset: DatasetHandle,
         flags: RandomXFlags,
         difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        cu_id: CUID,
     ) -> Self {
         Self {
             dataset,
             flags,
             difficulty,
-            proof_receiver_inlet,
+            cu_id,
         }
     }
 }

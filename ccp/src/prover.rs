@@ -14,18 +14,30 @@
  * limitations under the License.
  */
 
+use futures::future::MaybeDone::Future;
+use futures::stream::FuturesUnordered;
+use futures::StreamExt;
 use std::collections::HashMap;
+use std::pin::Pin;
+use std::task::Context;
+use std::task::Poll;
+use tokio::sync::mpsc;
 
 use ccp_config::CCPConfig;
 use ccp_shared::types::*;
 
 use super::cu::CUProver;
 use super::cu::CUProverConfig;
+use crate::cu::RawProof;
+use crate::errors::CCProverError;
 
-struct CCProver {
-    allocated_threads: HashMap<PhysicalCoreId, CUProver>,
+pub type CCResult<T> = Result<T, CCProverError>;
+
+pub struct CCProver {
+    allocated_provers: HashMap<PhysicalCoreId, CUProver>,
     config: CCPConfig,
     epoch_parameters: Option<GlobalEpochParameters>,
+    proof_receiver_inlet: mpsc::Sender<RawProof>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,32 +47,89 @@ pub(crate) struct GlobalEpochParameters {
 }
 
 impl CCProver {
-    pub fn new(config: CCPConfig) -> Self {
-        Self {
-            allocated_threads: HashMap::new(),
+    pub fn new(config: CCPConfig) -> (Self, mpsc::Receiver<RawProof>) {
+        let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
+        let prover = Self {
+            allocated_provers: HashMap::new(),
             config,
             epoch_parameters: None,
-        }
+            proof_receiver_inlet,
+        };
+
+        (prover, proof_receiver_outlet)
     }
 
-    pub fn on_active_commitment(
+    pub async fn on_active_commitment(
         &mut self,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
         cu_allocation: CUAllocation,
-    ) {
-        /*
-        let global_params = GlobalEpochParameters::new(global_nonce, difficulty);
-        let cu_prover = CUProver::new();
-         */
+    ) -> CCResult<()> {
+        use futures::stream::FuturesUnordered;
+        use futures::StreamExt;
+
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: self.config.randomx_flags,
+            threads_per_physical_core: self.config.threads_per_physical_core,
+        };
+
+        let allocated_provers = cu_allocation
+            .iter()
+            .map(|(&core_id, cu_id)| {
+                let cu_prover = CUProver::new(
+                    cu_prover_config.clone(),
+                    self.proof_receiver_inlet.clone(),
+                    core_id,
+                );
+                (core_id, cu_prover)
+            })
+            .collect::<HashMap<_, _>>();
+
+        self.allocated_provers = allocated_provers;
+
+        let results = self
+            .allocated_provers
+            .iter_mut()
+            .map(|(&core_id, prover)| {
+                let cu_id = cu_allocation.get(&core_id).unwrap();
+                prover.new_epoch(global_nonce, *cu_id, difficulty, self.config.randomx_flags)
+            })
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>()
+            .await;
+
+        for result in results {
+            result?;
+        }
+
+        Ok(())
     }
 
-    pub async fn on_no_active_commitment(&mut self) {
-        /*
-        self.allocated_threads
-            .iter()
-            .map(|(_, cu_prover)| cu_prover.stop())
-         */
+    pub async fn on_no_active_commitment(&mut self) -> CCResult<()> {
+        use futures::stream::FuturesUnordered;
+        use futures::StreamExt;
+
+        let results = self
+            .allocated_provers
+            .iter_mut()
+            .map(|(_, prover)| prover.stop())
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>()
+            .await;
+
+        let errors = results
+            .into_iter()
+            .filter_map(|result| match result {
+                Ok(_) => None,
+                Err(e) => Some(e),
+            })
+            .collect::<Vec<_>>();
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(CCProverError::CUProverErrors(errors))
+        }
     }
 
     pub fn create_proof_watcher(&self) {
