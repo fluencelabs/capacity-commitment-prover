@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::{Server, ServerHandle};
+use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use capacity_commitment_prover::prover::CCProver;
@@ -13,22 +14,21 @@ use ccp_shared::types::GlobalNonce;
 pub struct CcpRcpHttpServer {
     // n.b. if CCProver would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<CCProver>>,
-    bind_address: String,
 }
 
 impl CcpRcpHttpServer {
-    pub fn new(cc_prover: Arc<Mutex<CCProver>>, bind_address: String) -> Self {
-        Self {
-            cc_prover,
-            bind_address,
-        }
+    pub fn new(cc_prover: Arc<Mutex<CCProver>>) -> Self {
+        Self { cc_prover }
     }
 
     ///  Run the JSON-RPC HTTP server in the background.
     ///
     ///  The returned handle can be used to maniplate it.
-    pub async fn run_server(self) -> Result<ServerHandle, std::io::Error> {
-        let server = Server::builder().build(&self.bind_address).await?;
+    pub async fn run_server(
+        self,
+        bind_address: impl ToSocketAddrs,
+    ) -> Result<ServerHandle, std::io::Error> {
+        let server = Server::builder().build(bind_address).await?;
 
         let handle = server.start(self.into_rpc());
 
