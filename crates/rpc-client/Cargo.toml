@@ -1,0 +1,8 @@
+[package]
+name = "ccp-rpc-client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ccp-shared = { version = "0.1.0", path = "../shared" }
+jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }

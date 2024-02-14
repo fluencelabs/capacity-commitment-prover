@@ -1,0 +1,12 @@
+[package]
+name = "ccp-rpc-server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = "0.1.77"
+capacity-commitment-prover = { version = "0.1.0", path = "../../ccp" }
+ccp-rpc-client = { version = "0.1.0", path = "../rpc-client" }
+ccp-shared = { version = "0.1.0", path = "../shared" }
+jsonrpsee = { version = "0.21.0", features = ["server", "tokio"] }
+tokio = { workspace = true, features = ["sync"] }

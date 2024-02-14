@@ -17,7 +17,7 @@
 mod cu;
 mod errors;
 mod proof_storage_worker;
-mod prover;
+pub mod prover;
 
 pub(crate) use ccp_shared::types::*;
 pub(crate) type LogicalCoreId = usize;

@@ -22,7 +22,7 @@ use ccp_shared::types::*;
 use super::cu::CUProver;
 use super::cu::CUProverConfig;
 
-struct CCProver {
+pub struct CCProver {
     allocated_threads: HashMap<PhysicalCoreId, CUProver>,
     config: CCPConfig,
     epoch_parameters: Option<GlobalEpochParameters>,
@@ -43,7 +43,7 @@ impl CCProver {
         }
     }
 
-    pub fn on_active_commitment(
+    pub async fn on_active_commitment(
         &mut self,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,

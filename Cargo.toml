@@ -3,6 +3,8 @@ resolver = "2"
 members = [
     "ccp",
     "crates/config",
+    "crates/rpc-client",
+    "crates/rpc-server",
     "crates/shared",
     "crates/utils",
 ]
