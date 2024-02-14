@@ -173,7 +173,7 @@ async fn cc_job_stopable() {
     let global_nonce = get_test_global_nonce();
     let cu_id = get_test_cu_id();
 
-    let flags = RandomXFlags::recommended();
+    let flags = RandomXFlags::recommended_full_mem();
 
     let mut thread = ProvingThread::new(2);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
@@ -203,6 +203,8 @@ async fn cc_job_stopable() {
     std::thread::sleep(std::time::Duration::from_secs(2));
     thread.stop().await.unwrap();
     std::thread::sleep(std::time::Duration::from_secs(2));
+
     let result = outlet.try_recv();
+
     println!("result {result:?}");
 }

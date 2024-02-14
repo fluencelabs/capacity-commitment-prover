@@ -50,7 +50,7 @@ impl ProvingThread {
         let (ptt_inlet, ptt_outlet) = mpsc::channel::<ProverToThreadMessage>(1);
         let (ttp_inlet, ttp_outlet) = mpsc::channel::<ThreadToProverMessage>(1);
 
-        let thread_closure = Self::create_thread_closure(ptt_outlet, ttp_inlet);
+        let thread_closure = Self::create_thread_closure(ptt_outlet, ttp_inlet, ptt_inlet.clone());
         let handle = thread::spawn(thread_closure);
 
         Self {
@@ -63,6 +63,8 @@ impl ProvingThread {
     fn create_thread_closure(
         mut ptt_outlet: mpsc::Receiver<ProverToThreadMessage>,
         ttp_inlet: mpsc::Sender<ThreadToProverMessage>,
+        // it holds a copy so that channel is not closed and it can handle all the messages
+        ptt_inlet_copy: mpsc::Sender<ProverToThreadMessage>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
         Box::new(move || -> PTResult<()> {
             let ptt_message =
@@ -77,6 +79,7 @@ impl ProvingThread {
                 println!("loop state: {thread_state:?}");
                 thread_state = match thread_state {
                     ThreadState::Stop => {
+                        println!("STOPPED");
                         return Ok(());
                     }
                     ThreadState::WaitForMessage => {
@@ -261,7 +264,8 @@ impl ProvingThreadAPI for ProvingThread {
     ) -> Result<(), Self::Error> {
         let message = NewCCJob::new(dataset, flags, difficulty, proof_receiver_inlet);
         let message = ProverToThreadMessage::NewCCJob(message);
-        self.inlet.send(message).await.map_err(Into::into)
+        self.inlet.send(message).await?;
+        Ok(())
     }
 
     async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {
@@ -269,6 +273,7 @@ impl ProvingThreadAPI for ProvingThread {
     }
 
     async fn stop(&self) -> Result<(), Self::Error> {
+        println!("STOPPING");
         let message = ProverToThreadMessage::Stop;
         self.inlet.send(message).await?;
 
