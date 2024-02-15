@@ -28,7 +28,7 @@ use tokio::sync::mpsc;
 use super::api::ProvingThreadAPI;
 use super::errors::ProvingThreadError;
 use super::messages::*;
-use super::state::RandomXJobParams;
+use super::state::RandomXJob;
 use super::state::ThreadState;
 use super::PTResult;
 use crate::Difficulty;
@@ -36,7 +36,7 @@ use crate::GlobalNonce;
 use crate::LogicalCoreId;
 use crate::CUID;
 
-const HASH_PER_ROUND: usize = 1024;
+const HASHES_PER_ROUND: usize = 1024;
 
 const CHANNEL_DROPPED_MESSAGE: &str =
     "ThreadState::WaitForMessage async part of the ptt channel is dropped";
@@ -145,7 +145,7 @@ impl ProvingThread {
             }
 
             ProverToThreadMessage::NewCCJob(cc_job) => {
-                let parameters = RandomXJobParams::from_cc_job(cc_job)?;
+                let parameters = RandomXJob::from_cc_job(cc_job)?;
                 Ok(ThreadState::CCJob { parameters })
             }
 
@@ -154,43 +154,27 @@ impl ProvingThread {
     }
 
     fn cc_prove(
-        job_parameters: RandomXJobParams,
+        mut job: RandomXJob,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> PTResult<RandomXJobParams> {
-        let RandomXJobParams {
-            vm,
-            mut local_nonce,
-            global_nonce,
-            difficulty,
-            cu_id,
-        } = job_parameters;
+    ) -> PTResult<RandomXJob> {
+        job.hash_first();
 
-        vm.hash_first(local_nonce.get());
-
-        for hash_id in 0..HASH_PER_ROUND {
-            local_nonce.next();
-
-            let result_hash = if hash_id == HASH_PER_ROUND - 1 {
-                vm.hash_last()
+        for hash_id in 0..HASHES_PER_ROUND {
+            let result_hash = if hash_id == HASHES_PER_ROUND - 1 {
+                job.hash_last()
             } else {
-                vm.hash_next(local_nonce.get())
+                job.hash_next()
             };
 
-            if result_hash.as_ref() < &difficulty {
-                local_nonce.prev();
+            if result_hash.as_ref() < &job.difficulty {
+                log::info!("proving_thread:: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
 
-                log::info!("proving_thread:: found new golden result hash {result_hash:?}\n  for local_nonce {local_nonce:?}");
-
-                let proof = RawProof::new(global_nonce, difficulty, *local_nonce.get(), cu_id);
+                let proof = job.create_golden_proof();
                 proof_receiver_inlet.blocking_send(proof)?;
-
-                local_nonce.next();
             }
         }
 
-        let job_parameters =
-            RandomXJobParams::from_vm(vm, global_nonce, local_nonce, cu_id, difficulty);
-        Ok(job_parameters)
+        Ok(job)
     }
 }
 

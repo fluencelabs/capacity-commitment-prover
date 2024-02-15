@@ -18,15 +18,17 @@ use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::CUID;
 
 use randomx::dataset::DatasetHandle;
+use randomx::ResultHash;
 use randomx_rust_wrapper as randomx;
 
 use super::messages::NewCCJob;
 use super::LocalNonce;
 use super::PTResult;
+use crate::cu::RawProof;
 use crate::Difficulty;
 
 #[derive(Debug)]
-pub(crate) struct RandomXJobParams<'vm> {
+pub(crate) struct RandomXJob<'vm> {
     pub(crate) vm: randomx::RandomXVM<'vm, DatasetHandle>,
     pub(crate) global_nonce: GlobalNonce,
     pub(crate) local_nonce: LocalNonce,
@@ -34,7 +36,7 @@ pub(crate) struct RandomXJobParams<'vm> {
     pub(crate) difficulty: Difficulty,
 }
 
-impl<'params> RandomXJobParams<'params> {
+impl<'params> RandomXJob<'params> {
     pub(crate) fn from_cc_job(cc_job: NewCCJob) -> PTResult<Self> {
         let NewCCJob {
             dataset,
@@ -72,11 +74,39 @@ impl<'params> RandomXJobParams<'params> {
             difficulty,
         }
     }
+
+    pub(crate) fn hash_first(&mut self) {
+        self.vm.hash_first(self.local_nonce.get());
+    }
+
+    pub(crate) fn hash_last(&mut self) -> ResultHash {
+        self.local_nonce.next();
+        self.vm.hash_last()
+    }
+
+    pub(crate) fn hash_next(&mut self) -> ResultHash {
+        self.local_nonce.next();
+        self.vm.hash_next(self.local_nonce.get())
+    }
+
+    pub(crate) fn create_golden_proof(&mut self) -> RawProof {
+        self.local_nonce.prev();
+
+        let proof = RawProof::new(
+            self.global_nonce,
+            self.difficulty,
+            *self.local_nonce.get(),
+            self.cu_id,
+        );
+        self.local_nonce.next();
+
+        proof
+    }
 }
 
 #[derive(Debug)]
 pub(crate) enum ThreadState<'vm> {
-    CCJob { parameters: RandomXJobParams<'vm> },
+    CCJob { parameters: RandomXJob<'vm> },
     Stop,
     WaitForMessage,
 }
