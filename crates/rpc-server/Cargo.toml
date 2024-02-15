@@ -1,12 +1,15 @@
 [package]
 name = "ccp-rpc-server"
+description = "CCP RPC server"
 version = "0.1.0"
+authors = ["Fluence Labs"]
 edition = "2021"
 
 [dependencies]
-async-trait = "0.1.77"
-capacity-commitment-prover = { version = "0.1.0", path = "../../ccp" }
-ccp-rpc-client = { version = "0.1.0", path = "../rpc-client" }
-ccp-shared = { version = "0.1.0", path = "../shared" }
-jsonrpsee = { version = "0.21.0", features = ["server", "tokio"] }
-tokio = { workspace = true, features = ["sync"] }
+capacity-commitment-prover = {workspace = true}
+ccp-rpc-client = {workspace = true}
+ccp-shared = {workspace = true}
+
+async-trait = {workspace = true}
+jsonrpsee = {workspace = true}
+tokio = {workspace = true}

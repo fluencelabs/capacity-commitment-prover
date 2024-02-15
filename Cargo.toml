@@ -10,20 +10,26 @@ members = [
 ]
 
 [workspace.dependencies]
+capacity-commitment-prover = { path = "./ccp", version = "0.1.0"}
 ccp-config = { path = "./crates/config", version = "0.1.0" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
+ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
+ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 
 fluence-keypair = "0.10.3"
 randomx-rust-wrapper = { path = "../randomx-rust-wrapper" }
 
+async-trait = "0.1.77"
 tokio = { version = "1.36", features = ["sync", "rt", "macros", "fs"] }
 tokio-stream = {version = "0.1", features = ["fs"]}
 futures = "0.3"
 
+
 anyhow = "1.0"
 byteorder = "1.5"
 chrono = "0.4"
+jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }
 rand = "0.8"
 log = "0.4"
 nonempty = "0.9"
