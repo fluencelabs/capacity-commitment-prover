@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+pub mod nox_ccp_api;
 pub mod proof;
 pub mod types;
 

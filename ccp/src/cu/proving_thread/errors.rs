@@ -24,8 +24,8 @@ pub enum ProvingThreadError {
     #[error(transparent)]
     RandomXError(#[from] RandomXError),
 
-    #[error("")]
-    ChannelError(#[source] anyhow::Error),
+    #[error(transparent)]
+    ChannelError(#[from] anyhow::Error),
 }
 
 impl ProvingThreadError {

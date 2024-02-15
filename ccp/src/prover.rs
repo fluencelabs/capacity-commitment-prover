@@ -20,7 +20,9 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
-use ccp_shared::proof::{CCProof, CCProofId};
+use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::CCProofId;
 use ccp_shared::types::*;
 
 use super::cu::CUProver;
@@ -47,41 +49,15 @@ pub(crate) struct GlobalEpochParameters {
     pub(crate) difficulty: Difficulty,
 }
 
-impl CCProver {
-    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
-        let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
-        let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
+impl NoxCCPApi for CCProver {
+    type Error = CCProverError;
 
-        let proof_storage = ProofStorageWorker::new(config.dir_to_store_proofs.clone());
-        let proof_storage = Arc::new(proof_storage);
-        Self::spawn_utility_thread(
-            proof_storage.clone(),
-            proof_receiver_outlet,
-            shutdown_outlet,
-            utility_core_id,
-        );
-
-        let cu_prover_config = CUProverConfig {
-            randomx_flags: config.randomx_flags,
-            threads_per_physical_core: config.threads_per_physical_core,
-        };
-
-        Self {
-            active_provers: HashMap::new(),
-            cu_prover_config,
-            epoch_parameters: None,
-            proof_receiver_inlet,
-            utility_thread_shutdown: shutdown_inlet,
-            proof_storage,
-        }
-    }
-
-    pub async fn on_active_commitment(
+    async fn on_active_commitment(
         &mut self,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
         cu_allocation: CUAllocation,
-    ) -> CCResult<()> {
+    ) -> Result<(), Self::Error> {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
@@ -116,11 +92,10 @@ impl CCProver {
         for result in results {
             result?;
         }
-
         Ok(())
     }
 
-    pub async fn on_no_active_commitment(&mut self) -> CCResult<()> {
+    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
@@ -147,6 +122,43 @@ impl CCProver {
         }
     }
 
+    async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, Self::Error> {
+        self.proof_storage
+            .get_proofs_after(proof_idx)
+            .await
+            .map_err(Into::into)
+    }
+}
+
+impl CCProver {
+    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
+        let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
+        let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
+
+        let proof_storage = ProofStorageWorker::new(config.dir_to_store_proofs.clone());
+        let proof_storage = Arc::new(proof_storage);
+        Self::spawn_utility_thread(
+            proof_storage.clone(),
+            proof_receiver_outlet,
+            shutdown_outlet,
+            utility_core_id,
+        );
+
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: config.randomx_flags,
+            threads_per_physical_core: config.threads_per_physical_core,
+        };
+
+        Self {
+            active_provers: HashMap::new(),
+            cu_prover_config,
+            epoch_parameters: None,
+            proof_receiver_inlet,
+            utility_thread_shutdown: shutdown_inlet,
+            proof_storage,
+        }
+    }
+
     pub async fn stop(mut self) -> CCResult<()> {
         // stop all active provers
         self.on_no_active_commitment().await?;
@@ -154,13 +166,6 @@ impl CCProver {
         self.utility_thread_shutdown
             .send(())
             .map_err(|_| CCProverError::UtilityThreadShutdownFailed)
-    }
-
-    pub async fn get_proofs_after(&self, proof_idx: u64) -> CCResult<Vec<CCProof>> {
-        self.proof_storage
-            .get_proofs_after(proof_idx)
-            .await
-            .map_err(Into::into)
     }
 
     fn spawn_utility_thread(

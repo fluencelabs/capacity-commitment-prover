@@ -97,8 +97,10 @@ impl CUProver {
     pub(crate) async fn stop<'threads>(&'threads mut self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed_local();
-        self.run_on_all_threads(closure).await
+        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed();
+        self.run_on_all_threads(closure).await?;
+
+        Ok(())
     }
 
     async fn ensure_database_allocated(&mut self, flags: RandomXFlags) -> CUResult<()> {
@@ -129,7 +131,7 @@ impl CUProver {
                     thread_id as u64 * thread_init_length,
                     thread_init_length,
                 )
-                .boxed_local()
+                .boxed()
         };
 
         self.run_on_all_threads(closure).await
@@ -155,7 +157,7 @@ impl CUProver {
                     difficulty,
                     cu_id,
                 )
-                .boxed_local()
+                .boxed()
         };
         self.run_on_all_threads(closure).await?;
 
@@ -167,10 +169,10 @@ impl CUProver {
         closure: impl Fn(
             usize,
             &'thread mut ProvingThread,
-        ) -> futures::future::LocalBoxFuture<'future, Result<T, E>>,
+        ) -> futures::future::BoxFuture<'future, Result<T, E>>,
     ) -> CUResult<()>
     where
-        T: std::fmt::Debug,
+        T: Send + std::fmt::Debug,
         Vec<E>: Into<CUProverError>,
     {
         use futures::stream::FuturesUnordered;
