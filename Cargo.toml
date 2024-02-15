@@ -7,6 +7,7 @@ members = [
     "crates/rpc-server",
     "crates/shared",
     "crates/utils",
+    "main",
 ]
 
 [workspace.dependencies]
