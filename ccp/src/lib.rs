@@ -17,7 +17,7 @@
 mod cu;
 mod errors;
 mod proof_storage_worker;
-mod prover;
+pub mod prover;
 
 pub use errors::CCProverError;
 pub use prover::CCProver;
