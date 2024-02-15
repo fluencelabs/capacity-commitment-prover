@@ -15,11 +15,24 @@
  */
 
 use thiserror::Error as ThisError;
+use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
 
 #[derive(ThisError, Debug)]
-pub enum CCProverErrors {
+pub enum CCProverError {
     #[error(transparent)]
     CUProverError(#[from] CUProverError),
+
+    #[error("CU prover errors are happened: {0:?}")]
+    CUProverErrors(Vec<CUProverError>),
+
+    #[error(transparent)]
+    JoinError(#[from] JoinError),
+
+    #[error("an error occurred while shutdown of the utility thread")]
+    UtilityThreadShutdownFailed,
+
+    #[error(transparent)]
+    IOError(#[from] tokio::io::Error),
 }

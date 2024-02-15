@@ -17,9 +17,7 @@
 use randomx_rust_wrapper::cache::CacheHandle;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
-use tokio::sync::mpsc;
 
-use super::RawProof;
 use crate::Difficulty;
 use crate::GlobalNonce;
 use crate::CUID;
@@ -48,8 +46,9 @@ pub(crate) struct InitializeDataset {
 pub(crate) struct NewCCJob {
     pub(crate) dataset: DatasetHandle,
     pub(crate) flags: RandomXFlags,
+    pub(crate) global_nonce: GlobalNonce,
     pub(crate) difficulty: Difficulty,
-    pub(crate) proof_receiver_inlet: mpsc::Sender<RawProof>,
+    pub(crate) cu_id: CUID,
 }
 
 impl CreateCache {
@@ -88,14 +87,16 @@ impl NewCCJob {
     pub fn new(
         dataset: DatasetHandle,
         flags: RandomXFlags,
+        global_nonce: GlobalNonce,
         difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        cu_id: CUID,
     ) -> Self {
         Self {
             dataset,
             flags,
+            global_nonce,
             difficulty,
-            proof_receiver_inlet,
+            cu_id,
         }
     }
 }

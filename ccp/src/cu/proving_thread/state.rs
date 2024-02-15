@@ -14,62 +14,83 @@
  * limitations under the License.
  */
 
-use tokio::sync::mpsc;
+use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::CUID;
 
 use randomx::dataset::DatasetHandle;
-use randomx::RandomXFlags;
+use randomx::ResultHash;
 use randomx_rust_wrapper as randomx;
 
+use super::messages::NewCCJob;
 use super::LocalNonce;
 use super::PTResult;
-use crate::cu::proving_thread::messages::RawProof;
+use crate::cu::RawProof;
 use crate::Difficulty;
 
 #[derive(Debug)]
-pub(crate) struct RandomXJobParams<'vm> {
+pub(crate) struct RandomXJob<'vm> {
     pub(crate) vm: randomx::RandomXVM<'vm, DatasetHandle>,
+    pub(crate) global_nonce: GlobalNonce,
     pub(crate) local_nonce: LocalNonce,
+    pub(crate) cu_id: CUID,
     pub(crate) difficulty: Difficulty,
-    pub(crate) proof_receiver_inlet: mpsc::Sender<RawProof>,
 }
 
-impl<'params> RandomXJobParams<'params> {
-    pub(crate) fn new(
-        dataset: DatasetHandle,
-        flags: RandomXFlags,
-        difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> PTResult<Self> {
+impl<'params> RandomXJob<'params> {
+    pub(crate) fn from_cc_job(cc_job: NewCCJob) -> PTResult<Self> {
+        let NewCCJob {
+            dataset,
+            flags,
+            global_nonce,
+            difficulty,
+            cu_id,
+        } = cc_job;
+
         let vm = randomx::RandomXVM::fast(&dataset, flags)?;
         let local_nonce = LocalNonce::random();
 
         let params = Self {
             vm,
+            global_nonce,
             local_nonce,
+            cu_id,
             difficulty,
-            proof_receiver_inlet,
         };
         Ok(params)
     }
 
-    pub(crate) fn from_vm<'vm: 'params>(
-        vm: randomx::RandomXVM<'vm, DatasetHandle>,
-        local_nonce: LocalNonce,
-        difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> Self {
-        Self {
-            vm,
-            local_nonce,
-            difficulty,
-            proof_receiver_inlet,
-        }
+    pub(crate) fn hash_first(&mut self) {
+        self.vm.hash_first(self.local_nonce.get());
+    }
+
+    pub(crate) fn hash_last(&mut self) -> ResultHash {
+        self.local_nonce.next();
+        self.vm.hash_last()
+    }
+
+    pub(crate) fn hash_next(&mut self) -> ResultHash {
+        self.local_nonce.next();
+        self.vm.hash_next(self.local_nonce.get())
+    }
+
+    pub(crate) fn create_golden_proof(&mut self) -> RawProof {
+        self.local_nonce.prev();
+
+        let proof = RawProof::new(
+            self.global_nonce,
+            self.difficulty,
+            *self.local_nonce.get(),
+            self.cu_id,
+        );
+        self.local_nonce.next();
+
+        proof
     }
 }
 
 #[derive(Debug)]
 pub(crate) enum ThreadState<'vm> {
-    CCJob { parameters: RandomXJobParams<'vm> },
+    CCJob { parameters: RandomXJob<'vm> },
     Stop,
     WaitForMessage,
 }

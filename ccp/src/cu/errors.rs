@@ -22,7 +22,7 @@ use randomx_rust_wrapper::errors::RandomXError;
 use super::proving_thread::ProvingThreadError;
 
 #[derive(ThisError, Debug)]
-pub(crate) enum CUProverError {
+pub enum CUProverError {
     #[error(transparent)]
     ThreadError(#[from] ProvingThreadError),
 

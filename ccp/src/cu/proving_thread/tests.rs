@@ -67,7 +67,8 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
         .await
@@ -92,7 +93,8 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -128,7 +130,8 @@ async fn prover_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -147,9 +150,14 @@ async fn prover_works() {
         0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
-    let (inlet, mut outlet) = mpsc::channel(1000);
     thread
-        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+        .run_cc_job(
+            actual_dataset.handle(),
+            flags,
+            global_nonce,
+            test_difficulty,
+            cu_id,
+        )
         .await
         .unwrap();
 
@@ -175,7 +183,8 @@ async fn cc_job_stopable() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -194,15 +203,21 @@ async fn cc_job_stopable() {
         0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
-    let (inlet, mut outlet) = mpsc::channel(100);
     thread
-        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+        .run_cc_job(
+            actual_dataset.handle(),
+            flags,
+            global_nonce,
+            test_difficulty,
+            cu_id,
+        )
         .await
         .unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(2));
     thread.stop().await.unwrap();
     std::thread::sleep(std::time::Duration::from_secs(2));
+
     let result = outlet.try_recv();
     println!("result {result:?}");
 }

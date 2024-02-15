@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-use tokio::sync::mpsc;
-
 use ccp_shared::types::*;
 use randomx_rust_wrapper::cache::CacheHandle;
 use randomx_rust_wrapper::dataset::DatasetHandle;
@@ -23,7 +21,6 @@ use randomx_rust_wrapper::Cache;
 use randomx_rust_wrapper::Dataset;
 use randomx_rust_wrapper::RandomXFlags;
 
-use crate::cu::proving_thread::messages::RawProof;
 use crate::LogicalCoreId;
 
 pub trait ProvingThreadAPI {
@@ -50,8 +47,9 @@ pub trait ProvingThreadAPI {
         &mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
+        global_nonce: GlobalNonce,
         difficulty: Difficulty,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        cu_id: CUID,
     ) -> Result<(), Self::Error>;
 
     async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;

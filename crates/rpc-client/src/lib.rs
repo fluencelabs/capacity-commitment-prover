@@ -8,7 +8,7 @@ use jsonrpsee::proc_macros::rpc;
 
 // n.b.: the rpc macro also defines CcpRpcClient type which is a working async JSON RPC client.
 #[rpc(server, client, namespace = "ccp")]
-pub trait CcpRpc {
+pub trait CCPRpc {
     #[method(name = "on_active_commitment", param_kind = map)]
     async fn on_active_commitment(
         &self,
@@ -21,11 +21,11 @@ pub trait CcpRpc {
     async fn on_no_active_commitment(&self);
 }
 
-pub struct CcpRpcHttpClient {
+pub struct CCPRpcHttpClient {
     inner: jsonrpsee::http_client::HttpClient,
 }
 
-impl CcpRpcHttpClient {
+impl CCPRpcHttpClient {
     pub async fn new(
         &self,
         endpoint_url: String,
@@ -42,11 +42,11 @@ impl CcpRpcHttpClient {
         difficulty: Difficulty,
         cu_allocation: CUAllocation,
     ) -> Result<(), ClientError> {
-        CcpRpcClient::on_active_commitment(&self.inner, global_nonce, difficulty, cu_allocation)
+        CCPRpcClient::on_active_commitment(&self.inner, global_nonce, difficulty, cu_allocation)
             .await
     }
 
     pub async fn on_no_active_commitment(&self) -> Result<(), ClientError> {
-        CcpRpcClient::on_no_active_commitment(&self.inner).await
+        CCPRpcClient::on_no_active_commitment(&self.inner).await
     }
 }

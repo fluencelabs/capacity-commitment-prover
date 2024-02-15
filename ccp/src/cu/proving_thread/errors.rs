@@ -20,12 +20,12 @@ use tokio::sync::mpsc;
 use randomx_rust_wrapper::errors::RandomXError;
 
 #[derive(ThisError, Debug)]
-pub(crate) enum ProvingThreadError {
+pub enum ProvingThreadError {
     #[error(transparent)]
     RandomXError(#[from] RandomXError),
 
-    #[error("")]
-    ChannelError(#[source] anyhow::Error),
+    #[error(transparent)]
+    ChannelError(#[from] anyhow::Error),
 }
 
 impl ProvingThreadError {

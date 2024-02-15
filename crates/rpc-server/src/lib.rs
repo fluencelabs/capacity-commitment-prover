@@ -1,22 +1,24 @@
 use std::sync::Arc;
 
 use jsonrpsee::core::async_trait;
-use jsonrpsee::server::{Server, ServerHandle};
+use jsonrpsee::server::Server;
+use jsonrpsee::server::ServerHandle;
 use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use capacity_commitment_prover::prover::CCProver;
-use ccp_rpc_client::CcpRpcServer;
+use ccp_rpc_client::CCPRpcServer;
+use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
 
-pub struct CcpRcpHttpServer {
+pub struct CCPRcpHttpServer {
     // n.b. if CCProver would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<CCProver>>,
 }
 
-impl CcpRcpHttpServer {
+impl CCPRcpHttpServer {
     pub fn new(cc_prover: Arc<Mutex<CCProver>>) -> Self {
         Self { cc_prover }
     }
@@ -37,7 +39,7 @@ impl CcpRcpHttpServer {
 }
 
 #[async_trait]
-impl CcpRpcServer for CcpRcpHttpServer {
+impl CCPRpcServer for CCPRcpHttpServer {
     async fn on_active_commitment(
         &self,
         global_nonce: GlobalNonce,
