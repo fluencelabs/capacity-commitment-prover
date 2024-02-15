@@ -1,0 +1,8 @@
+{
+    "jsonrpc":"2.0",
+    "method":"ccp_get_proofs_after",
+    "id":"48",
+    "params": {
+	    "proof_idx": 8
+    }
+}
