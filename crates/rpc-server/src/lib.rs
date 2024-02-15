@@ -3,26 +3,33 @@ use std::sync::Arc;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
 use jsonrpsee::server::ServerHandle;
+use jsonrpsee::types::ErrorObjectOwned;
 use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
-use capacity_commitment_prover::prover::CCProver;
 use ccp_rpc_client::CCPRpcServer;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::CCProof;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
 
-pub struct CCPRcpHttpServer {
-    // n.b. if CCProver would have internal mutability, we might get used of the Mutex
-    cc_prover: Arc<Mutex<CCProver>>,
+pub struct CCPRcpHttpServer<P> {
+    // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
+    cc_prover: Arc<Mutex<P>>,
 }
 
-impl CCPRcpHttpServer {
-    pub fn new(cc_prover: Arc<Mutex<CCProver>>) -> Self {
+impl<P> CCPRcpHttpServer<P> {
+    pub fn new(cc_prover: Arc<Mutex<P>>) -> Self {
         Self { cc_prover }
     }
+}
 
+impl<P> CCPRcpHttpServer<P>
+where
+    P: NoxCCPApi + 'static,
+    ErrorObjectOwned: From<<P as NoxCCPApi>::Error>,
+{
     ///  Run the JSON-RPC HTTP server in the background.
     ///
     ///  The returned handle can be used to maniplate it.
@@ -39,21 +46,33 @@ impl CCPRcpHttpServer {
 }
 
 #[async_trait]
-impl CCPRpcServer for CCPRcpHttpServer {
+impl<P> CCPRpcServer for CCPRcpHttpServer<P>
+where
+    P: NoxCCPApi + 'static,
+    ErrorObjectOwned: From<<P as NoxCCPApi>::Error>,
+{
     async fn on_active_commitment(
         &self,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
         cu_allocation: CUAllocation,
-    ) {
+    ) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
         guard
             .on_active_commitment(global_nonce, difficulty, cu_allocation)
-            .await;
+            .await?;
+        Ok(())
     }
 
-    async fn on_no_active_commitment(&self) {
+    async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
-        guard.on_no_active_commitment().await;
+        guard.on_no_active_commitment().await?;
+        Ok(())
+    }
+
+    async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
+        let guard = self.cc_prover.lock().await;
+        let proofs = guard.get_proofs_after(proof_idx).await?;
+        Ok(proofs)
     }
 }

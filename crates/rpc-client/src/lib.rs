@@ -1,10 +1,12 @@
+use jsonrpsee::core::ClientError;
+use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::ErrorObjectOwned;
+
+use ccp_shared::proof::CCProof;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
-
-use jsonrpsee::core::ClientError;
-use jsonrpsee::proc_macros::rpc;
 
 // n.b.: the rpc macro also defines CcpRpcClient type which is a working async JSON RPC client.
 #[rpc(server, client, namespace = "ccp")]
@@ -15,10 +17,13 @@ pub trait CCPRpc {
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
         cu_allocation: CUAllocation,
-    );
+    ) -> Result<(), ErrorObjectOwned>;
 
     #[method(name = "on_no_active_commitment")]
-    async fn on_no_active_commitment(&self);
+    async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned>;
+
+    #[method(name = "get_proofs_after")]
+    async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned>;
 }
 
 pub struct CCPRpcHttpClient {
