@@ -56,8 +56,12 @@ fn main() -> Result<(), eyre::Error> {
         .worker_threads(2)
         .on_thread_start(|| {
             #[cfg(os = "linux")]
-            affinity::set_thread_affinity(tokio_cores)
-                .expect("failed to set tokio thread affinity");
+            {
+                let pid = std::thread::current().id();
+                tracing::info("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
+                affinity::set_thread_affinity(tokio_cores)
+                    .expect("failed to set tokio thread affinity");
+            }
         })
         .build()
         .wrap_err("failed to build tokio runtime")?;
