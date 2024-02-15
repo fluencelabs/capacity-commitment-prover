@@ -53,7 +53,7 @@ where
     P: NoxCCPApi + 'static,
     <P as NoxCCPApi>::Error: Error,
 {
-    #[instrument]
+    #[instrument(skip(self))]
     async fn on_active_commitment(
         &self,
         global_nonce: GlobalNonce,
@@ -70,7 +70,7 @@ where
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
         guard.on_no_active_commitment().await.map_err(|e| {
@@ -79,7 +79,7 @@ where
         Ok(())
     }
 
-    #[instrument]
+    #[instrument(skip(self))]
     async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
         let proofs = guard.get_proofs_after(proof_idx).await.map_err(|e| {
