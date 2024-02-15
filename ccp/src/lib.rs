@@ -19,5 +19,9 @@ mod errors;
 mod proof_storage_worker;
 mod prover;
 
+pub use errors::CCProverError;
+pub use prover::CCProver;
+pub use prover::CCResult;
+
 pub(crate) use ccp_shared::types::*;
 pub(crate) type LogicalCoreId = usize;

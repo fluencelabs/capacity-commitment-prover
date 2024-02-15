@@ -29,4 +29,7 @@ pub enum CCProverError {
 
     #[error(transparent)]
     JoinError(#[from] JoinError),
+
+    #[error("an error occurred while shutdown of the utility thread")]
+    UtilityThreadShutdownFailed,
 }

@@ -15,7 +15,8 @@ ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 fluence-keypair = "0.10.3"
 randomx-rust-wrapper = { path = "../randomx-rust-wrapper" }
 
-tokio = { version = "1.36", features = ["sync", "rt", "macros"] }
+tokio = { version = "1.36", features = ["sync", "rt", "macros", "fs"] }
+tokio-stream = {version = "0.1", features = ["fs"]}
 futures = "0.3"
 
 anyhow = "1.0"

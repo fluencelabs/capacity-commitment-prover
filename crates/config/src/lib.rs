@@ -23,5 +23,5 @@ pub struct CCPConfig {
     pub threads_per_physical_core: std::num::NonZeroUsize,
     pub randomx_flags: RandomXFlags,
     pub dir_to_store_proofs: PathBuf,
-    pub dir_to_store_persistant_state: PathBuf,
+    pub dir_to_store_persistent_state: PathBuf,
 }

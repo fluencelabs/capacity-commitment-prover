@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::CUID;
 
 use randomx::dataset::DatasetHandle;
-use randomx::RandomXFlags;
 use randomx_rust_wrapper as randomx;
 
+use super::messages::NewCCJob;
 use super::LocalNonce;
 use super::PTResult;
 use crate::Difficulty;
@@ -27,23 +28,28 @@ use crate::Difficulty;
 #[derive(Debug)]
 pub(crate) struct RandomXJobParams<'vm> {
     pub(crate) vm: randomx::RandomXVM<'vm, DatasetHandle>,
+    pub(crate) global_nonce: GlobalNonce,
     pub(crate) local_nonce: LocalNonce,
     pub(crate) cu_id: CUID,
     pub(crate) difficulty: Difficulty,
 }
 
 impl<'params> RandomXJobParams<'params> {
-    pub(crate) fn new(
-        dataset: DatasetHandle,
-        flags: RandomXFlags,
-        cu_id: CUID,
-        difficulty: Difficulty,
-    ) -> PTResult<Self> {
+    pub(crate) fn from_cc_job(cc_job: NewCCJob) -> PTResult<Self> {
+        let NewCCJob {
+            dataset,
+            flags,
+            global_nonce,
+            difficulty,
+            cu_id,
+        } = cc_job;
+
         let vm = randomx::RandomXVM::fast(&dataset, flags)?;
         let local_nonce = LocalNonce::random();
 
         let params = Self {
             vm,
+            global_nonce,
             local_nonce,
             cu_id,
             difficulty,
@@ -53,12 +59,14 @@ impl<'params> RandomXJobParams<'params> {
 
     pub(crate) fn from_vm<'vm: 'params>(
         vm: randomx::RandomXVM<'vm, DatasetHandle>,
+        global_nonce: GlobalNonce,
         local_nonce: LocalNonce,
         cu_id: CUID,
         difficulty: Difficulty,
     ) -> Self {
         Self {
             vm,
+            global_nonce,
             local_nonce,
             cu_id,
             difficulty,

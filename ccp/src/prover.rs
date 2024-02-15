@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-use futures::future::MaybeDone::Future;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 use std::collections::HashMap;
-use std::pin::Pin;
-use std::task::Context;
-use std::task::Poll;
+use std::sync::Arc;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
+use ccp_shared::proof::{CCProof, CCProofId};
 use ccp_shared::types::*;
 
 use super::cu::CUProver;
 use super::cu::CUProverConfig;
 use crate::cu::RawProof;
 use crate::errors::CCProverError;
+use crate::proof_storage_worker::ProofStorageWorker;
+use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
 
@@ -38,6 +37,8 @@ pub struct CCProver {
     config: CCPConfig,
     epoch_parameters: Option<GlobalEpochParameters>,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
+    utility_thread_shutdown: oneshot::Sender<()>,
+    proof_storage: Arc<ProofStorageWorker>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,16 +48,27 @@ pub(crate) struct GlobalEpochParameters {
 }
 
 impl CCProver {
-    pub fn new(config: CCPConfig) -> (Self, mpsc::Receiver<RawProof>) {
+    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
-        let prover = Self {
+        let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
+
+        let proof_storage = ProofStorageWorker::new(config.dir_to_store_proofs.clone());
+        let proof_storage = Arc::new(proof_storage);
+        Self::spawn_utility_thread(
+            proof_storage.clone(),
+            proof_receiver_outlet,
+            shutdown_outlet,
+            utility_core_id,
+        );
+
+        Self {
             allocated_provers: HashMap::new(),
             config,
             epoch_parameters: None,
             proof_receiver_inlet,
-        };
-
-        (prover, proof_receiver_outlet)
+            utility_thread_shutdown: shutdown_inlet,
+            proof_storage,
+        }
     }
 
     pub async fn on_active_commitment(
@@ -130,6 +142,44 @@ impl CCProver {
         } else {
             Err(CCProverError::CUProverErrors(errors))
         }
+    }
+
+    pub async fn stop(mut self) -> CCResult<()> {
+        // stop all active provers
+        self.on_no_active_commitment().await?;
+        // stop background thread
+        self.utility_thread_shutdown
+            .send(())
+            .map_err(|_| CCProverError::UtilityThreadShutdownFailed)
+    }
+
+    fn spawn_utility_thread(
+        proof_storage: Arc<ProofStorageWorker>,
+        mut proof_receiver_outlet: mpsc::Receiver<RawProof>,
+        mut shutdown_outlet: oneshot::Receiver<()>,
+        utility_core_id: LogicalCoreId,
+    ) {
+        tokio::spawn(async move {
+            let mut proof_idx = 0;
+            let mut last_seen_global_nonce = [0u8; 32];
+
+            loop {
+                tokio::select! {
+                    Some(proof) = proof_receiver_outlet.recv() => {
+                        if proof.global_nonce != last_seen_global_nonce {
+                            last_seen_global_nonce = proof.global_nonce;
+                            proof_idx = 0;
+                        }
+                        let cc_proof_id = CCProofId::new(proof.global_nonce, proof.difficulty, proof_idx);
+                        let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id);
+                        proof_storage.store_new_proof(cc_proof).await?;
+                    },
+                    _ = &mut shutdown_outlet => {
+                        return Ok::<_, std::io::Error>(())
+                    }
+                }
+            }
+        });
     }
 
     pub fn create_proof_watcher(&self) {

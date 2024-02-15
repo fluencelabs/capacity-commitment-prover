@@ -20,8 +20,8 @@ mod ttp_structs;
 pub(crate) use ptt_structs::*;
 pub(crate) use ttp_structs::*;
 
-use ccp_shared::types::LocalNonce;
 use ccp_shared::types::CUID;
+use ccp_shared::types::{Difficulty, GlobalNonce, LocalNonce};
 
 #[derive(Debug)]
 pub(crate) enum ProverToThreadMessage {
@@ -41,12 +41,24 @@ pub(crate) enum ThreadToProverMessage {
 
 #[derive(Debug)]
 pub(crate) struct RawProof {
+    pub(crate) global_nonce: GlobalNonce,
+    pub(crate) difficulty: Difficulty,
     pub(crate) local_nonce: LocalNonce,
     pub(crate) cu_id: CUID,
 }
 
 impl RawProof {
-    pub(crate) fn new(local_nonce: LocalNonce, cu_id: CUID) -> Self {
-        Self { local_nonce, cu_id }
+    pub(crate) fn new(
+        global_nonce: GlobalNonce,
+        difficulty: Difficulty,
+        local_nonce: LocalNonce,
+        cu_id: CUID,
+    ) -> Self {
+        Self {
+            global_nonce,
+            difficulty,
+            local_nonce,
+            cu_id,
+        }
     }
 }

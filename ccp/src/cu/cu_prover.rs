@@ -83,7 +83,7 @@ impl CUProver {
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, flags, difficulty)
+        self.run_proving_jobs(dataset_handle, flags, global_nonce, difficulty)
             .await
     }
 
@@ -133,6 +133,7 @@ impl CUProver {
         &'threads mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
+        global_nonce: GlobalNonce,
         difficulty: Difficulty,
     ) -> CUResult<()> {
         use futures::FutureExt;
@@ -140,7 +141,7 @@ impl CUProver {
         let cu_id = self.cu_id.unwrap().clone();
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread
-                .run_cc_job(dataset.clone(), flags, difficulty, cu_id)
+                .run_cc_job(dataset.clone(), flags, global_nonce, difficulty, cu_id)
                 .boxed_local()
         };
         self.run_on_all_threads(closure).await?;

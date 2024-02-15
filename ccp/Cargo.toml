@@ -19,6 +19,7 @@ fluence-keypair = { workspace = true }
 randomx-rust-wrapper = { workspace = true }
 
 tokio = { workspace = true }
+tokio-stream = {workspace = true}
 futures = { workspace = true }
 
 anyhow = { workspace = true }

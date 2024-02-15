@@ -24,7 +24,6 @@ use randomx::Dataset;
 use randomx_rust_wrapper as randomx;
 use randomx_rust_wrapper::RandomXFlags;
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
 
 use super::api::ProvingThreadAPI;
 use super::errors::ProvingThreadError;
@@ -143,14 +142,8 @@ impl ProvingThread {
                 Ok(ThreadState::WaitForMessage)
             }
 
-            ProverToThreadMessage::NewCCJob(params) => {
-                let parameters = RandomXJobParams::new(
-                    params.dataset,
-                    params.flags,
-                    params.cu_id,
-                    params.difficulty,
-                )?;
-
+            ProverToThreadMessage::NewCCJob(cc_job) => {
+                let parameters = RandomXJobParams::from_cc_job(cc_job)?;
                 Ok(ThreadState::CCJob { parameters })
             }
 
@@ -165,6 +158,7 @@ impl ProvingThread {
         let RandomXJobParams {
             vm,
             mut local_nonce,
+            global_nonce,
             difficulty,
             cu_id,
         } = job_parameters;
@@ -183,14 +177,15 @@ impl ProvingThread {
             if result_hash.as_ref() < &difficulty {
                 local_nonce.prev();
                 println!("golden result hash {result_hash:?}");
-                let proof = RawProof::new(*local_nonce.get(), cu_id);
+                let proof = RawProof::new(global_nonce, difficulty, *local_nonce.get(), cu_id);
                 proof_receiver_inlet.blocking_send(proof)?;
 
                 local_nonce.next();
             }
         }
 
-        let job_parameters = RandomXJobParams::from_vm(vm, local_nonce, cu_id, difficulty);
+        let job_parameters =
+            RandomXJobParams::from_vm(vm, global_nonce, local_nonce, cu_id, difficulty);
         Ok(job_parameters)
     }
 }
@@ -261,10 +256,11 @@ impl ProvingThreadAPI for ProvingThread {
         &mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
+        global_nonce: GlobalNonce,
         difficulty: Difficulty,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(dataset, flags, difficulty, cu_id);
+        let message = NewCCJob::new(dataset, flags, global_nonce, difficulty, cu_id);
         let message = ProverToThreadMessage::NewCCJob(message);
         self.inlet.send(message).await.map_err(Into::into)
     }
