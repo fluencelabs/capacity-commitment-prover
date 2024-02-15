@@ -200,6 +200,7 @@ dependencies = [
  "chrono",
  "fluence-keypair",
  "futures",
+ "log",
  "nonempty",
  "rand",
  "randomx-rust-wrapper",

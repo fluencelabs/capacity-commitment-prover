@@ -78,7 +78,8 @@ impl ProvingThread {
             let mut thread_state = Self::handle_prover_message(ptt_message, &ttp_inlet)?;
 
             loop {
-                println!("loop state: {thread_state:?}");
+                log::debug!("proving_thread: new thread_state is {thread_state:?}");
+
                 thread_state = match thread_state {
                     ThreadState::Stop => {
                         return Ok(());
@@ -109,7 +110,8 @@ impl ProvingThread {
         message: ProverToThreadMessage,
         ttp_inlet: &mpsc::Sender<ThreadToProverMessage>,
     ) -> PTResult<ThreadState<'vm>> {
-        println!("handle prover message: {message:?}");
+        log::debug!("proving_thread: handle message from CUProver: {message:?}");
+
         match message {
             ProverToThreadMessage::CreateCache(params) => {
                 let global_nonce_cu =
@@ -176,7 +178,9 @@ impl ProvingThread {
 
             if result_hash.as_ref() < &difficulty {
                 local_nonce.prev();
-                println!("golden result hash {result_hash:?}");
+
+                log::info!("proving_thread:: found new golden result hash {result_hash:?}\n  for local_nonce {local_nonce:?}");
+
                 let proof = RawProof::new(global_nonce, difficulty, *local_nonce.get(), cu_id);
                 proof_receiver_inlet.blocking_send(proof)?;
 
