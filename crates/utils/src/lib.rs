@@ -1,5 +1,5 @@
 use sha3::digest::core_api::CoreWrapper;
-use sha3::digest::CtOutput;
+use sha3::digest::Output;
 use sha3::Keccak256Core;
 
 use ccp_shared::types::GlobalNonce;
@@ -10,7 +10,7 @@ use ccp_shared::types::CUID;
 pub fn compute_global_nonce_cu(
     global_nonce: &GlobalNonce,
     cu_id: &CUID,
-) -> CtOutput<CoreWrapper<Keccak256Core>> {
+) -> Output<CoreWrapper<Keccak256Core>> {
     use sha3::Digest;
 
     let mut hasher = sha3::Keccak256::new();

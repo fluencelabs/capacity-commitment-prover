@@ -116,7 +116,7 @@ impl ProvingThread {
             ProverToThreadMessage::CreateCache(params) => {
                 let global_nonce_cu =
                     ccp_utils::compute_global_nonce_cu(&params.global_nonce, &params.cu_id);
-                let cache = Cache::new(&global_nonce_cu.into_bytes(), params.flags)?;
+                let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
 
                 let ttp_message = CacheCreated::new(cache);
                 let ttp_message = ThreadToProverMessage::CacheCreated(ttp_message);
