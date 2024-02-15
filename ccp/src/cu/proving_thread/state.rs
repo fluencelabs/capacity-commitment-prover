@@ -59,22 +59,6 @@ impl<'params> RandomXJob<'params> {
         Ok(params)
     }
 
-    pub(crate) fn from_vm<'vm: 'params>(
-        vm: randomx::RandomXVM<'vm, DatasetHandle>,
-        global_nonce: GlobalNonce,
-        local_nonce: LocalNonce,
-        cu_id: CUID,
-        difficulty: Difficulty,
-    ) -> Self {
-        Self {
-            vm,
-            global_nonce,
-            local_nonce,
-            cu_id,
-            difficulty,
-        }
-    }
-
     pub(crate) fn hash_first(&mut self) {
         self.vm.hash_first(self.local_nonce.get());
     }

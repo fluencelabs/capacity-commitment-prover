@@ -33,8 +33,8 @@ use crate::LogicalCoreId;
 pub type CCResult<T> = Result<T, CCProverError>;
 
 pub struct CCProver {
-    allocated_provers: HashMap<PhysicalCoreId, CUProver>,
-    config: CCPConfig,
+    active_provers: HashMap<PhysicalCoreId, CUProver>,
+    cu_prover_config: CUProverConfig,
     epoch_parameters: Option<GlobalEpochParameters>,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
     utility_thread_shutdown: oneshot::Sender<()>,
@@ -61,9 +61,14 @@ impl CCProver {
             utility_core_id,
         );
 
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: config.randomx_flags,
+            threads_per_physical_core: config.threads_per_physical_core,
+        };
+
         Self {
-            allocated_provers: HashMap::new(),
-            config,
+            active_provers: HashMap::new(),
+            cu_prover_config,
             epoch_parameters: None,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
@@ -81,13 +86,13 @@ impl CCProver {
         use futures::StreamExt;
 
         let cu_prover_config = CUProverConfig {
-            randomx_flags: self.config.randomx_flags,
-            threads_per_physical_core: self.config.threads_per_physical_core,
+            randomx_flags: self.cu_prover_config.randomx_flags,
+            threads_per_physical_core: self.cu_prover_config.threads_per_physical_core,
         };
 
-        let allocated_provers = cu_allocation
+        self.active_provers = cu_allocation
             .iter()
-            .map(|(&core_id, cu_id)| {
+            .map(|(&core_id, _)| {
                 let cu_prover = CUProver::new(
                     cu_prover_config.clone(),
                     self.proof_receiver_inlet.clone(),
@@ -97,10 +102,8 @@ impl CCProver {
             })
             .collect::<HashMap<_, _>>();
 
-        self.allocated_provers = allocated_provers;
-
         let results = self
-            .allocated_provers
+            .active_provers
             .iter_mut()
             .map(|(&core_id, prover)| {
                 let cu_id = cu_allocation.get(&core_id).unwrap();
@@ -122,7 +125,7 @@ impl CCProver {
         use futures::StreamExt;
 
         let results = self
-            .allocated_provers
+            .active_provers
             .iter_mut()
             .map(|(_, prover)| prover.stop())
             .collect::<FuturesUnordered<_>>()
@@ -153,6 +156,13 @@ impl CCProver {
             .map_err(|_| CCProverError::UtilityThreadShutdownFailed)
     }
 
+    pub async fn get_proofs_after(&self, proof_idx: u64) -> CCResult<Vec<CCProof>> {
+        self.proof_storage
+            .get_proofs_after(proof_idx)
+            .await
+            .map_err(Into::into)
+    }
+
     fn spawn_utility_thread(
         proof_storage: Arc<ProofStorageWorker>,
         mut proof_receiver_outlet: mpsc::Receiver<RawProof>,
@@ -166,6 +176,8 @@ impl CCProver {
             loop {
                 tokio::select! {
                     Some(proof) = proof_receiver_outlet.recv() => {
+                        log::debug!("cc_prover: new proof_received {proof:?}");
+
                         if proof.global_nonce != last_seen_global_nonce {
                             last_seen_global_nonce = proof.global_nonce;
                             proof_idx = 0;
@@ -173,20 +185,16 @@ impl CCProver {
                         let cc_proof_id = CCProofId::new(proof.global_nonce, proof.difficulty, proof_idx);
                         let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id);
                         proof_storage.store_new_proof(cc_proof).await?;
+                        proof_idx += 1;
                     },
                     _ = &mut shutdown_outlet => {
+                        log::info!("cc_prover:: utility thread was shutdowned");
+
                         return Ok::<_, std::io::Error>(())
                     }
                 }
             }
         });
-    }
-
-    pub async fn get_proofs_after(&self, proof_idx: u64) -> CCResult<Vec<CCProof>> {
-        self.proof_storage
-            .get_proofs_after(proof_idx)
-            .await
-            .map_err(Into::into)
     }
 }
 

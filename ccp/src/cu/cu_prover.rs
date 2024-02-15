@@ -93,6 +93,7 @@ impl CUProver {
         unimplemented!()
     }
 
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) async fn stop<'threads>(&'threads mut self) -> CUResult<()> {
         use futures::FutureExt;
 
@@ -101,14 +102,17 @@ impl CUProver {
     }
 
     async fn ensure_database_allocated(&mut self, flags: RandomXFlags) -> CUResult<()> {
-        if let None = self.dataset {
-            let thread = &mut self.threads.head;
-            let dataset = thread.allocate_dataset(flags).await?;
-            self.dataset = Some(dataset);
+        if self.dataset.is_some() {
+            return Ok(());
         }
+
+        let thread = &mut self.threads.head;
+        let dataset = thread.allocate_dataset(flags).await?;
+        self.dataset = Some(dataset);
         Ok(())
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
         cache: CacheHandle,
@@ -131,6 +135,7 @@ impl CUProver {
         self.run_on_all_threads(closure).await
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
         dataset: DatasetHandle,
@@ -139,7 +144,7 @@ impl CUProver {
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let cu_id = self.cu_id.unwrap().clone();
+        let cu_id = self.cu_id.unwrap();
         let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread

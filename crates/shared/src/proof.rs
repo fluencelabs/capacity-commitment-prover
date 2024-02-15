@@ -19,7 +19,7 @@ use serde::Serialize;
 
 use crate::types;
 
-/// Uniquely identifies a proof in one epoch.
+/// Uniquely identifies a proof.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CCProofId {
     pub global_nonce: types::GlobalNonce,

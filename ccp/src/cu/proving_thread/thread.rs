@@ -196,9 +196,9 @@ impl ProvingThreadAPI for ProvingThread {
             Some(message) => Err(ProvingThreadError::channel_error(format!(
                 "expected the CacheCreated event, but {message:?} received"
             ))),
-            None => Err(ProvingThreadError::channel_error(format!(
-                "sync to async channel is closed unexpectedly"
-            ))),
+            None => Err(ProvingThreadError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
         }
     }
 
@@ -212,9 +212,9 @@ impl ProvingThreadAPI for ProvingThread {
             Some(message) => Err(ProvingThreadError::channel_error(format!(
                 "expected the DatasetAllocated event, but {message:?} received"
             ))),
-            None => Err(ProvingThreadError::channel_error(format!(
-                "sync to async channel is closed unexpectedly"
-            ))),
+            None => Err(ProvingThreadError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
         }
     }
 
@@ -234,9 +234,9 @@ impl ProvingThreadAPI for ProvingThread {
             Some(message) => Err(ProvingThreadError::channel_error(format!(
                 "expected the DatasetInitialized event, but {message:?} received"
             ))),
-            None => Err(ProvingThreadError::channel_error(format!(
-                "sync to async channel is closed unexpectedly"
-            ))),
+            None => Err(ProvingThreadError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
         }
     }
 
