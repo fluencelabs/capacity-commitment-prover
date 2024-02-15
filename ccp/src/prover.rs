@@ -104,7 +104,7 @@ impl CCProver {
             .iter_mut()
             .map(|(&core_id, prover)| {
                 let cu_id = cu_allocation.get(&core_id).unwrap();
-                prover.new_epoch(global_nonce, *cu_id, difficulty, self.config.randomx_flags)
+                prover.new_epoch(global_nonce, *cu_id, difficulty)
             })
             .collect::<FuturesUnordered<_>>()
             .collect::<Vec<_>>()

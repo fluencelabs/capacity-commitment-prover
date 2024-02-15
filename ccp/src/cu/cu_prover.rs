@@ -33,7 +33,7 @@ use super::CUResult;
 /// by running PoW based on RandomX.
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThread>,
-    config: CUProverConfig,
+    randomx_flags: RandomXFlags,
     dataset: Option<Dataset>,
     cu_id: Option<CUID>,
 }
@@ -59,7 +59,7 @@ impl CUProver {
 
         Self {
             threads,
-            config,
+            randomx_flags: config.randomx_flags,
             dataset: None,
             cu_id: None,
         }
@@ -70,20 +70,22 @@ impl CUProver {
         global_nonce: GlobalNonce,
         cu_id: CUID,
         difficulty: Difficulty,
-        flags: RandomXFlags,
     ) -> CUResult<()> {
         self.cu_id = Some(cu_id);
 
         let thread = &mut self.threads.head;
-        let cache = thread.create_cache(global_nonce, cu_id, flags).await?;
+        let randomx_flags = self.randomx_flags;
+        let cache = thread
+            .create_cache(global_nonce, cu_id, randomx_flags)
+            .await?;
 
-        self.ensure_database_allocated(flags).await?;
+        self.ensure_database_allocated(randomx_flags).await?;
         let dataset_handle = self.dataset.as_ref().unwrap().handle();
         let cache_handle = cache.handle();
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, flags, global_nonce, difficulty)
+        self.run_proving_jobs(dataset_handle, global_nonce, difficulty)
             .await
     }
 
@@ -132,16 +134,22 @@ impl CUProver {
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
         dataset: DatasetHandle,
-        flags: RandomXFlags,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
     ) -> CUResult<()> {
         use futures::FutureExt;
 
         let cu_id = self.cu_id.unwrap().clone();
+        let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread
-                .run_cc_job(dataset.clone(), flags, global_nonce, difficulty, cu_id)
+                .run_cc_job(
+                    dataset.clone(),
+                    randomx_flags,
+                    global_nonce,
+                    difficulty,
+                    cu_id,
+                )
                 .boxed_local()
         };
         self.run_on_all_threads(closure).await?;
