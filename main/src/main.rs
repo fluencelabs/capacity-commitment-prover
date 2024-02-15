@@ -42,6 +42,7 @@ fn main() -> Result<(), eyre::Error> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)
         .wrap_err("setting global tracing subscriber failed")?;
+    tracing_log::LogTracer::init()?;
 
     let args = Args::parse();
     tracing::info!("{args:?}");

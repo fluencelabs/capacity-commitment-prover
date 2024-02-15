@@ -359,6 +359,7 @@ dependencies = [
  "randomx-rust-wrapper",
  "tokio",
  "tracing",
+ "tracing-log",
  "tracing-subscriber",
 ]
 
