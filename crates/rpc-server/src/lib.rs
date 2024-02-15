@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::sync::Arc;
 
 use jsonrpsee::core::async_trait;
@@ -28,7 +29,7 @@ impl<P> CCPRcpHttpServer<P> {
 impl<P> CCPRcpHttpServer<P>
 where
     P: NoxCCPApi + 'static,
-    ErrorObjectOwned: From<<P as NoxCCPApi>::Error>,
+    <P as NoxCCPApi>::Error: Error,
 {
     ///  Run the JSON-RPC HTTP server in the background.
     ///
@@ -49,7 +50,7 @@ where
 impl<P> CCPRpcServer for CCPRcpHttpServer<P>
 where
     P: NoxCCPApi + 'static,
-    ErrorObjectOwned: From<<P as NoxCCPApi>::Error>,
+    <P as NoxCCPApi>::Error: Error,
 {
     async fn on_active_commitment(
         &self,
@@ -60,19 +61,26 @@ where
         let mut guard = self.cc_prover.lock().await;
         guard
             .on_active_commitment(global_nonce, difficulty, cu_allocation)
-            .await?;
+            .await
+            .map_err(|e| {
+                ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
+            })?;
         Ok(())
     }
 
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
-        guard.on_no_active_commitment().await?;
+        guard.on_no_active_commitment().await.map_err(|e| {
+            ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
+        })?;
         Ok(())
     }
 
     async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
-        let proofs = guard.get_proofs_after(proof_idx).await?;
+        let proofs = guard.get_proofs_after(proof_idx).await.map_err(|e| {
+            ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
+        })?;
         Ok(proofs)
     }
 }
