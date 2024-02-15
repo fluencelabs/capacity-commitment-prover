@@ -86,12 +86,9 @@ impl NoxCCPApi for CCProver {
                 prover.new_epoch(global_nonce, *cu_id, difficulty)
             })
             .collect::<FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .await;
+            .collect::<Result<Vec<_>>>()
+            .await?;
 
-        for result in results {
-            result?;
-        }
         Ok(())
     }
 

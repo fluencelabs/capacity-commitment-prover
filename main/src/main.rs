@@ -8,6 +8,7 @@ use capacity_commitment_prover::CCProver;
 use ccp_config::CCPConfig;
 use ccp_rpc_server::CCPRcpHttpServer;
 use randomx_rust_wrapper::RandomXFlags;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -35,6 +36,7 @@ struct ProverArgs {
 
 fn main() -> Result<(), eyre::Error> {
     let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
         .with_writer(std::io::stderr)
         .with_thread_ids(true)
         .finish();

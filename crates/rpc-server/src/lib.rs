@@ -4,6 +4,7 @@ use std::sync::Arc;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
 use jsonrpsee::server::ServerHandle;
+use jsonrpsee::tracing::instrument;
 use jsonrpsee::types::ErrorObjectOwned;
 use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
@@ -52,6 +53,7 @@ where
     P: NoxCCPApi + 'static,
     <P as NoxCCPApi>::Error: Error,
 {
+    #[instrument]
     async fn on_active_commitment(
         &self,
         global_nonce: GlobalNonce,
@@ -68,6 +70,7 @@ where
         Ok(())
     }
 
+    #[instrument]
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
         guard.on_no_active_commitment().await.map_err(|e| {
@@ -76,6 +79,7 @@ where
         Ok(())
     }
 
+    #[instrument]
     async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
         let proofs = guard.get_proofs_after(proof_idx).await.map_err(|e| {
