@@ -32,4 +32,7 @@ pub enum CCProverError {
 
     #[error("an error occurred while shutdown of the utility thread")]
     UtilityThreadShutdownFailed,
+
+    #[error(transparent)]
+    IOError(#[from] tokio::io::Error),
 }

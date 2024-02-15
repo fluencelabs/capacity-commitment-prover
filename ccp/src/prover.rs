@@ -182,8 +182,11 @@ impl CCProver {
         });
     }
 
-    pub fn create_proof_watcher(&self) {
-        unimplemented!()
+    pub async fn get_proofs_after(&self, proof_idx: u64) -> CCResult<Vec<CCProof>> {
+        self.proof_storage
+            .get_proofs_after(proof_idx)
+            .await
+            .map_err(Into::into)
     }
 }
 
