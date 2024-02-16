@@ -8,5 +8,7 @@ publish = true
 
 [dependencies]
 ccp-shared = { workspace = true }
+hex = "0.4.3"
 
 jsonrpsee = { workspace = true }
+serde = { workspace = true }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -9,11 +10,13 @@ use tokio::net::ToSocketAddrs;
 use tokio::sync::Mutex;
 
 use ccp_rpc_client::CCPRpcServer;
+use ccp_rpc_client::OrHex;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
-use ccp_shared::types::CUAllocation;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::CUID;
 
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
@@ -54,13 +57,33 @@ where
 {
     async fn on_active_commitment(
         &self,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
-        cu_allocation: CUAllocation,
+        global_nonce: OrHex<GlobalNonce>,
+        difficulty: OrHex<Difficulty>,
+        cu_allocation: HashMap<PhysicalCoreId, OrHex<CUID>>,
     ) -> Result<(), ErrorObjectOwned> {
+        let global_nonce: GlobalNonce =
+            global_nonce
+                .clone()
+                .try_into()
+                .map_err(|e: Box<dyn Error>| {
+                    ErrorObjectOwned::owned(2, e.to_string(), Some(global_nonce))
+                })?;
+        let difficulty = difficulty.clone().try_into().map_err(|e: Box<dyn Error>| {
+            ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty))
+        })?;
+        let mut cu_allocation_real = HashMap::<_, CUID>::new();
+        for (id, cuid) in cu_allocation {
+            cu_allocation_real.insert(
+                id,
+                cuid.clone().try_into().map_err(|e: Box<dyn Error>| {
+                    ErrorObjectOwned::owned(2, e.to_string(), Some(cuid))
+                })?,
+            );
+        }
+
         let mut guard = self.cc_prover.lock().await;
         guard
-            .on_active_commitment(global_nonce, difficulty, cu_allocation)
+            .on_active_commitment(global_nonce, difficulty, cu_allocation_real)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())
