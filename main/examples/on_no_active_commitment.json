@@ -1,0 +1,6 @@
+{
+    "jsonrpc":"2.0",
+    "method":"ccp_on_no_active_commitment",
+    "id":"45",
+    "params": {}
+}

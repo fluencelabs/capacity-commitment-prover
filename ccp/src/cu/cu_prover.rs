@@ -27,17 +27,22 @@ use super::errors::CUProverError;
 use super::proving_thread::ProvingThread;
 use super::proving_thread::ProvingThreadAPI;
 use super::proving_thread::RawProof;
+use super::status::CUStatus;
+use super::status::ToCUStatus;
 use super::CUResult;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
+#[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThread>,
-    config: CUProverConfig,
-    dataset: Option<Dataset>,
-    cu_id: Option<CUID>,
+    pinned_core_id: PhysicalCoreId,
+    randomx_flags: RandomXFlags,
+    dataset: Dataset,
+    status: CUStatus,
 }
 
+#[derive(Clone, Debug)]
 pub struct CUProverConfig {
     pub randomx_flags: randomx::RandomXFlags,
     /// Defines how many threads will be assigned to a specific physical core,
@@ -46,18 +51,27 @@ pub struct CUProverConfig {
 }
 
 impl CUProver {
-    pub(crate) fn new(config: CUProverConfig, core_id: PhysicalCoreId) -> Self {
+    pub(crate) async fn create(
+        config: CUProverConfig,
+        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        core_id: PhysicalCoreId,
+    ) -> CUResult<Self> {
         let threads = (0..config.threads_per_physical_core.into())
-            .map(|_| ProvingThread::new(core_id))
+            .map(|_| ProvingThread::new(core_id, proof_receiver_inlet.clone()))
             .collect::<Vec<_>>();
-        let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+        let mut threads = nonempty::NonEmpty::from_vec(threads).unwrap();
 
-        Self {
+        let thread = &mut threads.head;
+        let dataset = thread.allocate_dataset(config.randomx_flags).await?;
+
+        let prover = Self {
             threads,
-            config,
-            dataset: None,
-            cu_id: None,
-        }
+            pinned_core_id: core_id,
+            randomx_flags: config.randomx_flags,
+            dataset,
+            status: CUStatus::Idle,
+        };
+        Ok(prover)
     }
 
     pub(crate) async fn new_epoch(
@@ -65,43 +79,43 @@ impl CUProver {
         global_nonce: GlobalNonce,
         cu_id: CUID,
         difficulty: Difficulty,
-        flags: RandomXFlags,
-    ) -> CUResult<mpsc::Receiver<RawProof>> {
-        self.cu_id = Some(cu_id);
+    ) -> CUResult<()> {
+        self.status = CUStatus::Running { cu_id };
 
         let thread = &mut self.threads.head;
-        let cache = thread.create_cache(global_nonce, cu_id, flags).await?;
+        let randomx_flags = self.randomx_flags;
+        let cache = thread
+            .create_cache(global_nonce, cu_id, randomx_flags)
+            .await?;
 
-        self.ensure_database_allocated(flags).await?;
-        let dataset_handle = self.dataset.as_ref().unwrap().handle();
+        let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, flags, difficulty)
+        self.run_proving_jobs(dataset_handle, global_nonce, difficulty, cu_id)
             .await
     }
 
-    pub(crate) async fn repin(core_id: PhysicalCoreId) -> Result<(), ()> {
+    pub(crate) async fn repin(&mut self, core_id: PhysicalCoreId) -> CUResult<()> {
         unimplemented!()
     }
 
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) async fn stop<'threads>(&'threads mut self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed_local();
-        self.run_on_all_threads(closure).await
-    }
+        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed();
+        self.run_on_all_threads(closure).await?;
 
-    async fn ensure_database_allocated(&mut self, flags: RandomXFlags) -> CUResult<()> {
-        if let None = self.dataset {
-            let thread = &mut self.threads.head;
-            let dataset = thread.allocate_dataset(flags).await?;
-            self.dataset = Some(dataset);
-        }
         Ok(())
     }
 
+    pub(crate) fn pinned_core_id(&self) -> PhysicalCoreId {
+        self.pinned_core_id
+    }
+
+    #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
         cache: CacheHandle,
@@ -118,29 +132,37 @@ impl CUProver {
                     thread_id as u64 * thread_init_length,
                     thread_init_length,
                 )
-                .boxed_local()
+                .boxed()
         };
 
         self.run_on_all_threads(closure).await
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
         dataset: DatasetHandle,
-        flags: RandomXFlags,
+        global_nonce: GlobalNonce,
         difficulty: Difficulty,
-    ) -> CUResult<mpsc::Receiver<RawProof>> {
+        cu_id: CUID,
+    ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let (inlet, outlet) = mpsc::channel(100);
+        let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread
-                .run_cc_job(dataset.clone(), flags, difficulty, inlet.clone())
-                .boxed_local()
+                .run_cc_job(
+                    dataset.clone(),
+                    randomx_flags,
+                    global_nonce,
+                    difficulty,
+                    cu_id,
+                )
+                .boxed()
         };
         self.run_on_all_threads(closure).await?;
 
-        Ok(outlet)
+        Ok(())
     }
 
     async fn run_on_all_threads<'thread, 'future: 'thread, T, E>(
@@ -148,10 +170,10 @@ impl CUProver {
         closure: impl Fn(
             usize,
             &'thread mut ProvingThread,
-        ) -> futures::future::LocalBoxFuture<'future, Result<T, E>>,
+        ) -> futures::future::BoxFuture<'future, Result<T, E>>,
     ) -> CUResult<()>
     where
-        T: std::fmt::Debug,
+        T: Send + std::fmt::Debug,
         Vec<E>: Into<CUProverError>,
     {
         use futures::stream::FuturesUnordered;
@@ -176,6 +198,13 @@ impl CUProver {
             .into_iter()
             .map(Result::unwrap_err)
             .collect::<Vec<_>>();
+
         Err(thread_errors.into())
+    }
+}
+
+impl ToCUStatus for CUProver {
+    fn status(&self) -> CUStatus {
+        self.status
     }
 }

@@ -14,9 +14,14 @@
  * limitations under the License.
  */
 
-pub mod nox_ccp_api;
-pub mod proof;
-pub mod types;
+use super::CCProverAlignmentRoadmap;
 
-/// Size of the RandomX result hash in bytes.
-pub const RANDOMX_RESULT_SIZE: usize = 32;
+pub trait RoadmapAlignable: Send {
+    type Error: Send;
+
+    /// Apply the given roadmap (a set of actions) to align Nox and CCP states.
+    fn align_with(
+        &mut self,
+        roadmap: CCProverAlignmentRoadmap,
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
+}

@@ -14,9 +14,20 @@
  * limitations under the License.
  */
 
-pub mod nox_ccp_api;
-pub mod proof;
-pub mod types;
+use ccp_shared::types::*;
 
-/// Size of the RandomX result hash in bytes.
-pub const RANDOMX_RESULT_SIZE: usize = 32;
+/// Describes a single epoch, contains global parameters, which come from the on-chain part.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Epoch {
+    pub(crate) global_nonce: GlobalNonce,
+    pub(crate) difficulty: Difficulty,
+}
+
+impl Epoch {
+    pub(crate) fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
+        Self {
+            global_nonce,
+            difficulty,
+        }
+    }
+}

@@ -14,9 +14,15 @@
  * limitations under the License.
  */
 
-pub mod nox_ccp_api;
-pub mod proof;
-pub mod types;
+use ccp_shared::types::CUID;
 
-/// Size of the RandomX result hash in bytes.
-pub const RANDOMX_RESULT_SIZE: usize = 32;
+/// Represents a status of a CU prover.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CUStatus {
+    Running { cu_id: CUID },
+    Idle,
+}
+
+pub trait ToCUStatus {
+    fn status(&self) -> CUStatus;
+}

@@ -1,0 +1,17 @@
+[package]
+name = "ccp-rpc-client"
+description = "CCP RPC client"
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+publish = true
+
+[dependencies]
+ccp-shared = { workspace = true }
+hex = "0.4.3"
+
+jsonrpsee = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1.0.113"

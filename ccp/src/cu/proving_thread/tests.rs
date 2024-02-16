@@ -67,7 +67,8 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
         .await
@@ -78,8 +79,7 @@ async fn cache_creation_works() {
     let actual_result_hash = actual_vm.hash(&local_nonce);
 
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash =
-        run_light_randomx(&global_nonce_cu.into_bytes(), &local_nonce, flags);
+    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -92,7 +92,8 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -115,8 +116,7 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash =
-        run_light_randomx(&global_nonce_cu.into_bytes(), &local_nonce, flags);
+    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -128,7 +128,8 @@ async fn prover_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -147,9 +148,14 @@ async fn prover_works() {
         0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
-    let (inlet, mut outlet) = mpsc::channel(1000);
     thread
-        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+        .run_cc_job(
+            actual_dataset.handle(),
+            flags,
+            global_nonce,
+            test_difficulty,
+            cu_id,
+        )
         .await
         .unwrap();
 
@@ -162,7 +168,7 @@ async fn prover_works() {
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
     let expected_result_hash =
-        run_light_randomx(&global_nonce_cu.into_bytes(), &proof.local_nonce, flags);
+        run_light_randomx(global_nonce_cu.as_slice(), &proof.local_nonce, flags);
 
     println!("expected_result_hash: {expected_result_hash:?}");
     assert!(expected_result_hash.into_slice() < test_difficulty);
@@ -175,7 +181,8 @@ async fn cc_job_stopable() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let mut thread = ProvingThread::new(2);
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let mut thread = ProvingThread::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -194,9 +201,14 @@ async fn cc_job_stopable() {
         0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
     ];
-    let (inlet, mut outlet) = mpsc::channel(100);
     thread
-        .run_cc_job(actual_dataset.handle(), flags, test_difficulty, inlet)
+        .run_cc_job(
+            actual_dataset.handle(),
+            flags,
+            global_nonce,
+            test_difficulty,
+            cu_id,
+        )
         .await
         .unwrap();
 

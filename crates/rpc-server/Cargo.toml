@@ -1,0 +1,16 @@
+[package]
+name = "ccp-rpc-server"
+description = "CCP RPC server"
+version = "0.1.0"
+authors = ["Fluence Labs"]
+edition = "2021"
+
+[dependencies]
+capacity-commitment-prover = {workspace = true}
+ccp-rpc-client = {workspace = true}
+ccp-shared = {workspace = true}
+
+async-trait = {workspace = true}
+jsonrpsee = {workspace = true}
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true }

@@ -14,10 +14,17 @@
  * limitations under the License.
  */
 
+mod alignment_roadmap;
 mod cu;
+mod epoch;
 mod errors;
 mod proof_storage_worker;
-mod prover;
+pub mod prover;
+pub mod status;
+
+pub use errors::CCProverError;
+pub use prover::CCProver;
+pub use prover::CCResult;
 
 pub(crate) use ccp_shared::types::*;
 pub(crate) type LogicalCoreId = usize;

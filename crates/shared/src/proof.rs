@@ -19,21 +19,21 @@ use serde::Serialize;
 
 use crate::types;
 
-/// Uniquely identifies a proof in one epoch.
+/// Uniquely identifies a proof.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CCProofId {
-    global_nonce: types::GlobalNonce,
-    difficulty: types::Difficulty,
-    // Unique in one epoch
-    id: u64,
+    pub global_nonce: types::GlobalNonce,
+    pub difficulty: types::Difficulty,
+    // unique in one epoch
+    pub idx: u64,
 }
 
 /// Contains all necessary information to submit proof to verify it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CCProof {
-    id: CCProofId,
-    local_nonce: types::LocalNonce,
-    cu_id: types::CUID,
+    pub id: CCProofId,
+    pub local_nonce: types::LocalNonce,
+    pub cu_id: types::CUID,
 }
 
 impl CCProofId {
@@ -41,8 +41,18 @@ impl CCProofId {
         Self {
             global_nonce,
             difficulty,
-            id,
+            idx: id,
         }
+    }
+
+    /// Returns true, if proofs was generated after the supplied one.
+    pub fn after(&self, other: &Self) -> bool {
+        self.after_raw(other.idx)
+    }
+
+    /// Returns true, if proofs was generated after the supplied proof index.
+    pub fn after_raw(&self, proof_idx: u64) -> bool {
+        self.idx > proof_idx
     }
 }
 
@@ -53,5 +63,10 @@ impl CCProof {
             local_nonce,
             cu_id,
         }
+    }
+
+    /// Returns true, if proofs was generated after the supplied one.
+    pub fn after(&self, other: &Self) -> bool {
+        self.id.idx > other.id.idx
     }
 }

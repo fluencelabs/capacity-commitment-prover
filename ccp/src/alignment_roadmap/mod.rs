@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
-pub mod nox_ccp_api;
-pub mod proof;
-pub mod types;
+mod roadmap;
+mod roadmap_alignable;
+mod roadmap_builder;
+#[cfg(test)]
+mod tests;
 
-/// Size of the RandomX result hash in bytes.
-pub const RANDOMX_RESULT_SIZE: usize = 32;
+pub(crate) use roadmap::actions_state;
+pub(crate) use roadmap::CCProverAlignmentRoadmap;
+pub(crate) use roadmap::CUProverAction;
+pub(crate) use roadmap_alignable::RoadmapAlignable;
