@@ -66,6 +66,7 @@ impl NoxCCPApi for CCProver {
             &self.active_provers,
             self.status,
         );
+        self.status = CCStatus::Running { epoch: new_epoch };
         self.align_with(roadmap).await
     }
 
@@ -85,6 +86,8 @@ impl NoxCCPApi for CCProver {
             .into_iter()
             .map(Result::unwrap_err)
             .collect::<Vec<_>>();
+
+        self.status = CCStatus::Idle;
 
         if errors.is_empty() {
             Ok(())
