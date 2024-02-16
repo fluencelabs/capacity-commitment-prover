@@ -52,7 +52,7 @@ fn main() -> Result<(), eyre::Error> {
     }
 
     #[cfg(target_os = "linux")]
-    let tokio_cores = args.phys_core_id;
+    let tokio_cores = args.phys_core_ids;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -61,7 +61,7 @@ fn main() -> Result<(), eyre::Error> {
             #[cfg(target_os = "linux")]
             {
                 let pid = std::thread::current().id();
-                tracing::info("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
+                tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
                 affinity::set_thread_affinity(tokio_cores)
                     .expect("failed to set tokio thread affinity");
             }
