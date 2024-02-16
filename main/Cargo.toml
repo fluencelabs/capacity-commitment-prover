@@ -4,16 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-capacity-commitment-prover = { version = "0.1.0", path = "../ccp" }
-ccp-rpc-server = { version = "0.1.0", path = "../crates/rpc-server" }
+capacity-commitment-prover = { workspace = true }
+ccp-config = { workspace = true }
+ccp-rpc-server = { workspace = true }
 randomx-rust-wrapper = { workspace = true }
 
 clap = { version = "4.5.0", features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-tracing = "0.1.40"
+tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 eyre = "0.6.12"
-ccp-config = { version = "0.1.0", path = "../crates/config" }
 tracing-log = "0.2.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
