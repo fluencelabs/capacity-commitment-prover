@@ -51,14 +51,14 @@ fn main() -> Result<(), eyre::Error> {
         eyre::bail!("please, define at least one --tokio-core-id");
     }
 
-    #[cfg(os = "linux")]
+    #[cfg(target_os = "linux")]
     let tokio_cores = args.phys_core_id;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(2)
         .on_thread_start(|| {
-            #[cfg(os = "linux")]
+            #[cfg(target_os = "linux")]
             {
                 let pid = std::thread::current().id();
                 tracing::info("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
