@@ -93,7 +93,7 @@ pub(crate) enum CUProverAction {
 
     /// Signals CCP to remove all collected proofs, this action is a result of epoch switching
     /// and CCP will clean up old proofs to save space.
-    CleanProofCache,
+    CleanupProofCache,
 }
 
 impl CUProverAction {
@@ -128,6 +128,6 @@ impl CUProverAction {
     }
 
     pub(crate) fn clean_proof_cache() -> Self {
-        Self::CleanProofCache
+        Self::CleanupProofCache
     }
 }

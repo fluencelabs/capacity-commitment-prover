@@ -205,9 +205,7 @@ impl RoadmapAlignable for CCProver {
                     new_core_id,
                     new_cu_id,
                 } => self.new_cc_job_repin_future(new_core_id, current_core_id, new_cu_id, epoch),
-                CUProverAction::CleanProofCache => {
-                    unimplemented!()
-                }
+                CUProverAction::CleanupProofCache => self.cleanup_proof_cache(),
             };
             actions_as_future.push(future);
         }
@@ -302,6 +300,17 @@ impl CCProver {
                 .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
                 .await?;
             Ok(Some(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn cleanup_proof_cache<'prover, 'futures: 'prover>(
+        &'prover mut self,
+    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+        let proof_storage = self.proof_storage.clone();
+        async move {
+            proof_storage.remove_proofs().await?;
+            Ok(None)
         }
         .boxed()
     }
