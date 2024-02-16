@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-mod alignment_roadmap;
-mod cu;
-mod epoch;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
+use ccp_shared::types::CUID;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+/// Represents a status of a running task.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RunningStatus {
+    Running { cu_id: CUID },
+    Idle,
+}
 
-pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;
+pub trait ToRunningStatus {
+    fn to_status(&self) -> RunningStatus;
+}

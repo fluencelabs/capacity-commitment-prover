@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-mod alignment_roadmap;
-mod cu;
-mod epoch;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
+use ccp_shared::types::*;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+/// Describes a single epoch, contains global parameters, which come from the on-chain part.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Epoch {
+    pub(crate) global_nonce: GlobalNonce,
+    pub(crate) difficulty: Difficulty,
+}
 
-pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;
+impl Epoch {
+    pub(crate) fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
+        Self {
+            global_nonce,
+            difficulty,
+        }
+    }
+}
