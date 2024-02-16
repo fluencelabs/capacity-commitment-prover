@@ -20,8 +20,8 @@ pub trait RoadmapAlignable: Send {
     type Error: Send;
 
     /// Apply the given roadmap (a set of actions) to align Nox and CCP states.
-    fn align_with<'futures, 'prover: 'futures>(
-        &'prover mut self,
+    fn align_with(
+        &mut self,
         roadmap: CCProverAlignmentRoadmap,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 }

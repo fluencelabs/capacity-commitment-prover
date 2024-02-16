@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-use futures::{future, FutureExt};
+use futures::future;
+use futures::FutureExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -171,57 +172,49 @@ impl CCProver {
     }
 }
 
+#[derive(Debug)]
+enum CUProverPostAction {
+    Keep(CUProver),
+    Nothing,
+    NotApplicable,
+}
+
 impl RoadmapAlignable for CCProver {
     type Error = CCProverError;
 
-    async fn align_with<'futures, 'prover: 'futures>(
-        &'prover mut self,
-        roadmap: CCProverAlignmentRoadmap,
-    ) -> Result<(), Self::Error> {
+    async fn align_with(&mut self, roadmap: CCProverAlignmentRoadmap) -> Result<(), Self::Error> {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
         let CCProverAlignmentRoadmap { actions, epoch } = roadmap;
 
-        let actions_as_future: FuturesUnordered<
-            future::BoxFuture<'futures, CUResult<Option<CUProver>>>,
-        > = FuturesUnordered::new();
-
-        for action in actions {
-            let future = match action {
-                CUProverAction::CreateCUProver {
-                    new_core_id,
-                    new_cu_id,
-                } => self.cu_creation_closure(new_core_id, new_cu_id, epoch),
-                CUProverAction::RemoveCUProver { current_core_id } => {
-                    self.cu_removal_closure(current_core_id)
-                }
-                CUProverAction::NewCCJob {
-                    current_core_id,
-                    new_cu_id,
-                } => self.new_cc_job_future(current_core_id, new_cu_id, epoch),
-                CUProverAction::NewCCJobWithRepining {
-                    current_core_id,
-                    new_core_id,
-                    new_cu_id,
-                } => self.new_cc_job_repin_future(new_core_id, current_core_id, new_cu_id, epoch),
+        let actions_as_futures = actions
+            .into_iter()
+            .map(|action| match action {
+                CUProverAction::CreateCUProver(state) => self.cu_creation(state, epoch),
+                CUProverAction::RemoveCUProver(state) => self.cu_removal(state),
+                CUProverAction::NewCCJob(state) => self.new_cc_job(state, epoch),
+                CUProverAction::NewCCJobWithRepining(state) => self.new_cc_job_repin(state, epoch),
                 CUProverAction::CleanupProofCache => self.cleanup_proof_cache(),
-            };
-            actions_as_future.push(future);
-        }
+            })
+            .collect::<FuturesUnordered<_>>();
 
-        let (provers, errors) = actions_as_future
+        let (provers, errors) = actions_as_futures
             .collect::<Vec<_>>()
             .await
             .into_iter()
             .partition::<Vec<_>, _>(Result::is_ok);
 
-        let provers = provers
+        let provers_to_keep = provers
             .into_iter()
-            .filter_map(Result::unwrap)
-            .map(|prover| (prover.pinned_core_id(), prover))
+            .map(Result::unwrap)
+            .flat_map(|prover_post_action| match prover_post_action {
+                CUProverPostAction::Keep(prover) => Some((prover.pinned_core_id(), prover)),
+                CUProverPostAction::Nothing => None,
+                CUProverPostAction::NotApplicable => None,
+            })
             .collect::<Vec<_>>();
-        self.active_provers.extend(provers);
+        self.active_provers.extend(provers_to_keep);
 
         if errors.is_empty() {
             return Ok(());
@@ -237,80 +230,76 @@ impl RoadmapAlignable for CCProver {
 }
 
 impl CCProver {
-    pub(self) fn cu_creation_closure<'prover, 'futures: 'prover>(
+    pub(self) fn cu_creation<'prover, 'futures: 'prover>(
         &'prover mut self,
-        new_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
+        state: actions_state::CreateCUProverState,
         epoch: Epoch,
-    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let proof_receiver_inlet = self.proof_receiver_inlet.clone();
 
         async move {
             let mut prover =
-                CUProver::create(prover_config, proof_receiver_inlet, new_core_id).await?;
+                CUProver::create(prover_config, proof_receiver_inlet, state.new_core_id).await?;
             prover
-                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
                 .await?;
 
-            Ok(Some(prover))
+            Ok(CUProverPostAction::Keep(prover))
         }
         .boxed()
     }
 
-    pub(self) fn cu_removal_closure<'prover, 'futures: 'prover>(
+    pub(self) fn cu_removal<'prover, 'futures: 'prover>(
         &'prover mut self,
-        current_core_id: PhysicalCoreId,
-    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
-        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+        state: actions_state::RemoveCUProverState,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
-            Ok(None)
+            Ok(CUProverPostAction::Nothing)
         }
         .boxed()
     }
 
-    pub(self) fn new_cc_job_future<'prover, 'futures: 'prover>(
+    pub(self) fn new_cc_job<'prover, 'futures: 'prover>(
         &'prover mut self,
-        current_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
+        state: actions_state::NewCCJobState,
         epoch: Epoch,
-    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
-        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover
-                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
                 .await?;
-            Ok(Some(prover))
+            Ok(CUProverPostAction::Keep(prover))
         }
         .boxed()
     }
 
-    pub(self) fn new_cc_job_repin_future<'prover, 'futures: 'prover>(
+    pub(self) fn new_cc_job_repin<'prover, 'futures: 'prover>(
         &'prover mut self,
-        new_core_id: PhysicalCoreId,
-        current_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
+        state: actions_state::NewCCJobWithRepiningState,
         epoch: Epoch,
-    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
-        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover.repin(new_core_id).await?;
+            prover.repin(state.new_core_id).await?;
             prover
-                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
                 .await?;
-            Ok(Some(prover))
+            Ok(CUProverPostAction::Keep(prover))
         }
         .boxed()
     }
 
     pub(self) fn cleanup_proof_cache<'prover, 'futures: 'prover>(
         &'prover mut self,
-    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let proof_storage = self.proof_storage.clone();
         async move {
             proof_storage.remove_proofs().await?;
-            Ok(None)
+            Ok(CUProverPostAction::NotApplicable)
         }
         .boxed()
     }

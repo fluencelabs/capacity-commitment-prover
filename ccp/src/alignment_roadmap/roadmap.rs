@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+pub(crate) mod actions_state;
 use std::collections::HashMap;
 
 use ccp_shared::types::*;
@@ -21,6 +22,8 @@ use ccp_shared::types::*;
 use super::roadmap_builder::RoadmapBuilder;
 use crate::cu::running_status::ToRunningStatus;
 use crate::epoch::Epoch;
+
+use actions_state::*;
 
 /// Intended to align state between Nox and CCP, contains a set of actions, which
 /// being applied to a CCP state, make it aligned with the Nox state.
@@ -66,30 +69,20 @@ impl PartialEq for CCProverAlignmentRoadmap {
 pub(crate) enum CUProverAction {
     /// Encourage CCP to creates a new CU prover, intended to prove that the physical core with
     /// new_core_id core id registered with the provided cu_id participates in network during epoch.
-    CreateCUProver {
-        new_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
-    },
+    CreateCUProver(CreateCUProverState),
 
     /// Encourage CCP to remove CU prover with the given current_core_id.
-    RemoveCUProver { current_core_id: PhysicalCoreId },
+    RemoveCUProver(RemoveCUProverState),
 
     /// Encourage CCP to run a new CC job on CU with the same cu_id,
     /// identified by the supplied current_core_id.
     /// Epoch parameters for the CC job will be taken from CCProverAlignmentRoadmap::epoch.
-    NewCCJob {
-        current_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
-    },
+    NewCCJob(NewCCJobState),
 
     /// There was already created CUProver, but allocated on a not appropriate core,
     /// this actions tells CCP to repin the prover and run a new CC job on it.
     /// Epoch parameters for the CC job will be taken from CCProverAlignmentRoadmap::epoch.
-    NewCCJobWithRepining {
-        current_core_id: PhysicalCoreId,
-        new_core_id: PhysicalCoreId,
-        new_cu_id: CUID,
-    },
+    NewCCJobWithRepining(NewCCJobWithRepiningState),
 
     /// Signals CCP to remove all collected proofs, this action is a result of epoch switching
     /// and CCP will clean up old proofs to save space.
@@ -97,34 +90,28 @@ pub(crate) enum CUProverAction {
 }
 
 impl CUProverAction {
-    pub(crate) fn create_cu_prover(new_core_id: PhysicalCoreId, cu_id: CUID) -> Self {
-        Self::CreateCUProver {
-            new_core_id,
-            new_cu_id: cu_id,
-        }
+    pub(crate) fn create_cu_prover(new_core_id: PhysicalCoreId, new_cu_id: CUID) -> Self {
+        Self::CreateCUProver(CreateCUProverState::new(new_core_id, new_cu_id))
     }
 
     pub(crate) fn remove_cu_prover(current_core_id: PhysicalCoreId) -> Self {
-        Self::RemoveCUProver { current_core_id }
+        Self::RemoveCUProver(RemoveCUProverState::new(current_core_id))
     }
 
-    pub(crate) fn new_cc_job(current_core_id: PhysicalCoreId, cu_id: CUID) -> Self {
-        Self::NewCCJob {
-            current_core_id,
-            new_cu_id: cu_id,
-        }
+    pub(crate) fn new_cc_job(current_core_id: PhysicalCoreId, new_cu_id: CUID) -> Self {
+        Self::NewCCJob(NewCCJobState::new(current_core_id, new_cu_id))
     }
 
     pub(crate) fn new_cc_job_repin(
         current_core_id: PhysicalCoreId,
         new_core_id: PhysicalCoreId,
-        cu_id: CUID,
+        new_cu_id: CUID,
     ) -> Self {
-        Self::NewCCJobWithRepining {
+        Self::NewCCJobWithRepining(NewCCJobWithRepiningState::new(
             current_core_id,
             new_core_id,
-            new_cu_id: cu_id,
-        }
+            new_cu_id,
+        ))
     }
 
     pub(crate) fn clean_proof_cache() -> Self {

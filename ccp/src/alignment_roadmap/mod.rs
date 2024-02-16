@@ -20,6 +20,7 @@ mod roadmap_builder;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use roadmap::actions_state;
 pub(crate) use roadmap::CCProverAlignmentRoadmap;
 pub(crate) use roadmap::CUProverAction;
 pub(crate) use roadmap_alignable::RoadmapAlignable;
