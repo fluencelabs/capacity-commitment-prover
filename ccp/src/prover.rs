@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use futures::future;
+use futures::FutureExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -25,11 +27,16 @@ use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::types::*;
 
-use super::cu::CUProver;
-use super::cu::CUProverConfig;
+use crate::alignment_roadmap::*;
+use crate::cu::CUProver;
+use crate::cu::CUProverConfig;
+use crate::cu::CUResult;
 use crate::cu::RawProof;
+use crate::epoch::Epoch;
 use crate::errors::CCProverError;
 use crate::proof_storage_worker::ProofStorageWorker;
+use crate::status::CCStatus;
+use crate::status::ToCCStatus;
 use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
@@ -37,16 +44,10 @@ pub type CCResult<T> = Result<T, CCProverError>;
 pub struct CCProver {
     active_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
-    epoch_parameters: Option<GlobalEpochParameters>,
+    status: CCStatus,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
     utility_thread_shutdown: oneshot::Sender<()>,
     proof_storage: Arc<ProofStorageWorker>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct GlobalEpochParameters {
-    pub(crate) global_nonce: GlobalNonce,
-    pub(crate) difficulty: Difficulty,
 }
 
 impl NoxCCPApi for CCProver {
@@ -56,43 +57,16 @@ impl NoxCCPApi for CCProver {
         &mut self,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
-        cu_allocation: CUAllocation,
+        new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        use futures::stream::FuturesUnordered;
-        use futures::StreamExt;
-
-        let cu_prover_config = CUProverConfig {
-            randomx_flags: self.cu_prover_config.randomx_flags,
-            threads_per_physical_core: self.cu_prover_config.threads_per_physical_core,
-        };
-
-        self.active_provers = cu_allocation
-            .iter()
-            .map(|(&core_id, _)| {
-                let cu_prover = CUProver::new(
-                    cu_prover_config.clone(),
-                    self.proof_receiver_inlet.clone(),
-                    core_id,
-                );
-                (core_id, cu_prover)
-            })
-            .collect::<HashMap<_, _>>();
-
-        let results = self
-            .active_provers
-            .iter_mut()
-            .map(|(&core_id, prover)| {
-                let cu_id = cu_allocation.get(&core_id).unwrap();
-                prover.new_epoch(global_nonce, *cu_id, difficulty)
-            })
-            .collect::<FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .await;
-
-        for result in results {
-            result?;
-        }
-        Ok(())
+        let new_epoch = Epoch::new(global_nonce, difficulty);
+        let roadmap = CCProverAlignmentRoadmap::create_roadmap(
+            new_allocation,
+            new_epoch,
+            &self.active_provers,
+            self.status,
+        );
+        self.align_with(roadmap).await
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
@@ -109,10 +83,7 @@ impl NoxCCPApi for CCProver {
 
         let errors = results
             .into_iter()
-            .filter_map(|result| match result {
-                Ok(_) => None,
-                Err(e) => Some(e),
-            })
+            .map(Result::unwrap_err)
             .collect::<Vec<_>>();
 
         if errors.is_empty() {
@@ -127,6 +98,12 @@ impl NoxCCPApi for CCProver {
             .get_proofs_after(proof_idx)
             .await
             .map_err(Into::into)
+    }
+}
+
+impl ToCCStatus for CCProver {
+    fn status(&self) -> CCStatus {
+        self.status
     }
 }
 
@@ -152,7 +129,7 @@ impl CCProver {
         Self {
             active_provers: HashMap::new(),
             cu_prover_config,
-            epoch_parameters: None,
+            status: CCStatus::Idle,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
             proof_storage,
@@ -193,7 +170,7 @@ impl CCProver {
                         proof_idx += 1;
                     },
                     _ = &mut shutdown_outlet => {
-                        log::info!("cc_prover:: utility thread was shutdowned");
+                        log::info!("cc_prover:: utility thread was shutdown");
 
                         return Ok::<_, std::io::Error>(())
                     }
@@ -203,11 +180,135 @@ impl CCProver {
     }
 }
 
-impl GlobalEpochParameters {
-    pub(crate) fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
-        Self {
-            global_nonce,
-            difficulty,
+#[derive(Debug)]
+enum CUProverPostAction {
+    Keep(CUProver),
+    Nothing,
+    NotApplicable,
+}
+
+impl RoadmapAlignable for CCProver {
+    type Error = CCProverError;
+
+    async fn align_with(&mut self, roadmap: CCProverAlignmentRoadmap) -> Result<(), Self::Error> {
+        use futures::stream::FuturesUnordered;
+        use futures::StreamExt;
+
+        let CCProverAlignmentRoadmap { actions, epoch } = roadmap;
+
+        let actions_as_futures = actions
+            .into_iter()
+            .map(|action| match action {
+                CUProverAction::CreateCUProver(state) => self.cu_creation(state, epoch),
+                CUProverAction::RemoveCUProver(state) => self.cu_removal(state),
+                CUProverAction::NewCCJob(state) => self.new_cc_job(state, epoch),
+                CUProverAction::NewCCJobWithRepining(state) => self.new_cc_job_repin(state, epoch),
+                CUProverAction::CleanupProofCache => self.cleanup_proof_cache(),
+            })
+            .collect::<FuturesUnordered<_>>();
+
+        let (provers, errors) = actions_as_futures
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .partition::<Vec<_>, _>(Result::is_ok);
+
+        let provers_to_keep = provers
+            .into_iter()
+            .map(Result::unwrap)
+            .flat_map(|prover_post_action| match prover_post_action {
+                CUProverPostAction::Keep(prover) => Some((prover.pinned_core_id(), prover)),
+                CUProverPostAction::Nothing => None,
+                CUProverPostAction::NotApplicable => None,
+            })
+            .collect::<Vec<_>>();
+        self.active_provers.extend(provers_to_keep);
+
+        if errors.is_empty() {
+            return Ok(());
         }
+
+        let errors = errors
+            .into_iter()
+            .map(Result::unwrap_err)
+            .collect::<Vec<_>>();
+
+        Err(CCProverError::CUProverErrors(errors))
+    }
+}
+
+impl CCProver {
+    pub(self) fn cu_creation<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        state: actions_state::CreateCUProverState,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let prover_config = self.cu_prover_config.clone();
+        let proof_receiver_inlet = self.proof_receiver_inlet.clone();
+
+        async move {
+            let mut prover =
+                CUProver::create(prover_config, proof_receiver_inlet, state.new_core_id).await?;
+            prover
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
+                .await?;
+
+            Ok(CUProverPostAction::Keep(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn cu_removal<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        state: actions_state::RemoveCUProverState,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        async move {
+            prover.stop().await?;
+            Ok(CUProverPostAction::Nothing)
+        }
+        .boxed()
+    }
+
+    pub(self) fn new_cc_job<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        state: actions_state::NewCCJobState,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        async move {
+            prover
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
+                .await?;
+            Ok(CUProverPostAction::Keep(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn new_cc_job_repin<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        state: actions_state::NewCCJobWithRepiningState,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        async move {
+            prover.repin(state.new_core_id).await?;
+            prover
+                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
+                .await?;
+            Ok(CUProverPostAction::Keep(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn cleanup_proof_cache<'prover, 'futures: 'prover>(
+        &'prover mut self,
+    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+        let proof_storage = self.proof_storage.clone();
+        async move {
+            proof_storage.remove_proofs().await?;
+            Ok(CUProverPostAction::NotApplicable)
+        }
+        .boxed()
     }
 }

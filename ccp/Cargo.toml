@@ -15,7 +15,6 @@ ccp-shared = { workspace = true }
 ccp-config = { workspace = true }
 ccp-utils = { workspace = true }
 
-fluence-keypair = { workspace = true }
 randomx-rust-wrapper = { workspace = true }
 
 tokio = { workspace = true }

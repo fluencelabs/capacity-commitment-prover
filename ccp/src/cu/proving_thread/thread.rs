@@ -41,6 +41,7 @@ const HASHES_PER_ROUND: usize = 1024;
 const CHANNEL_DROPPED_MESSAGE: &str =
     "ThreadState::WaitForMessage async part of the ptt channel is dropped";
 
+#[derive(Debug)]
 pub(crate) struct ProvingThread {
     inlet: mpsc::Sender<ProverToThreadMessage>,
     outlet: mpsc::Receiver<ThreadToProverMessage>,
@@ -116,7 +117,7 @@ impl ProvingThread {
             ProverToThreadMessage::CreateCache(params) => {
                 let global_nonce_cu =
                     ccp_utils::compute_global_nonce_cu(&params.global_nonce, &params.cu_id);
-                let cache = Cache::new(&global_nonce_cu.into_bytes(), params.flags)?;
+                let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
 
                 let ttp_message = CacheCreated::new(cache);
                 let ttp_message = ThreadToProverMessage::CacheCreated(ttp_message);

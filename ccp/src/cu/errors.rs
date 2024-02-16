@@ -34,6 +34,9 @@ pub enum CUProverError {
 
     #[error("")]
     ChannelError(#[source] anyhow::Error),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
 impl From<Vec<ProvingThreadError>> for CUProverError {

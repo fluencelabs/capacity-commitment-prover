@@ -64,27 +64,27 @@ where
         guard
             .on_active_commitment(global_nonce, difficulty, cu_allocation)
             .await
-            .map_err(|e| {
-                ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
-            })?;
+            .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
         let mut guard = self.cc_prover.lock().await;
-        guard.on_no_active_commitment().await.map_err(|e| {
-            ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
-        })?;
+        guard
+            .on_no_active_commitment()
+            .await
+            .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())
     }
 
     #[instrument(skip(self))]
     async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
-        let proofs = guard.get_proofs_after(proof_idx).await.map_err(|e| {
-            ErrorObjectOwned::owned::<()>(1, e.to_string(), None)
-        })?;
+        let proofs = guard
+            .get_proofs_after(proof_idx)
+            .await
+            .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(proofs)
     }
 }

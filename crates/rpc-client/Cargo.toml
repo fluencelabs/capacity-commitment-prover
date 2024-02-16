@@ -1,8 +1,12 @@
 [package]
 name = "ccp-rpc-client"
+description = "CCP RPC client"
 version = "0.1.0"
+authors = ["Fluence Labs"]
 edition = "2021"
+publish = true
 
 [dependencies]
-ccp-shared = { version = "0.1.0", path = "../shared" }
-jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }
+ccp-shared = { workspace = true }
+
+jsonrpsee = { workspace = true }

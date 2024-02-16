@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-mod alignment_roadmap;
-mod cu;
-mod epoch;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
-pub mod status;
+use crate::epoch::Epoch;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+/// Represents a status of a CC prover.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CCStatus {
+    Running { epoch: Epoch },
+    Idle,
+}
 
-pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;
+pub trait ToCCStatus {
+    fn status(&self) -> CCStatus;
+}

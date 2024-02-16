@@ -27,15 +27,19 @@ use super::errors::CUProverError;
 use super::proving_thread::ProvingThread;
 use super::proving_thread::ProvingThreadAPI;
 use super::proving_thread::RawProof;
+use super::status::CUStatus;
+use super::status::ToCUStatus;
 use super::CUResult;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
+#[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThread>,
+    pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
-    dataset: Option<Dataset>,
-    cu_id: Option<CUID>,
+    dataset: Dataset,
+    status: CUStatus,
 }
 
 #[derive(Clone, Debug)]
@@ -47,22 +51,27 @@ pub struct CUProverConfig {
 }
 
 impl CUProver {
-    pub(crate) fn new(
+    pub(crate) async fn create(
         config: CUProverConfig,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
         core_id: PhysicalCoreId,
-    ) -> Self {
+    ) -> CUResult<Self> {
         let threads = (0..config.threads_per_physical_core.into())
             .map(|_| ProvingThread::new(core_id, proof_receiver_inlet.clone()))
             .collect::<Vec<_>>();
-        let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+        let mut threads = nonempty::NonEmpty::from_vec(threads).unwrap();
 
-        Self {
+        let thread = &mut threads.head;
+        let dataset = thread.allocate_dataset(config.randomx_flags).await?;
+
+        let prover = Self {
             threads,
+            pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
-            dataset: None,
-            cu_id: None,
-        }
+            dataset,
+            status: CUStatus::Idle,
+        };
+        Ok(prover)
     }
 
     pub(crate) async fn new_epoch(
@@ -71,7 +80,7 @@ impl CUProver {
         cu_id: CUID,
         difficulty: Difficulty,
     ) -> CUResult<()> {
-        self.cu_id = Some(cu_id);
+        self.status = CUStatus::Running { cu_id };
 
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
@@ -79,17 +88,16 @@ impl CUProver {
             .create_cache(global_nonce, cu_id, randomx_flags)
             .await?;
 
-        self.ensure_database_allocated(randomx_flags).await?;
-        let dataset_handle = self.dataset.as_ref().unwrap().handle();
+        let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, global_nonce, difficulty)
+        self.run_proving_jobs(dataset_handle, global_nonce, difficulty, cu_id)
             .await
     }
 
-    pub(crate) async fn repin(core_id: PhysicalCoreId) -> Result<(), ()> {
+    pub(crate) async fn repin(&mut self, core_id: PhysicalCoreId) -> CUResult<()> {
         unimplemented!()
     }
 
@@ -103,15 +111,8 @@ impl CUProver {
         Ok(())
     }
 
-    async fn ensure_database_allocated(&mut self, flags: RandomXFlags) -> CUResult<()> {
-        if self.dataset.is_some() {
-            return Ok(());
-        }
-
-        let thread = &mut self.threads.head;
-        let dataset = thread.allocate_dataset(flags).await?;
-        self.dataset = Some(dataset);
-        Ok(())
+    pub(crate) fn pinned_core_id(&self) -> PhysicalCoreId {
+        self.pinned_core_id
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -143,10 +144,10 @@ impl CUProver {
         dataset: DatasetHandle,
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
+        cu_id: CUID,
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let cu_id = self.cu_id.unwrap();
         let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThread| {
             thread
@@ -199,5 +200,11 @@ impl CUProver {
             .collect::<Vec<_>>();
 
         Err(thread_errors.into())
+    }
+}
+
+impl ToCUStatus for CUProver {
+    fn status(&self) -> CUStatus {
+        self.status
     }
 }

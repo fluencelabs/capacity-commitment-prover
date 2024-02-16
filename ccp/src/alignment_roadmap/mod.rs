@@ -14,17 +14,13 @@
  * limitations under the License.
  */
 
-mod alignment_roadmap;
-mod cu;
-mod epoch;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
-pub mod status;
+mod roadmap;
+mod roadmap_alignable;
+mod roadmap_builder;
+#[cfg(test)]
+mod tests;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
-
-pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;
+pub(crate) use roadmap::actions_state;
+pub(crate) use roadmap::CCProverAlignmentRoadmap;
+pub(crate) use roadmap::CUProverAction;
+pub(crate) use roadmap_alignable::RoadmapAlignable;

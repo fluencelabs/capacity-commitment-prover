@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-mod alignment_roadmap;
-mod cu;
-mod epoch;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
-pub mod status;
+use super::CCProverAlignmentRoadmap;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+pub trait RoadmapAlignable: Send {
+    type Error: Send;
 
-pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;
+    /// Apply the given roadmap (a set of actions) to align Nox and CCP states.
+    fn align_with(
+        &mut self,
+        roadmap: CCProverAlignmentRoadmap,
+    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
+}
