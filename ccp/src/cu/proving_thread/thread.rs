@@ -41,6 +41,7 @@ const HASHES_PER_ROUND: usize = 1024;
 const CHANNEL_DROPPED_MESSAGE: &str =
     "ThreadState::WaitForMessage async part of the ptt channel is dropped";
 
+#[derive(Debug)]
 pub(crate) struct ProvingThread {
     inlet: mpsc::Sender<ProverToThreadMessage>,
     outlet: mpsc::Receiver<ThreadToProverMessage>,

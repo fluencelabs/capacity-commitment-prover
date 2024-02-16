@@ -17,5 +17,5 @@ pub fn compute_global_nonce_cu(
     hasher.update(global_nonce);
     hasher.update(cu_id);
 
-    hasher.finalize().into()
+    hasher.finalize()
 }
