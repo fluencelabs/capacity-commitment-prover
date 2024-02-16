@@ -21,12 +21,13 @@ use ccp_shared::types::*;
 
 use super::roadmap::CCProverAlignmentRoadmap;
 use super::roadmap::CUProverAction;
-use crate::cu::running_status::ToRunningStatus;
+use crate::cu::status::ToCUStatus;
 use crate::epoch::Epoch;
+use crate::status::CCStatus;
 
 #[derive(Debug)]
 pub(super) struct RoadmapBuilderState {
-    new_epoch: bool,
+    is_new_epoch: bool,
     epoch: Epoch,
     unprepared_allocation_actions: Vec<(PhysicalCoreId, CUID)>,
     unprepared_removal_actions: Vec<PhysicalCoreId>,
@@ -36,14 +37,15 @@ pub(super) struct RoadmapBuilderState {
 pub(super) struct RoadmapBuilder {}
 
 impl RoadmapBuilder {
-    pub(super) fn from_epochs(
-        new_parameters: Epoch,
-        current_parameters: Epoch,
-    ) -> BuilderFirstStage {
-        let new_epoch = new_parameters != current_parameters;
+    pub(super) fn from(new_epoch: Epoch, current_status: CCStatus) -> BuilderFirstStage {
+        let is_new_epoch = match current_status {
+            CCStatus::Running { epoch } => new_epoch != epoch,
+            CCStatus::Idle => true,
+        };
+
         let state = RoadmapBuilderState {
-            new_epoch,
-            epoch: new_parameters,
+            is_new_epoch,
+            epoch: new_epoch,
             unprepared_allocation_actions: Vec::new(),
             unprepared_removal_actions: Vec::new(),
             actions: Vec::new(),
@@ -54,7 +56,7 @@ impl RoadmapBuilder {
     }
 
     fn clean_proofs_if_new_epoch(mut state: RoadmapBuilderState) -> RoadmapBuilderState {
-        if state.new_epoch {
+        if state.is_new_epoch {
             state.actions.push(CUProverAction::clean_proof_cache())
         }
 
@@ -71,7 +73,7 @@ impl BuilderFirstStage {
         BuilderFirstStage { state }
     }
 
-    pub(super) fn collect_allocation_and_new_job_actions<Status: ToRunningStatus>(
+    pub(super) fn collect_allocation_and_new_job_actions<Status: ToCUStatus>(
         mut self,
         new_allocation: CUAllocation,
         current_allocation: &HashMap<PhysicalCoreId, Status>,
@@ -97,7 +99,7 @@ impl BuilderFirstStage {
         BuilderSecondStage::new(self.state, remaining_cu_provides)
     }
 
-    fn maybe_update_cc_job<Status: ToRunningStatus>(
+    fn maybe_update_cc_job<Status: ToCUStatus>(
         &mut self,
         core_id: PhysicalCoreId,
         new_cu_id: CUID,
@@ -110,18 +112,14 @@ impl BuilderFirstStage {
         }
     }
 
-    fn should_update_job<Status: ToRunningStatus>(
-        &self,
-        new_cu_id: &CUID,
-        status: &Status,
-    ) -> bool {
-        use crate::cu::running_status::RunningStatus;
+    fn should_update_job<Status: ToCUStatus>(&self, new_cu_id: &CUID, status: &Status) -> bool {
+        use crate::cu::status::CUStatus;
 
-        let current_cu_id = match status.to_status() {
-            RunningStatus::Running { cu_id } => cu_id,
-            RunningStatus::Idle => return true,
+        let current_cu_id = match status.status() {
+            CUStatus::Running { cu_id } => cu_id,
+            CUStatus::Idle => return true,
         };
-        new_cu_id != &current_cu_id || self.state.new_epoch
+        new_cu_id != &current_cu_id || self.state.is_new_epoch
     }
 }
 

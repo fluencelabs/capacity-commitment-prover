@@ -20,8 +20,10 @@ use std::collections::HashMap;
 use ccp_shared::types::*;
 
 use super::roadmap_builder::RoadmapBuilder;
-use crate::cu::running_status::ToRunningStatus;
+use crate::cu::status::ToCUStatus;
 use crate::epoch::Epoch;
+use crate::status::CCStatus;
+use crate::status::ToCCStatus;
 
 use actions_state::*;
 
@@ -34,13 +36,13 @@ pub(crate) struct CCProverAlignmentRoadmap {
 }
 
 impl CCProverAlignmentRoadmap {
-    pub(crate) fn create_roadmap<T: ToRunningStatus>(
+    pub(crate) fn create_roadmap<T: ToCUStatus>(
         new_allocation: CUAllocation,
         new_epoch: Epoch,
         current_allocation: &HashMap<PhysicalCoreId, T>,
-        current_epoch: Epoch,
+        current_status: CCStatus,
     ) -> CCProverAlignmentRoadmap {
-        RoadmapBuilder::from_epochs(new_epoch, current_epoch)
+        RoadmapBuilder::from(new_epoch, current_status)
             .collect_allocation_and_new_job_actions(new_allocation, current_allocation)
             .collect_removal_actions(current_allocation)
             .substitute_removal_and_allocation_actions()

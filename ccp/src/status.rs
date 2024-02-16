@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::CUID;
+use crate::epoch::Epoch;
 
-/// Represents a status of a running task.
+/// Represents a status of a CC prover.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum RunningStatus {
-    Running { cu_id: CUID },
+pub enum CCStatus {
+    Running { epoch: Epoch },
     Idle,
 }
 
-pub trait ToRunningStatus {
-    fn to_status(&self) -> RunningStatus;
+pub trait ToCCStatus {
+    fn status(&self) -> CCStatus;
 }

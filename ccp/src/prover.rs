@@ -35,6 +35,8 @@ use crate::cu::RawProof;
 use crate::epoch::Epoch;
 use crate::errors::CCProverError;
 use crate::proof_storage_worker::ProofStorageWorker;
+use crate::status::CCStatus;
+use crate::status::ToCCStatus;
 use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
@@ -42,7 +44,7 @@ pub type CCResult<T> = Result<T, CCProverError>;
 pub struct CCProver {
     active_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
-    epoch_parameters: Option<Epoch>,
+    status: CCStatus,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
     utility_thread_shutdown: oneshot::Sender<()>,
     proof_storage: Arc<ProofStorageWorker>,
@@ -62,7 +64,7 @@ impl NoxCCPApi for CCProver {
             new_allocation,
             new_epoch,
             &self.active_provers,
-            self.epoch_parameters.unwrap(),
+            self.status,
         );
         self.align_with(roadmap).await
     }
@@ -99,6 +101,12 @@ impl NoxCCPApi for CCProver {
     }
 }
 
+impl ToCCStatus for CCProver {
+    fn status(&self) -> CCStatus {
+        self.status
+    }
+}
+
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
@@ -121,7 +129,7 @@ impl CCProver {
         Self {
             active_provers: HashMap::new(),
             cu_prover_config,
-            epoch_parameters: None,
+            status: CCStatus::Idle,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
             proof_storage,

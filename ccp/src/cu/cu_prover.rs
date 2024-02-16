@@ -27,8 +27,8 @@ use super::errors::CUProverError;
 use super::proving_thread::ProvingThread;
 use super::proving_thread::ProvingThreadAPI;
 use super::proving_thread::RawProof;
-use super::running_status::RunningStatus;
-use super::running_status::ToRunningStatus;
+use super::status::CUStatus;
+use super::status::ToCUStatus;
 use super::CUResult;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
@@ -39,7 +39,7 @@ pub struct CUProver {
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
     dataset: Dataset,
-    status: RunningStatus,
+    status: CUStatus,
 }
 
 #[derive(Clone, Debug)]
@@ -69,7 +69,7 @@ impl CUProver {
             pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
             dataset,
-            status: RunningStatus::Idle,
+            status: CUStatus::Idle,
         };
         Ok(prover)
     }
@@ -80,7 +80,7 @@ impl CUProver {
         cu_id: CUID,
         difficulty: Difficulty,
     ) -> CUResult<()> {
-        self.status = RunningStatus::Running { cu_id };
+        self.status = CUStatus::Running { cu_id };
 
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
@@ -203,8 +203,8 @@ impl CUProver {
     }
 }
 
-impl ToRunningStatus for CUProver {
-    fn to_status(&self) -> RunningStatus {
+impl ToCUStatus for CUProver {
+    fn status(&self) -> CUStatus {
         self.status
     }
 }
