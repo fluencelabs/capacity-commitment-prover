@@ -36,7 +36,10 @@ pub(super) struct RoadmapBuilderState {
 pub(super) struct RoadmapBuilder {}
 
 impl RoadmapBuilder {
-    pub(super) fn new(new_parameters: Epoch, current_parameters: Epoch) -> BuilderFirstStage {
+    pub(super) fn from_epochs(
+        new_parameters: Epoch,
+        current_parameters: Epoch,
+    ) -> BuilderFirstStage {
         let new_epoch = new_parameters != current_parameters;
         let state = RoadmapBuilderState {
             new_epoch,

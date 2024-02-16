@@ -37,7 +37,7 @@ impl CCProverAlignmentRoadmap {
         current_allocation: &HashMap<PhysicalCoreId, T>,
         current_epoch: Epoch,
     ) -> CCProverAlignmentRoadmap {
-        RoadmapBuilder::new(new_epoch, current_epoch)
+        RoadmapBuilder::from_epochs(new_epoch, current_epoch)
             .collect_allocation_and_new_job_actions(new_allocation, current_allocation)
             .collect_removal_actions(current_allocation)
             .substitute_removal_and_allocation_actions()

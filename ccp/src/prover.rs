@@ -160,7 +160,7 @@ impl CCProver {
                         proof_idx += 1;
                     },
                     _ = &mut shutdown_outlet => {
-                        log::info!("cc_prover:: utility thread was shutdowned");
+                        log::info!("cc_prover:: utility thread was shutdown");
 
                         return Ok::<_, std::io::Error>(())
                     }
@@ -211,12 +211,12 @@ impl RoadmapAlignable for CCProver {
                 }
                 CUProverAction::RemoveCUProver { current_core_id } => {
                     let mut prover = self.active_provers.remove(&current_core_id).unwrap();
-                    let remove_future = async move {
+                    let removal_future = async move {
                         prover.stop().await?;
                         Ok(None)
                     }
                     .boxed();
-                    actions_as_future.push(remove_future);
+                    actions_as_future.push(removal_future);
                 }
                 CUProverAction::NewCCJob {
                     current_core_id,
@@ -239,7 +239,7 @@ impl RoadmapAlignable for CCProver {
                     new_cu_id,
                 } => {
                     let mut prover = self.active_provers.remove(&current_core_id).unwrap();
-                    let cc_job_future = async move {
+                    let cc_job_repin_future = async move {
                         prover.repin(new_core_id).await?;
                         prover
                             .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
@@ -247,7 +247,7 @@ impl RoadmapAlignable for CCProver {
                         Ok(Some(prover))
                     }
                     .boxed();
-                    actions_as_future.push(cc_job_future);
+                    actions_as_future.push(cc_job_repin_future);
                 }
                 CUProverAction::CleanProofCache => {}
             }
@@ -258,12 +258,12 @@ impl RoadmapAlignable for CCProver {
             .await
             .into_iter()
             .partition::<Vec<_>, _>(Result::is_ok);
+
         let provers = provers
             .into_iter()
             .filter_map(Result::unwrap)
             .map(|prover| (prover.pinned_core_id(), prover))
             .collect::<Vec<_>>();
-
         self.active_provers.extend(provers);
 
         if errors.is_empty() {
