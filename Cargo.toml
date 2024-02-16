@@ -7,6 +7,7 @@ members = [
     "crates/rpc-server",
     "crates/shared",
     "crates/utils",
+    "main",
 ]
 
 [workspace.dependencies]
@@ -35,3 +36,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha3 = "0.10"
 thiserror = "1.0"
+tracing = "0.1.40"

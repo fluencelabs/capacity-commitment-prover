@@ -12,4 +12,5 @@ ccp-shared = {workspace = true}
 
 async-trait = {workspace = true}
 jsonrpsee = {workspace = true}
-tokio = {workspace = true}
+tokio = { workspace = true, features = ["sync"] }
+tracing = { workspace = true }
