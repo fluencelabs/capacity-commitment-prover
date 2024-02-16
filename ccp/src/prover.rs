@@ -29,6 +29,7 @@ use ccp_shared::types::*;
 use crate::alignment_roadmap::*;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
+use crate::cu::CUResult;
 use crate::cu::RawProof;
 use crate::epoch::Epoch;
 use crate::errors::CCProverError;
@@ -177,80 +178,38 @@ impl RoadmapAlignable for CCProver {
         &'prover mut self,
         roadmap: CCProverAlignmentRoadmap,
     ) -> Result<(), Self::Error> {
-        use crate::cu::CUResult;
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
         let CCProverAlignmentRoadmap { actions, epoch } = roadmap;
+
         let actions_as_future: FuturesUnordered<
             future::BoxFuture<'futures, CUResult<Option<CUProver>>>,
         > = FuturesUnordered::new();
 
         for action in actions {
-            match action {
+            let future = match action {
                 CUProverAction::CreateCUProver {
                     new_core_id,
                     new_cu_id,
-                } => {
-                    let prover_config = self.cu_prover_config.clone();
-                    let proof_receiver_inlet = self.proof_receiver_inlet.clone();
-
-                    let creation_future = async move {
-                        let mut prover =
-                            CUProver::create(prover_config, proof_receiver_inlet, new_core_id)
-                                .await?;
-                        prover
-                            .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
-                            .await?;
-
-                        Ok(Some(prover))
-                    }
-                    .boxed();
-
-                    actions_as_future.push(creation_future);
-                }
+                } => self.cu_creation_closure(new_core_id, new_cu_id, epoch),
                 CUProverAction::RemoveCUProver { current_core_id } => {
-                    let mut prover = self.active_provers.remove(&current_core_id).unwrap();
-                    let removal_future = async move {
-                        prover.stop().await?;
-                        Ok(None)
-                    }
-                    .boxed();
-                    actions_as_future.push(removal_future);
+                    self.cu_removal_closure(current_core_id)
                 }
                 CUProverAction::NewCCJob {
                     current_core_id,
                     new_cu_id,
-                } => {
-                    let mut prover = self.active_provers.remove(&current_core_id).unwrap();
-                    let cc_job_future = async move {
-                        prover
-                            .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
-                            .await?;
-                        Ok(Some(prover))
-                    }
-                    .boxed();
-
-                    actions_as_future.push(cc_job_future);
-                }
+                } => self.new_cc_job_future(current_core_id, new_cu_id, epoch),
                 CUProverAction::NewCCJobWithRepining {
                     current_core_id,
                     new_core_id,
                     new_cu_id,
-                } => {
-                    let mut prover = self.active_provers.remove(&current_core_id).unwrap();
-                    let cc_job_repin_future = async move {
-                        prover.repin(new_core_id).await?;
-                        prover
-                            .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
-                            .await?;
-                        Ok(Some(prover))
-                    }
-                    .boxed();
-                    actions_as_future.push(cc_job_repin_future);
+                } => self.new_cc_job_repin_future(new_core_id, current_core_id, new_cu_id, epoch),
+                CUProverAction::CleanProofCache => {
+                    unimplemented!()
                 }
-                CUProverAction::CleanProofCache => {}
-            }
+            };
+            actions_as_future.push(future);
         }
 
         let (provers, errors) = actions_as_future
@@ -276,5 +235,74 @@ impl RoadmapAlignable for CCProver {
             .collect::<Vec<_>>();
 
         Err(CCProverError::CUProverErrors(errors))
+    }
+}
+
+impl CCProver {
+    pub(self) fn cu_creation_closure<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        new_core_id: PhysicalCoreId,
+        new_cu_id: CUID,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+        let prover_config = self.cu_prover_config.clone();
+        let proof_receiver_inlet = self.proof_receiver_inlet.clone();
+
+        async move {
+            let mut prover =
+                CUProver::create(prover_config, proof_receiver_inlet, new_core_id).await?;
+            prover
+                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .await?;
+
+            Ok(Some(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn cu_removal_closure<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        current_core_id: PhysicalCoreId,
+    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+        async move {
+            prover.stop().await?;
+            Ok(None)
+        }
+        .boxed()
+    }
+
+    pub(self) fn new_cc_job_future<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        current_core_id: PhysicalCoreId,
+        new_cu_id: CUID,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+        async move {
+            prover
+                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .await?;
+            Ok(Some(prover))
+        }
+        .boxed()
+    }
+
+    pub(self) fn new_cc_job_repin_future<'prover, 'futures: 'prover>(
+        &'prover mut self,
+        new_core_id: PhysicalCoreId,
+        current_core_id: PhysicalCoreId,
+        new_cu_id: CUID,
+        epoch: Epoch,
+    ) -> future::BoxFuture<'futures, CUResult<Option<CUProver>>> {
+        let mut prover = self.active_provers.remove(&current_core_id).unwrap();
+        async move {
+            prover.repin(new_core_id).await?;
+            prover
+                .new_epoch(epoch.global_nonce, new_cu_id, epoch.difficulty)
+                .await?;
+            Ok(Some(prover))
+        }
+        .boxed()
     }
 }
