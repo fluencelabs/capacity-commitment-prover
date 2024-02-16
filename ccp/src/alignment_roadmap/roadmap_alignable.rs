@@ -19,7 +19,7 @@ use super::CCProverAlignmentRoadmap;
 pub trait RoadmapAlignable: Send {
     type Error: Send;
 
-    /// Apply the given roadmap (a set of action) to align states of Nox and CCP.
+    /// Apply the given roadmap (a set of actions) to align Nox and CCP states.
     fn align_with<'futures, 'prover: 'futures>(
         &'prover mut self,
         roadmap: CCProverAlignmentRoadmap,

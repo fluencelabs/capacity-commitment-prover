@@ -22,7 +22,7 @@ use super::roadmap_builder::RoadmapBuilder;
 use crate::cu::running_status::ToRunningStatus;
 use crate::epoch::Epoch;
 
-/// Intended to align state between Nox and CCP, contains a set of action,
+/// Intended to align state between Nox and CCP, contains a set of actions, which
 /// being applied to a CCP state, make it aligned with the Nox state.
 #[derive(Debug, Eq)]
 pub(crate) struct CCProverAlignmentRoadmap {
