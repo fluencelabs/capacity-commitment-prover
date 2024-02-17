@@ -56,7 +56,8 @@ impl ProvingThread {
         let (ptt_inlet, ptt_outlet) = mpsc::channel::<ProverToThreadMessage>(1);
         let (ttp_inlet, ttp_outlet) = mpsc::channel::<ThreadToProverMessage>(1);
 
-        let thread_closure = Self::create_thread_closure(ptt_outlet, ttp_inlet, proof_receiver_inlet, ptt_inlet.clone());
+        let thread_closure =
+            Self::create_thread_closure(ptt_outlet, ttp_inlet, proof_receiver_inlet);
         let handle = thread::spawn(thread_closure);
 
         Self {
@@ -70,8 +71,6 @@ impl ProvingThread {
         mut ptt_outlet: mpsc::Receiver<ProverToThreadMessage>,
         ttp_inlet: mpsc::Sender<ThreadToProverMessage>,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
-        // it holds a copy so that channel is not closed and it can handle all the messages
-        _ptt_inlet_copy: mpsc::Sender<ProverToThreadMessage>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
         Box::new(move || -> PTResult<()> {
             let ptt_message = ptt_outlet
