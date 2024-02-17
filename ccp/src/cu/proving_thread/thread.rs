@@ -84,7 +84,6 @@ impl ProvingThread {
 
                 thread_state = match thread_state {
                     ThreadState::Stop => {
-                        println!("STOPPED");
                         return Ok(());
                     }
                     ThreadState::WaitForMessage => {
@@ -262,7 +261,6 @@ impl ProvingThreadAPI for ProvingThread {
     }
 
     async fn stop(&self) -> Result<(), Self::Error> {
-        println!("STOPPING");
         let message = ProverToThreadMessage::Stop;
         self.inlet.send(message).await?;
 
