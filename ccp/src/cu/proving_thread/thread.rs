@@ -107,10 +107,10 @@ impl ProvingThread {
         })
     }
 
-    fn handle_prover_message<'vm>(
+    fn handle_prover_message(
         message: ProverToThreadMessage,
         ttp_inlet: &mpsc::Sender<ThreadToProverMessage>,
-    ) -> PTResult<ThreadState<'vm>> {
+    ) -> PTResult<ThreadState> {
         log::debug!("proving_thread: handle message from CUProver: {message:?}");
 
         match message {
@@ -251,7 +251,8 @@ impl ProvingThreadAPI for ProvingThread {
     ) -> Result<(), Self::Error> {
         let message = NewCCJob::new(dataset, flags, global_nonce, difficulty, cu_id);
         let message = ProverToThreadMessage::NewCCJob(message);
-        self.inlet.send(message).await.map_err(Into::into)
+        self.inlet.send(message).await?;
+        Ok(())
     }
 
     async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {

@@ -18,7 +18,7 @@ ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
 ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 
-randomx-rust-wrapper = "0.2"
+randomx-rust-wrapper = "0.3"
 
 async-trait = "0.1.77"
 tokio = { version = "1.36", features = ["sync", "rt", "macros", "fs"] }
