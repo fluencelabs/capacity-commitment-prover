@@ -37,3 +37,6 @@ serde_json = "1.0"
 sha3 = "0.10"
 thiserror = "1.0"
 tracing = "0.1.40"
+
+[patch.crates-io]
+randomx-rust-wrapper = { path = "../randomx-rust-wrapper" }

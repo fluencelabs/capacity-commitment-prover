@@ -109,10 +109,10 @@ impl ProvingThread {
         })
     }
 
-    fn handle_prover_message<'vm>(
+    fn handle_prover_message(
         message: ProverToThreadMessage,
         ttp_inlet: &mpsc::Sender<ThreadToProverMessage>,
-    ) -> PTResult<ThreadState<'vm>> {
+    ) -> PTResult<ThreadState> {
         log::debug!("proving_thread: handle message from CUProver: {message:?}");
 
         match message {
