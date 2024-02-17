@@ -14,25 +14,25 @@
  * limitations under the License.
  */
 
-use std::path::PathBuf;
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![deny(
+    dead_code,
+    nonstandard_style,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+    unused_unsafe,
+    unreachable_patterns
+)]
 
-use randomx_rust_wrapper::RandomXFlags;
+mod cpu_topology;
+mod errors;
+mod types;
 
-#[derive(Clone, Debug)]
-pub struct CCPConfig {
-    pub threads_per_physical_core: ThreadsPerCorePolicy,
-    pub randomx_flags: RandomXFlags,
-    pub dir_to_store_proofs: PathBuf,
-    pub dir_to_store_persistent_state: PathBuf,
-}
+pub type CTResult<T> = Result<T, CPUTopologyError>;
 
-#[derive(Clone, Debug)]
-pub enum ThreadsPerCorePolicy {
-    /// CCP will try to run the optimal amount of threads per core,
-    /// trying to utilize all benefits of HT and SMT.
-    Optimal,
-    /// CCP will try run the exact amount
-    Exact {
-        threads_per_physical_core: std::num::NonZeroUsize
-    }
-}
+pub use cpu_topology::CPUTopology;
+pub use errors::CPUTopologyError;
+pub use types::LogicalCoreId;
+pub use types::PhysicalCoreId;

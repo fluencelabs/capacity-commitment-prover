@@ -56,6 +56,9 @@ impl CUProver {
         proof_receiver_inlet: mpsc::Sender<RawProof>,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
+        let cpu_topology = cpu_topology::CPUTopology::new()?;
+        let logical_cores = cpu_topology.logical_cores_for_physical(core_id)?;
+
         let threads = (0..config.threads_per_physical_core.into())
             .map(|_| ProvingThread::new(core_id, proof_receiver_inlet.clone()))
             .collect::<Vec<_>>();

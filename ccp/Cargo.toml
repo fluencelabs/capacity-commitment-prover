@@ -11,10 +11,11 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-ccp-shared = { workspace = true }
 ccp-config = { workspace = true }
+ccp-shared = { workspace = true }
 ccp-utils = { workspace = true }
 
+cpu-topology = { workspace = true }
 randomx-rust-wrapper = { workspace = true }
 
 tokio = { workspace = true }
@@ -27,6 +28,7 @@ chrono = { workspace = true }
 rand = { workspace = true }
 log = {workspace = true}
 nonempty = {workspace = true}
+hwloc2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

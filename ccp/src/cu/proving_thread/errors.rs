@@ -18,6 +18,7 @@ use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
 use randomx_rust_wrapper::errors::RandomXError;
+use cpu_topology::CPUTopologyError;
 
 #[derive(ThisError, Debug)]
 pub enum ProvingThreadError {
@@ -26,6 +27,9 @@ pub enum ProvingThreadError {
 
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    CPUTopology(#[from] CPUTopologyError),
 }
 
 impl ProvingThreadError {
