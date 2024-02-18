@@ -54,10 +54,10 @@ fn get_test_local_nonce() -> LocalNonce {
 }
 
 fn get_test_cu_id() -> CUID {
-    [
+    CUID::new([
         2, 2, 4, 4, 1, 6, 0, 2, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
         3, 2,
-    ]
+    ])
 }
 
 #[tokio::test]

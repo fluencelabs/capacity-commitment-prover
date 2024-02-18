@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
+mod cuid;
+mod difficulty;
 mod global_nonce;
 mod local_nonce;
-mod difficulty;
 
 use std::collections::HashMap;
 
+pub use cuid::CUID;
+pub use difficulty::Difficulty;
 pub use global_nonce::GlobalNonce;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
-pub use difficulty::Difficulty;
 
 pub type PhysicalCoreId = usize;
-pub type CUID = [u8; 32];
 pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;

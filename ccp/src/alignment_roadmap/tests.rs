@@ -30,10 +30,10 @@ use crate::epoch::Epoch;
 use crate::status::CCStatus;
 
 fn test_cu_id(id: u8) -> CUID {
-    [
+    CUID::new([
         id, 2, 3, 4, 5, 6, 7, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0,
-    ]
+    ])
 }
 
 fn test_global_nonce(id: u8) -> GlobalNonce {
