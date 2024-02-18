@@ -20,7 +20,7 @@ ccp-shared = { path = "./crates/shared", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 
 cpu-topology = { path = "./crates/cpu-topology", version = "0.1.0" }
-randomx-rust-wrapper = "0.2"
+randomx-rust-wrapper = "0.3"
 
 async-trait = "0.1.77"
 tokio = { version = "1.36", features = ["sync", "rt", "macros", "fs"] }

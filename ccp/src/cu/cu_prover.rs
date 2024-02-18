@@ -27,8 +27,8 @@ use randomx::RandomXFlags;
 use randomx_rust_wrapper as randomx;
 
 use super::errors::CUProverError;
-use super::proving_thread::ProvingThread;
-use super::proving_thread::ProvingThreadAPI;
+use super::proving_thread::ProvingThreadAsync;
+use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread::RawProof;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
@@ -38,7 +38,7 @@ use super::CUResult;
 /// by running PoW based on RandomX.
 #[derive(Debug)]
 pub struct CUProver {
-    threads: nonempty::NonEmpty<ProvingThread>,
+    threads: nonempty::NonEmpty<ProvingThreadAsync>,
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
     dataset: Dataset,
@@ -107,12 +107,11 @@ impl CUProver {
         Ok(())
     }
 
-    #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn stop<'threads>(&'threads mut self) -> CUResult<()> {
+    pub(crate) async fn stop(self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.stop().boxed();
-        self.run_on_all_threads(closure).await?;
+        let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
+        run_on_all_threads(self.threads.into_iter(), closure).await?;
 
         Ok(())
     }
@@ -130,7 +129,7 @@ impl CUProver {
         use futures::FutureExt;
 
         let thread_init_length = dataset.items_count() / (self.threads.len() as u64);
-        let closure = |thread_id: usize, thread: &'threads mut ProvingThread| {
+        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
             thread
                 .initialize_dataset(
                     cache.clone(),
@@ -141,7 +140,9 @@ impl CUProver {
                 .boxed()
         };
 
-        self.run_on_all_threads(closure).await
+        run_on_all_threads(self.threads.iter_mut(), closure)
+            .await
+            .map_err(Into::into)
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -155,7 +156,7 @@ impl CUProver {
         use futures::FutureExt;
 
         let randomx_flags = self.randomx_flags;
-        let closure = |_: usize, thread: &'threads mut ProvingThread| {
+        let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| {
             thread
                 .run_cc_job(
                     dataset.clone(),
@@ -166,46 +167,9 @@ impl CUProver {
                 )
                 .boxed()
         };
-        self.run_on_all_threads(closure).await?;
+        run_on_all_threads(self.threads.iter_mut(), closure).await?;
 
         Ok(())
-    }
-
-    async fn run_on_all_threads<'thread, 'future: 'thread, T, E>(
-        &'thread mut self,
-        closure: impl Fn(
-            usize,
-            &'thread mut ProvingThread,
-        ) -> futures::future::BoxFuture<'future, Result<T, E>>,
-    ) -> CUResult<()>
-    where
-        T: Send + std::fmt::Debug,
-        Vec<E>: Into<CUProverError>,
-    {
-        use futures::stream::FuturesUnordered;
-        use futures::StreamExt;
-
-        let (_, thread_errors): (Vec<_>, Vec<_>) = self
-            .threads
-            .iter_mut()
-            .enumerate()
-            .map(|(thread_id, thread)| closure(thread_id, thread))
-            .collect::<FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .partition(Result::is_ok);
-
-        if thread_errors.is_empty() {
-            return Ok(());
-        }
-
-        let thread_errors = thread_errors
-            .into_iter()
-            .map(Result::unwrap_err)
-            .collect::<Vec<_>>();
-
-        Err(thread_errors.into())
     }
 }
 
@@ -213,4 +177,35 @@ impl ToCUStatus for CUProver {
     fn status(&self) -> CUStatus {
         self.status
     }
+}
+
+async fn run_on_all_threads<'future, Thread, T, E>(
+    threads: impl Iterator<Item = Thread>,
+    closure: impl Fn(usize, Thread) -> futures::future::BoxFuture<'future, Result<T, E>>,
+) -> Result<(), Vec<E>>
+where
+    T: Send + std::fmt::Debug,
+{
+    use futures::stream::FuturesUnordered;
+    use futures::StreamExt;
+
+    let (_, thread_errors): (Vec<_>, Vec<_>) = threads
+        .enumerate()
+        .map(|(thread_id, thread)| closure(thread_id, thread))
+        .collect::<FuturesUnordered<_>>()
+        .collect::<Vec<_>>()
+        .await
+        .into_iter()
+        .partition(Result::is_ok);
+
+    if thread_errors.is_empty() {
+        return Ok(());
+    }
+
+    let thread_errors = thread_errors
+        .into_iter()
+        .map(Result::unwrap_err)
+        .collect::<Vec<_>>();
+
+    Err(thread_errors)
 }

@@ -28,15 +28,22 @@ use crate::cu::RawProof;
 use crate::Difficulty;
 
 #[derive(Debug)]
-pub(crate) struct RandomXJob<'vm> {
-    pub(crate) vm: randomx::RandomXVM<'vm, DatasetHandle>,
+pub(crate) enum ThreadState {
+    CCJob { parameters: RandomXJob },
+    Stop,
+    WaitForMessage,
+}
+
+#[derive(Debug)]
+pub(crate) struct RandomXJob {
+    pub(crate) vm: randomx::RandomXVM<DatasetHandle>,
     pub(crate) global_nonce: GlobalNonce,
     pub(crate) local_nonce: LocalNonce,
     pub(crate) cu_id: CUID,
     pub(crate) difficulty: Difficulty,
 }
 
-impl<'params> RandomXJob<'params> {
+impl RandomXJob {
     pub(crate) fn from_cc_job(cc_job: NewCCJob) -> PTResult<Self> {
         let NewCCJob {
             dataset,
@@ -46,7 +53,7 @@ impl<'params> RandomXJob<'params> {
             cu_id,
         } = cc_job;
 
-        let vm = randomx::RandomXVM::fast(&dataset, flags)?;
+        let vm = randomx::RandomXVM::fast(dataset, flags)?;
         let local_nonce = LocalNonce::random();
 
         let params = Self {
@@ -86,11 +93,4 @@ impl<'params> RandomXJob<'params> {
 
         proof
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum ThreadState<'vm> {
-    CCJob { parameters: RandomXJob<'vm> },
-    Stop,
-    WaitForMessage,
 }

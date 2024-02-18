@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-mod api;
+mod async_;
 mod errors;
+mod facade;
 mod local_nonce;
 mod messages;
 mod state;
+mod sync;
 #[cfg(test)]
 mod tests;
-mod thread;
 
-pub(crate) use api::ProvingThreadAPI;
+pub(crate) use async_::ProvingThreadAsync;
 pub(crate) use errors::ProvingThreadError;
+pub(crate) use facade::ProvingThreadFacade;
 pub(crate) use local_nonce::LocalNonce;
 pub(crate) use messages::RawProof;
-pub(crate) use thread::ProvingThread;
 
 pub(crate) type PTResult<T> = Result<T, errors::ProvingThreadError>;

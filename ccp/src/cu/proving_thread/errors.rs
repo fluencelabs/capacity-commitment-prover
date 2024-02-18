@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::any::Any;
+
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
@@ -35,12 +37,19 @@ pub enum ProvingThreadError {
     #[error("thread pinning to logical core {core_id} failed")]
     ThreadPinFailed {
         core_id: LogicalCoreId
-    }
+    },
+
+    #[error("error happened while waiting the sync part to complete {0:?}")]
+    JoinThreadError(Box<dyn Any + Send>),
 }
 
 impl ProvingThreadError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
+    }
+
+    pub fn join_error(error: Box<dyn Any + Send>) -> Self {
+        Self::JoinThreadError(error)
     }
 }
 
