@@ -142,6 +142,7 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::PinThread(params) => {
+                /// TODO: propagate error
                 cpu_topology::pin_current_thread_to(params.core_id);
                 Ok(ThreadState::WaitForMessage)
             }
