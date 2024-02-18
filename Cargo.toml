@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "ccp",
     "crates/config",
+    "crates/cpu-topology",
     "crates/rpc-client",
     "crates/rpc-server",
     "crates/shared",
@@ -13,17 +14,21 @@ members = [
 [workspace.dependencies]
 capacity-commitment-prover = { path = "./ccp", version = "0.1.0"}
 ccp-config = { path = "./crates/config", version = "0.1.0" }
-ccp-shared = { path = "./crates/shared", version = "0.1.0" }
-ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
 ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
+ccp-shared = { path = "./crates/shared", version = "0.1.0" }
+ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 
+cpu-topology = { path = "./crates/cpu-topology", version = "0.1.0" }
 randomx-rust-wrapper = "0.3"
 
 async-trait = "0.1.77"
 tokio = { version = "1.36", features = ["sync", "rt", "macros", "fs"] }
 tokio-stream = {version = "0.1", features = ["fs"]}
 futures = "0.3"
+
+hwlocality = "1.0.0-alpha.1"
+core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
 
 anyhow = "1.0"
 byteorder = "1.5"
@@ -32,8 +37,10 @@ jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "serv
 rand = "0.8"
 log = "0.4"
 nonempty = "0.9"
+newtype_derive = "0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha3 = "0.10"
 thiserror = "1.0"
 tracing = "0.1.40"
+

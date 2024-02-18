@@ -20,8 +20,19 @@ use randomx_rust_wrapper::RandomXFlags;
 
 #[derive(Clone, Debug)]
 pub struct CCPConfig {
-    pub threads_per_physical_core: std::num::NonZeroUsize,
+    pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
     pub randomx_flags: RandomXFlags,
     pub dir_to_store_proofs: PathBuf,
     pub dir_to_store_persistent_state: PathBuf,
+}
+
+#[derive(Clone, Debug)]
+pub enum ThreadsPerCoreAllocationPolicy {
+    /// CCP will try to run the optimal amount of threads per core,
+    /// trying to utilize all benefits of HT and SMT.
+    Optimal,
+    /// CCP will try run the exact amount
+    Exact {
+        threads_per_physical_core: std::num::NonZeroUsize,
+    },
 }

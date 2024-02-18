@@ -14,16 +14,11 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
+use crate::LogicalCoreId;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
-
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+/// Lightweight function which doesn't require topology to pin current thread to the specified core.
+/// Returns true, if pinning was successful.
+pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
+    let core_id = core_affinity::CoreId { id: core_id.into() };
+    core_affinity::set_for_current(core_id)
+}

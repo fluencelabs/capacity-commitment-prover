@@ -10,4 +10,5 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+cpu-topology = { workspace = true }
 serde = { workspace = true }

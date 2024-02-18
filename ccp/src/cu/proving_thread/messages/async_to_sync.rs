@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use cpu_topology::LogicalCoreId;
 use randomx_rust_wrapper::cache::CacheHandle;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
@@ -49,6 +50,11 @@ pub(crate) struct NewCCJob {
     pub(crate) global_nonce: GlobalNonce,
     pub(crate) difficulty: Difficulty,
     pub(crate) cu_id: CUID,
+}
+
+#[derive(Debug)]
+pub(crate) struct PinThread {
+    pub(crate) core_id: LogicalCoreId,
 }
 
 impl CreateCache {

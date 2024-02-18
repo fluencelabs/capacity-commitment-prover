@@ -131,8 +131,9 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         self.inlet.send(message).await.map_err(Into::into)
     }
 
-    async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {
-        todo!()
+    async fn pin(&self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+        let message = AsyncToSyncMessage::PinThread(PinThread { core_id });
+        self.inlet.send(message).await.map_err(Into::into)
     }
 
     async fn stop(self) -> Result<(), Self::Error> {

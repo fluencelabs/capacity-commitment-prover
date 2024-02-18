@@ -16,17 +16,19 @@
 
 use tokio::sync::mpsc;
 
+use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
+use cpu_topology::CPUTopology;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
 use randomx::Dataset;
 use randomx::RandomXFlags;
 use randomx_rust_wrapper as randomx;
 
-use super::errors::CUProverError;
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread::RawProof;
+use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
@@ -38,6 +40,7 @@ pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
+    topology: CPUTopology,
     dataset: Dataset,
     status: CUStatus,
 }
@@ -47,7 +50,7 @@ pub struct CUProverConfig {
     pub randomx_flags: randomx::RandomXFlags,
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
-    pub threads_per_physical_core: std::num::NonZeroUsize,
+    pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
 }
 
 impl CUProver {
@@ -56,10 +59,10 @@ impl CUProver {
         proof_receiver_inlet: mpsc::Sender<RawProof>,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
-        let threads = (0..config.threads_per_physical_core.into())
-            .map(|_| ProvingThreadAsync::new(core_id, proof_receiver_inlet.clone()))
-            .collect::<Vec<_>>();
-        let mut threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+        let topology = CPUTopology::new()?;
+        let mut threads =
+            ThreadAllocator::new(config.thread_allocation_policy, core_id, &topology)?
+                .allocate(proof_receiver_inlet)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -68,6 +71,7 @@ impl CUProver {
             threads,
             pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
+            topology,
             dataset,
             status: CUStatus::Idle,
         };
@@ -97,8 +101,23 @@ impl CUProver {
             .await
     }
 
-    pub(crate) async fn repin(&mut self, core_id: PhysicalCoreId) -> CUResult<()> {
-        unimplemented!()
+    #[allow(clippy::needless_lifetimes)]
+    pub(crate) async fn pin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
+        use super::proving_thread_utils::RoundRobinDistributor;
+        use super::proving_thread_utils::ThreadDistributionPolicy;
+
+        use futures::FutureExt;
+
+        let logical_cores = self.topology.logical_cores_for_physical(core_id)?;
+        let distributor = RoundRobinDistributor {};
+
+        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
+            let core_id = distributor.distribute(thread_id, &logical_cores);
+            thread.pin(core_id).boxed()
+        };
+        run_on_all_threads(self.threads.iter_mut(), closure).await?;
+
+        Ok(())
     }
 
     pub(crate) async fn stop(self) -> CUResult<()> {

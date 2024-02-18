@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
+use cpu_topology::LogicalCoreId;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
+use super::threads_distribution_policy::ThreadDistributionPolicy;
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct RoundRobinDistributor;
+
+impl ThreadDistributionPolicy for RoundRobinDistributor {
+    fn distribute(
+        &self,
+        thread_id: usize,
+        logical_cores: &nonempty::NonEmpty<LogicalCoreId>,
+    ) -> LogicalCoreId {
+        let logical_cores_count = logical_cores.len();
+        logical_cores[thread_id % logical_cores_count]
+    }
+}

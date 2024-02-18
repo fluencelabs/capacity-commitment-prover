@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
+use cpu_topology::LogicalCoreId;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
-
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub(crate) trait ThreadDistributionPolicy {
+    /// Returns a particular logical core id where the supplied proving thread id
+    /// will be allocated.
+    fn distribute(
+        &self,
+        thread_id: usize,
+        logical_cores: &nonempty::NonEmpty<LogicalCoreId>,
+    ) -> LogicalCoreId;
+}
