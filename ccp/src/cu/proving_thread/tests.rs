@@ -16,51 +16,17 @@
 
 use tokio::sync::mpsc;
 
-use crate::cu::RawProof;
 use ccp_shared::types::*;
+use ccp_test_utils::randomx::run_light_randomx;
+use ccp_test_utils::test_values as test;
 use cpu_topology::LogicalCoreId;
 use randomx_rust_wrapper::dataset::DatasetHandle;
-use randomx_rust_wrapper::Cache;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
-use randomx_rust_wrapper::ResultHash;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;
-
-fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
-    let cache = Cache::new(&global_nonce, flags).unwrap();
-    let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-    vm.hash(&local_nonce)
-}
-
-fn get_test_global_nonce() -> GlobalNonce {
-    [
-        1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ]
-}
-
-fn get_test_local_nonce() -> LocalNonce {
-    [
-        1, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ]
-}
-
-fn get_test_cu_id() -> CUID {
-    [
-        2, 2, 4, 4, 1, 6, 0, 2, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ]
-}
-
-fn get_test_difficulty(difficulty: u8) -> Difficulty {
-    [
-        0, difficulty, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0,
-    ]
-}
+use crate::cu::RawProof;
 
 #[allow(dead_code)]
 async fn create_thread_init_dataset(
@@ -93,9 +59,9 @@ async fn create_thread_init_dataset(
 
 #[tokio::test]
 async fn cache_creation_works() {
-    let global_nonce = get_test_global_nonce();
-    let local_nonce = get_test_local_nonce();
-    let cu_id = get_test_cu_id();
+    let global_nonce = test::generate_global_nonce(1);
+    let local_nonce = test::generate_local_nonce(1);
+    let cu_id = test::generate_cu_id(1);
 
     let flags = RandomXFlags::recommended();
 
@@ -118,9 +84,9 @@ async fn cache_creation_works() {
 
 #[tokio::test]
 async fn dataset_creation_works() {
-    let global_nonce = get_test_global_nonce();
-    let local_nonce = get_test_local_nonce();
-    let cu_id = get_test_cu_id();
+    let global_nonce = test::generate_global_nonce(2);
+    let local_nonce = test::generate_local_nonce(2);
+    let cu_id = test::generate_cu_id(2);
 
     let flags = RandomXFlags::recommended_full_mem();
 
@@ -155,9 +121,9 @@ async fn dataset_creation_works() {
 
 #[tokio::test]
 async fn dataset_creation_works_with_two_threads() {
-    let global_nonce = get_test_global_nonce();
-    let local_nonce = get_test_local_nonce();
-    let cu_id = get_test_cu_id();
+    let global_nonce = test::generate_global_nonce(3);
+    let local_nonce = test::generate_local_nonce(3);
+    let cu_id = test::generate_cu_id(3);
 
     let flags = RandomXFlags::recommended_full_mem();
 
@@ -206,12 +172,12 @@ async fn dataset_creation_works_with_two_threads() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn cc_job_stopable() {
-    let global_nonce = get_test_global_nonce();
-    let cu_id = get_test_cu_id();
+    let global_nonce = test::generate_global_nonce(4);
+    let cu_id = test::generate_cu_id(4);
     let (mut thread, actual_dataset, mut outlet) =
         create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
 
-    let test_difficulty = get_test_difficulty(0xFF);
+    let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
     thread
         .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
@@ -235,12 +201,12 @@ async fn cc_job_stopable() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn prover_works() {
-    let global_nonce = get_test_global_nonce();
-    let cu_id = get_test_cu_id();
+    let global_nonce = test::generate_global_nonce(5);
+    let cu_id = test::generate_cu_id(5);
     let (mut thread, actual_dataset, mut outlet) =
         create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
 
-    let test_difficulty = get_test_difficulty(0xFF);
+    let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
     thread
         .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)

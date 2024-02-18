@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
-#[cfg(test)]
-mod tests;
+use randomx_rust_wrapper::result_hash::ResultHash;
+use randomx_rust_wrapper::Cache;
+use randomx_rust_wrapper::RandomXFlags;
+use randomx_rust_wrapper::RandomXVM;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
-
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub fn run_light_randomx(
+    global_nonce: &[u8],
+    local_nonce: &[u8],
+    flags: RandomXFlags,
+) -> ResultHash {
+    let cache = Cache::new(&global_nonce, flags).unwrap();
+    let vm = RandomXVM::light(cache.handle(), flags).unwrap();
+    vm.hash(&local_nonce)
+}
