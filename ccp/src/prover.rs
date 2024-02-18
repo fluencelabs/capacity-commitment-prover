@@ -76,7 +76,7 @@ impl NoxCCPApi for CCProver {
 
         let results = self
             .active_provers
-            .iter_mut()
+            .drain()
             .map(|(_, prover)| prover.stop())
             .collect::<FuturesUnordered<_>>()
             .collect::<Vec<_>>()
@@ -265,7 +265,7 @@ impl CCProver {
         &'prover mut self,
         state: actions_state::RemoveCUProverState,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
-        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        let prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
             Ok(CUProverPostAction::Nothing)

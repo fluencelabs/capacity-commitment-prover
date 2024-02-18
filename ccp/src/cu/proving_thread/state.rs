@@ -28,6 +28,13 @@ use crate::cu::RawProof;
 use crate::Difficulty;
 
 #[derive(Debug)]
+pub(crate) enum ThreadState<'vm> {
+    CCJob { parameters: RandomXJob<'vm> },
+    Stop,
+    WaitForMessage,
+}
+
+#[derive(Debug)]
 pub(crate) struct RandomXJob<'vm> {
     pub(crate) vm: randomx::RandomXVM<'vm, DatasetHandle>,
     pub(crate) global_nonce: GlobalNonce,
@@ -86,11 +93,4 @@ impl<'params> RandomXJob<'params> {
 
         proof
     }
-}
-
-#[derive(Debug)]
-pub(crate) enum ThreadState<'vm> {
-    CCJob { parameters: RandomXJob<'vm> },
-    Stop,
-    WaitForMessage,
 }
