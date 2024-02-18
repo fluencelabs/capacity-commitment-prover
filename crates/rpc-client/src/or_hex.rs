@@ -1,5 +1,6 @@
 use std::error::Error;
 
+use hex::FromHex;
 use serde::{Deserialize, Serialize};
 
 /// This type allows to use both hex strings (e.g. from JS) and byte arrays in RPC arguments.
@@ -28,21 +29,13 @@ impl<const N: usize> From<[u8; N]> for OrHex<[u8; N]> {
     }
 }
 
-impl<const N: usize> TryFrom<OrHex<[u8; N]>> for [u8; N] {
-    type Error = Box<dyn Error>;
-
-    fn try_from(value: OrHex<[u8; N]>) -> Result<Self, Self::Error> {
-        match value {
-            OrHex::String(s) => parse_hex_string(&s),
+impl<T: FromHex> OrHex<T> {
+    pub fn unhex(self) -> Result<T, <T as FromHex>::Error> {
+        match self {
+            OrHex::String(s) => FromHex::from_hex(s),
             OrHex::Data(data) => Ok(data),
         }
     }
-}
-
-fn parse_hex_string<const N: usize>(s: &str) -> Result<[u8; N], Box<dyn Error>> {
-    let bytes = hex::decode(s.trim_start_matches("0x"))?;
-    let arr: [u8; N] = bytes.try_into().map_err(|_| "invalid hex string length")?;
-    Ok(arr)
 }
 
 #[cfg(test)]

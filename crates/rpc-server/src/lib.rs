@@ -63,23 +63,21 @@ where
         difficulty: OrHex<Difficulty>,
         cu_allocation: HashMap<PhysicalCoreId, OrHex<CUID>>,
     ) -> Result<(), ErrorObjectOwned> {
-        let global_nonce: GlobalNonce =
-            global_nonce
-                .clone()
-                .try_into()
-                .map_err(|e: Box<dyn Error>| {
-                    ErrorObjectOwned::owned(2, e.to_string(), Some(global_nonce))
-                })?;
-        let difficulty = difficulty.clone().try_into().map_err(|e: Box<dyn Error>| {
-            ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty))
-        })?;
+        let global_nonce: GlobalNonce = global_nonce
+            .clone()
+            .unhex()
+            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(global_nonce)))?;
+        let difficulty = difficulty
+            .clone()
+            .unhex()
+            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty)))?;
         let mut cu_allocation_real = HashMap::<_, CUID>::new();
         for (id, cuid) in cu_allocation {
             cu_allocation_real.insert(
                 id,
-                cuid.clone().try_into().map_err(|e: Box<dyn Error>| {
-                    ErrorObjectOwned::owned(2, e.to_string(), Some(cuid))
-                })?,
+                cuid.clone()
+                    .unhex()
+                    .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(cuid)))?,
             );
         }
 
