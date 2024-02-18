@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::Difficulty;
 use tokio::sync::mpsc;
 
 use ccp_shared::types::{GlobalNonce, LocalNonce, CUID};
@@ -39,17 +40,17 @@ fn run_fast_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags
 }
 
 fn get_test_global_nonce() -> GlobalNonce {
-    [
+    GlobalNonce::new([
         1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
         3, 2,
-    ]
+    ])
 }
 
 fn get_test_local_nonce() -> LocalNonce {
-    [
+    LocalNonce::new([
         1, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
         3, 2,
-    ]
+    ])
 }
 
 fn get_test_cu_id() -> CUID {
@@ -76,10 +77,11 @@ async fn cache_creation_works() {
     thread.stop().await.unwrap();
 
     let actual_vm = RandomXVM::light(actual_cache.handle(), flags).unwrap();
-    let actual_result_hash = actual_vm.hash(&local_nonce);
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -112,11 +114,12 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
-    let actual_result_hash = actual_vm.hash(&local_nonce);
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -144,10 +147,10 @@ async fn prover_works() {
         )
         .await
         .unwrap();
-    let test_difficulty = [
+    let test_difficulty = Difficulty::new([
         0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
-    ];
+    ]);
     thread
         .run_cc_job(
             actual_dataset.handle(),
@@ -167,8 +170,11 @@ async fn prover_works() {
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash =
-        run_light_randomx(global_nonce_cu.as_slice(), &proof.local_nonce, flags);
+    let expected_result_hash = run_light_randomx(
+        global_nonce_cu.as_slice(),
+        proof.local_nonce.as_ref(),
+        flags,
+    );
 
     println!("expected_result_hash: {expected_result_hash:?}");
     assert!(expected_result_hash.into_slice() < test_difficulty);
@@ -198,10 +204,10 @@ async fn cc_job_stopable() {
         .await
         .unwrap();
 
-    let test_difficulty = [
+    let test_difficulty = Difficulty::new([
         0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0,
-    ];
+    ]);
     thread
         .run_cc_job(
             actual_dataset.handle(),
