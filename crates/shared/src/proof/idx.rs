@@ -22,9 +22,9 @@ use serde::Serialize;
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 #[repr(transparent)]
 #[serde(transparent)]
-pub struct Idx(u64);
+pub struct ProofIdx(u64);
 
-impl Idx {
+impl ProofIdx {
     pub fn zero() -> Self {
         Self(0)
     }
@@ -34,7 +34,7 @@ impl Idx {
     }
 }
 
-impl Display for Idx {
+impl Display for ProofIdx {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
