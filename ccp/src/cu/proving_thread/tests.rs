@@ -32,6 +32,7 @@ fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlag
     vm.hash(&local_nonce)
 }
 
+#[allow(dead_code)]
 fn run_fast_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
     let dataset = Dataset::new(&global_nonce, flags).unwrap();
     let vm = RandomXVM::fast(dataset.handle(), flags).unwrap();
@@ -67,8 +68,8 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let (inlet, _outlet) = mpsc::channel(1);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
         .await
@@ -92,8 +93,8 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let (inlet, _outlet) = mpsc::channel(1);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -129,7 +130,7 @@ async fn prover_works() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -182,7 +183,7 @@ async fn cc_job_stopable() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
