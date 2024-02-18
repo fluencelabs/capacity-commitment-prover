@@ -35,9 +35,7 @@ pub enum ProvingThreadError {
     CPUTopology(#[from] CPUTopologyError),
 
     #[error("thread pinning to logical core {core_id} failed")]
-    ThreadPinFailed {
-        core_id: LogicalCoreId
-    },
+    ThreadPinFailed { core_id: LogicalCoreId },
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadError(Box<dyn Any + Send>),

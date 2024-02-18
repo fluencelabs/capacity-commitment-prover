@@ -16,8 +16,8 @@
 
 use tokio::sync::mpsc;
 
-use crate::cu::thread_allocator::ThreadAllocator;
-use crate::cu::CUProverError::ThreadAllocation;
+use crate::cu::proving_thread::ProvingThreadError::CPUTopology;
+use crate::cu::proving_thread_allocation::RoundRobinDistributor;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
 use randomx::cache::CacheHandle;
@@ -30,6 +30,7 @@ use super::errors::CUProverError;
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread::RawProof;
+use super::proving_thread_allocation::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
@@ -60,7 +61,7 @@ impl CUProver {
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let mut threads = ThreadAllocator::new(config.thread_allocation_policy, core_id)?
-            .allocate_threads(proof_receiver_inlet)?;
+            .allocate(proof_receiver_inlet)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -98,11 +99,22 @@ impl CUProver {
             .await
     }
 
-    pub(crate) async fn repin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
+    pub(crate) async fn pin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
+        use super::proving_thread_allocation::RoundRobinDistributor;
+        use super::proving_thread_allocation::ThreadDistributionPolicy;
+
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.pin().boxed();
-        self.run_on_all_threads(closure).await?;
+        let logical_cores = cpu_topology::CPUTopology::new()
+            .and_then(|top| top.logical_cores_for_physical(core_id))
+            .map_err(|e| CUProverError::thread_pinning_error(e))?;
+        let distributor = RoundRobinDistributor {};
+
+        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
+            let core_id = distributor.distribute(thread_id, &logical_cores);
+            thread.pin(core_id).boxed()
+        };
+        run_on_all_threads(self.threads.iter_mut(), closure).await?;
 
         Ok(())
     }

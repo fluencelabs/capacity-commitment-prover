@@ -11,5 +11,6 @@ publish = true
 core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
 hwloc2 = "2.2.0"
 newtype_derive = "0.1"
+nonempty = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 thiserror = "1.0"

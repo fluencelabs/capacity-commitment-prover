@@ -141,6 +141,11 @@ impl ProvingThreadSync {
                 Ok(ThreadState::CCJob { parameters })
             }
 
+            AsyncToSyncMessage::PinThread(params) => {
+                cpu_topology::pin_current_thread_to(params.core_id);
+                Ok(ThreadState::WaitForMessage)
+            }
+
             AsyncToSyncMessage::Stop => Ok(ThreadState::Stop),
         }
     }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use nonempty::NonEmpty;
+use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
@@ -22,61 +22,58 @@ use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use cpu_topology::CPUTopology;
 
-use super::proving_thread::ProvingThread;
-use super::CUResult;
-use super::ThreadAllocationError;
+use super::RoundRobinDistributor;
+use crate::cu::proving_thread::ProvingThreadAsync;
 use crate::cu::CUProverError;
+use crate::cu::CUResult;
 use crate::cu::RawProof;
+use crate::cu::ThreadAllocationError;
+
+type ThreadAllocationStrategy = nonempty::NonEmpty<LogicalCoreId>;
 
 pub(crate) struct ThreadAllocator {
-    topology: CPUTopology,
     allocation_strategy: ThreadAllocationStrategy,
 }
-
-struct ThreadAllocationStrategy(nonempty::NonEmpty<LogicalCoreId>);
 
 impl ThreadAllocator {
     pub(crate) fn new(
         thread_policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
     ) -> CUResult<ThreadAllocator> {
-        let topology = CPUTopology::new().map_err(ThreadAllocationError::TopologyError)?;
-        let allocation_strategy = ThreadAllocationStrategy::new(&topology, thread_policy, core_id)?;
+        let allocation_strategy = Self::create_allocate_strategy(thread_policy, core_id)?;
 
         Ok(Self {
-            topology,
             allocation_strategy,
         })
     }
 
-    pub(crate) fn allocate_threads(
+    pub(crate) fn allocate(
         &self,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> CUResult<nonempty::NonEmpty<ProvingThread>> {
+    ) -> CUResult<nonempty::NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
-            .0
             .iter()
-            .map(|logical_core| ProvingThread::new(*logical_core, proof_receiver_inlet.clone()))
+            .map(|logical_core| {
+                ProvingThreadAsync::new(*logical_core, proof_receiver_inlet.clone())
+            })
             .collect::<Vec<_>>();
         let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
 
         Ok(threads)
     }
-}
 
-impl ThreadAllocationStrategy {
-    pub(crate) fn new(
-        topology: &CPUTopology,
+    pub(crate) fn create_allocate_strategy(
         thread_policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
-    ) -> CUResult<Self> {
+    ) -> CUResult<ThreadAllocationStrategy> {
+        use super::ThreadDistributionPolicy;
+
+        let topology = CPUTopology::new().map_err(ThreadAllocationError::TopologyError)?;
+
         let logical_cores = topology
             .logical_cores_for_physical(core_id)
             .map_err(ThreadAllocationError::TopologyError)?;
-        if logical_cores.is_empty() {
-            return Err(CUProverError::logical_cpus_not_found(core_id));
-        }
 
         let threads_count = match thread_policy {
             ThreadsPerCoreAllocationPolicy::Exact {
@@ -87,11 +84,10 @@ impl ThreadAllocationStrategy {
             },
         };
 
+        let distributor = RoundRobinDistributor {};
         let strategy = (0..threads_count.get())
-            .map(|thread_id| logical_cores[thread_id % logical_cores.len()])
+            .map(|thread_id| distributor.distribute(thread_id, &logical_cores))
             .collect::<Vec<_>>();
-        let strategy = Self(NonEmpty::from_vec(strategy).unwrap());
-
-        Ok(strategy)
+        Ok(NonEmpty::from_vec(strategy).unwrap())
     }
 }

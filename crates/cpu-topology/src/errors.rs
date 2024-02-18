@@ -26,23 +26,30 @@ pub enum CPUTopologyError {
     #[error("{0:?}")]
     TypeDepthError(hwloc2::TypeDepthError),
 
-    #[error("physical core with {physical_core_id} not found")]
-    PhysicalCoreNotFound { physical_core_id: PhysicalCoreId },
+    #[error("physical core with {core_id} id not found")]
+    PhysicalCoreNotFound { core_id: PhysicalCoreId },
 
-    #[error("cpuset for a physical core with {physical_core_id} not found")]
-    CPUSetNotFound { physical_core_id: PhysicalCoreId },
+    #[error("logical cores for physical core with {core_id} id not found")]
+    LogicalCoresNotFound { core_id: PhysicalCoreId },
+
+    #[error("cpuset for a physical core with {core_id} not found")]
+    CPUSetNotFound { core_id: PhysicalCoreId },
 
     #[error("{0:?}")]
     CPUBindError(hwloc2::CpuBindError),
 }
 
 impl CPUTopologyError {
-    pub fn physical_core_not_found(physical_core_id: PhysicalCoreId) -> Self {
-        Self::PhysicalCoreNotFound { physical_core_id }
+    pub fn physical_core_not_found(core_id: PhysicalCoreId) -> Self {
+        Self::PhysicalCoreNotFound { core_id }
     }
 
-    pub fn cpuset_not_found(physical_core_id: PhysicalCoreId) -> Self {
-        Self::CPUSetNotFound { physical_core_id }
+    pub fn logical_cores_not_found(core_id: PhysicalCoreId) -> Self {
+        Self::PhysicalCoreNotFound { core_id }
+    }
+
+    pub fn cpuset_not_found(core_id: PhysicalCoreId) -> Self {
+        Self::CPUSetNotFound { core_id }
     }
 }
 

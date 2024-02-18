@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-use crate::LogicalCoreId;
+use cpu_topology::LogicalCoreId;
 
-/// Lightweight function which doesn't require topology to pin current thread to the specified core.
-/// Returns true, if pinning was successful.
-pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
-    let core_id = core_affinity::CoreId { id: core_id.into() };
-    core_affinity::set_for_current(core_id)
+pub(crate) trait ThreadDistributionPolicy {
+    /// Returns a particular logical core id where the supplied proving thread id
+    /// will be allocated.
+    fn distribute(
+        &self,
+        thread_id: usize,
+        logical_cores: &nonempty::NonEmpty<LogicalCoreId>,
+    ) -> LogicalCoreId;
 }

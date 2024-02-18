@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use nonempty::NonEmpty;
+
 use crate::errors::CPUTopologyError;
 use crate::CTResult;
 use crate::LogicalCoreId;
@@ -37,7 +39,7 @@ impl CPUTopology {
     pub fn logical_cores_for_physical(
         &self,
         core_id: PhysicalCoreId,
-    ) -> CTResult<Vec<LogicalCoreId>> {
+    ) -> CTResult<NonEmpty<LogicalCoreId>> {
         let physical_cores = self.topology.objects_with_type(&hwloc2::ObjectType::Core)?;
         let physical_core = physical_cores
             .get(<PhysicalCoreId as Into<usize>>::into(core_id))
@@ -52,7 +54,8 @@ impl CPUTopology {
             .map(Into::into)
             .collect::<Vec<_>>();
 
-        Ok(logical_core_ids)
+        NonEmpty::from_vec(logical_core_ids)
+            .ok_or_else(|| CPUTopologyError::logical_cores_not_found(core_id))
     }
 
     pub fn pin_current_thread_to_cpuset(

@@ -296,7 +296,7 @@ impl CCProver {
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover.repin(state.new_core_id).await?;
+            prover.pin(state.new_core_id).await?;
             prover
                 .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
                 .await?;

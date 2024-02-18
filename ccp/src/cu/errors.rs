@@ -17,8 +17,8 @@
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use crate::cu::CUProverError::ThreadAllocation;
-use cpu_topology::{CPUTopologyError, PhysicalCoreId};
+use cpu_topology::CPUTopologyError;
+use cpu_topology::PhysicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
 
 use super::proving_thread::ProvingThreadError;
@@ -42,6 +42,9 @@ pub enum CUProverError {
 
     #[error(transparent)]
     ThreadAllocation(#[from] ThreadAllocationError),
+
+    #[error(transparent)]
+    ThreadPinningFailed(CPUTopologyError),
 }
 
 #[derive(ThisError, Debug)]
@@ -57,6 +60,10 @@ impl CUProverError {
     pub fn logical_cpus_not_found(core_id: PhysicalCoreId) -> Self {
         let thread_allocation_error = ThreadAllocationError::LogicalCPUNotFound { core_id };
         Self::ThreadAllocation(thread_allocation_error)
+    }
+
+    pub fn thread_pinning_error(topology_error: CPUTopologyError) -> Self {
+        Self::ThreadPinningFailed(topology_error)
     }
 }
 

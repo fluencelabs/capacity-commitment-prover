@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-use crate::LogicalCoreId;
+mod allocator;
+mod round_robin_distributor;
+mod threads_distribution_policy;
 
-/// Lightweight function which doesn't require topology to pin current thread to the specified core.
-/// Returns true, if pinning was successful.
-pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
-    let core_id = core_affinity::CoreId { id: core_id.into() };
-    core_affinity::set_for_current(core_id)
-}
+pub(crate) use allocator::ThreadAllocator;
+pub(crate) use round_robin_distributor::RoundRobinDistributor;
+pub(crate) use threads_distribution_policy::ThreadDistributionPolicy;

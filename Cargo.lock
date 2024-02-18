@@ -434,6 +434,7 @@ dependencies = [
  "core_affinity",
  "hwloc2",
  "newtype_derive",
+ "nonempty",
  "serde",
  "thiserror",
 ]
