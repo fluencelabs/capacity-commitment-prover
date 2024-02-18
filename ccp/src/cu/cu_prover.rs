@@ -134,7 +134,9 @@ impl CUProver {
                 .boxed()
         };
 
-        run_on_all_threads(self.threads.iter_mut(), closure).await
+        run_on_all_threads(self.threads.iter_mut(), closure)
+            .await
+            .map_err(Into::into)
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -174,10 +176,9 @@ impl ToCUStatus for CUProver {
 async fn run_on_all_threads<'future, Thread, T, E>(
     threads: impl Iterator<Item = Thread>,
     closure: impl Fn(usize, Thread) -> futures::future::BoxFuture<'future, Result<T, E>>,
-) -> CUResult<()>
+) -> Result<(), Vec<E>>
 where
     T: Send + std::fmt::Debug,
-    Vec<E>: Into<CUProverError>,
 {
     use futures::stream::FuturesUnordered;
     use futures::StreamExt;
@@ -200,5 +201,5 @@ where
         .map(Result::unwrap_err)
         .collect::<Vec<_>>();
 
-    Err(thread_errors.into())
+    Err(thread_errors)
 }
