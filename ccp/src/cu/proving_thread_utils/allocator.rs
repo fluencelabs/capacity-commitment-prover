@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use nonempty::{nonempty, NonEmpty};
+use nonempty::NonEmpty;
 use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
@@ -24,12 +24,11 @@ use cpu_topology::CPUTopology;
 
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::ProvingThreadAsync;
-use crate::cu::CUProverError;
 use crate::cu::CUResult;
 use crate::cu::RawProof;
 use crate::cu::ThreadAllocationError;
 
-type ThreadAllocationStrategy = nonempty::NonEmpty<LogicalCoreId>;
+type ThreadAllocationStrategy = NonEmpty<LogicalCoreId>;
 
 pub(crate) struct ThreadAllocator {
     allocation_strategy: ThreadAllocationStrategy,

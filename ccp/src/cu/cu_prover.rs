@@ -16,8 +16,6 @@
 
 use tokio::sync::mpsc;
 
-use crate::cu::proving_thread::ProvingThreadError::CPUTopology;
-use crate::cu::proving_thread_allocation::RoundRobinDistributor;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
 use randomx::cache::CacheHandle;
@@ -30,7 +28,7 @@ use super::errors::CUProverError;
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread::RawProof;
-use super::proving_thread_allocation::ThreadAllocator;
+use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
@@ -99,15 +97,16 @@ impl CUProver {
             .await
     }
 
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) async fn pin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
-        use super::proving_thread_allocation::RoundRobinDistributor;
-        use super::proving_thread_allocation::ThreadDistributionPolicy;
+        use super::proving_thread_utils::RoundRobinDistributor;
+        use super::proving_thread_utils::ThreadDistributionPolicy;
 
         use futures::FutureExt;
 
         let logical_cores = cpu_topology::CPUTopology::new()
             .and_then(|top| top.logical_cores_for_physical(core_id))
-            .map_err(|e| CUProverError::thread_pinning_error(e))?;
+            .map_err(CUProverError::thread_pinning_error)?;
         let distributor = RoundRobinDistributor {};
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {

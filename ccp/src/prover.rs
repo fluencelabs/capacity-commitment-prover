@@ -22,7 +22,6 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
-use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
@@ -156,6 +155,8 @@ impl CCProver {
         utility_core_id: LogicalCoreId,
     ) {
         tokio::spawn(async move {
+            cpu_topology::pin_current_thread_to(utility_core_id);
+
             let mut proof_idx = 0;
             let mut last_seen_global_nonce = [0u8; 32];
 

@@ -70,7 +70,7 @@ impl ProvingThreadSync {
             let mut thread_state = Self::handle_prover_message(ptt_message, &sta_inlet)?;
 
             loop {
-                log::debug!("proving_thread: new thread_state is {thread_state:?}");
+                log::debug!("proving_thread_sync: new thread_state is {thread_state:?}");
 
                 thread_state = match thread_state {
                     ThreadState::Stop => {
@@ -102,7 +102,7 @@ impl ProvingThreadSync {
         message: AsyncToSyncMessage,
         sta_inlet: &SyncToAsyncInlet,
     ) -> PTResult<ThreadState> {
-        log::debug!("proving_thread: handle message from CUProver: {message:?}");
+        log::debug!("proving_thread_sync: handle message from CUProver: {message:?}");
 
         match message {
             AsyncToSyncMessage::CreateCache(params) => {
@@ -166,7 +166,7 @@ impl ProvingThreadSync {
             };
 
             if result_hash.as_ref() < &job.difficulty {
-                log::info!("proving_thread:: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
+                log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
 
                 let proof = job.create_golden_proof();
                 proof_receiver_inlet.blocking_send(proof)?;
