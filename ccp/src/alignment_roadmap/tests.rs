@@ -19,7 +19,6 @@ use std::collections::HashMap;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
-use ccp_shared::types::LocalNonce;
 use ccp_shared::types::CUID;
 
 use super::CCProverAlignmentRoadmap;
@@ -43,13 +42,6 @@ fn test_global_nonce(id: u8) -> GlobalNonce {
     ])
 }
 
-fn test_local_nonce(id: u8) -> LocalNonce {
-    LocalNonce::new([
-        id, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ])
-}
-
 fn test_difficulty(id: u8) -> Difficulty {
     Difficulty::new([
         0, id, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
@@ -62,12 +54,6 @@ struct DumpProvider {
 }
 
 impl DumpProvider {
-    pub(self) fn idle() -> Self {
-        Self {
-            status: CUStatus::Idle,
-        }
-    }
-
     pub(self) fn running(cu_id: CUID) -> Self {
         Self {
             status: CUStatus::Running { cu_id },
@@ -85,13 +71,13 @@ impl ToCUStatus for DumpProvider {
 fn alignment_works_if_prover_idle() {
     let mut new_allocation = CUAllocation::new();
     let allocation_1 = (1, test_cu_id(1));
-    new_allocation.insert(allocation_1.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_1.1);
 
     let allocation_2 = (2, test_cu_id(2));
-    new_allocation.insert(allocation_2.0, allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
     let allocation_3 = (3, test_cu_id(3));
-    new_allocation.insert(allocation_3.0, allocation_3.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
     let new_epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
 
@@ -106,9 +92,9 @@ fn alignment_works_if_prover_idle() {
     );
     let expected_actions = vec![
         CUProverAction::clean_proof_cache(),
-        CUProverAction::create_cu_prover(allocation_1.0, allocation_1.1),
-        CUProverAction::create_cu_prover(allocation_2.0, allocation_2.1),
-        CUProverAction::create_cu_prover(allocation_3.0, allocation_3.1),
+        CUProverAction::create_cu_prover(allocation_1.0.into(), allocation_1.1),
+        CUProverAction::create_cu_prover(allocation_2.0.into(), allocation_2.1),
+        CUProverAction::create_cu_prover(allocation_3.0.into(), allocation_3.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
         actions: expected_actions,
@@ -122,17 +108,17 @@ fn alignment_works_if_prover_idle() {
 fn applying_same_roadmap_idempotent() {
     let mut new_allocation = CUAllocation::new();
     let allocation_1 = (1, test_cu_id(1));
-    new_allocation.insert(allocation_1.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_1.1);
 
     let allocation_2 = (2, test_cu_id(2));
-    new_allocation.insert(allocation_2.0, allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
     let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -148,20 +134,20 @@ fn applying_same_roadmap_idempotent() {
 fn add_new_peer() {
     let mut new_allocation = CUAllocation::new();
     let allocation_1 = (1, test_cu_id(1));
-    new_allocation.insert(allocation_1.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_1.1);
 
     let allocation_2 = (2, test_cu_id(2));
-    new_allocation.insert(allocation_2.0, allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
     let allocation_3 = (3, test_cu_id(3));
-    new_allocation.insert(allocation_3.0, allocation_3.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
     let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -171,7 +157,7 @@ fn add_new_peer() {
     );
 
     let expected_actions = vec![CUProverAction::create_cu_prover(
-        allocation_3.0,
+        allocation_3.0.into(),
         allocation_3.1,
     )];
     let expected_roadmap = CCProverAlignmentRoadmap {
@@ -186,19 +172,19 @@ fn add_new_peer() {
 fn remove_peer() {
     let mut new_allocation = CUAllocation::new();
     let allocation_1 = (1, test_cu_id(1));
-    new_allocation.insert(allocation_1.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_1.1);
 
     let allocation_2 = (2, test_cu_id(2));
-    new_allocation.insert(allocation_2.0, allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
     let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     let allocation_3 = (3, test_cu_id(3));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -207,7 +193,7 @@ fn remove_peer() {
         current_status,
     );
 
-    let expected_actions = vec![CUProverAction::remove_cu_prover(allocation_3.0)];
+    let expected_actions = vec![CUProverAction::remove_cu_prover(allocation_3.0.into())];
     let expected_roadmap = CCProverAlignmentRoadmap {
         actions: expected_actions,
         epoch,
@@ -220,20 +206,20 @@ fn remove_peer() {
 fn new_epoch() {
     let mut new_allocation = CUAllocation::new();
     let allocation_1 = (1, test_cu_id(1));
-    new_allocation.insert(allocation_1.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_1.1);
 
     let allocation_2 = (2, test_cu_id(2));
-    new_allocation.insert(allocation_2.0, allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
     let allocation_3 = (3, test_cu_id(3));
-    new_allocation.insert(allocation_3.0, allocation_3.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
     let new_epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
     let current_epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running {
         epoch: current_epoch,
@@ -248,9 +234,9 @@ fn new_epoch() {
 
     let expected_actions = vec![
         CUProverAction::clean_proof_cache(),
-        CUProverAction::new_cc_job(allocation_1.0, allocation_1.1),
-        CUProverAction::new_cc_job(allocation_2.0, allocation_2.1),
-        CUProverAction::new_cc_job(allocation_3.0, allocation_3.1),
+        CUProverAction::new_cc_job(allocation_1.0.into(), allocation_1.1),
+        CUProverAction::new_cc_job(allocation_2.0.into(), allocation_2.1),
+        CUProverAction::new_cc_job(allocation_3.0.into(), allocation_3.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
         actions: expected_actions,
@@ -267,17 +253,17 @@ fn same_epoch_new_jobs() {
     let allocation_2 = (2, test_cu_id(2));
     let allocation_3 = (3, test_cu_id(3));
 
-    new_allocation.insert(allocation_1.0, allocation_2.1);
-    new_allocation.insert(allocation_2.0, allocation_3.1);
-    new_allocation.insert(allocation_3.0, allocation_1.1);
+    new_allocation.insert(allocation_1.0.into(), allocation_2.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_3.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_1.1);
 
     let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -287,9 +273,9 @@ fn same_epoch_new_jobs() {
     );
 
     let expected_actions = vec![
-        CUProverAction::new_cc_job(allocation_1.0, allocation_2.1),
-        CUProverAction::new_cc_job(allocation_2.0, allocation_3.1),
-        CUProverAction::new_cc_job(allocation_3.0, allocation_1.1),
+        CUProverAction::new_cc_job(allocation_1.0.into(), allocation_2.1),
+        CUProverAction::new_cc_job(allocation_2.0.into(), allocation_3.1),
+        CUProverAction::new_cc_job(allocation_3.0.into(), allocation_1.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
         actions: expected_actions,
@@ -307,17 +293,17 @@ fn repinning_works() {
     let allocation_3 = (3, test_cu_id(3));
     let allocation_4 = (4, test_cu_id(4));
 
-    new_allocation.insert(allocation_2.0, allocation_2.1);
-    new_allocation.insert(allocation_3.0, allocation_3.1);
-    new_allocation.insert(allocation_4.0, allocation_4.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
+    new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
     let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -327,8 +313,8 @@ fn repinning_works() {
     );
 
     let expected_actions = vec![CUProverAction::new_cc_job_repin(
-        allocation_1.0,
-        allocation_4.0,
+        allocation_1.0.into(),
+        allocation_4.0.into(),
         allocation_4.1,
     )];
     let expected_roadmap = CCProverAlignmentRoadmap {
@@ -348,18 +334,18 @@ fn create_more_then_remove() {
     let allocation_4 = (4, test_cu_id(4));
     let allocation_5 = (5, test_cu_id(5));
 
-    new_allocation.insert(allocation_2.0, allocation_2.1);
-    new_allocation.insert(allocation_3.0, allocation_3.1);
-    new_allocation.insert(allocation_4.0, allocation_4.1);
-    new_allocation.insert(allocation_5.0, allocation_5.1);
+    new_allocation.insert(allocation_2.0.into(), allocation_2.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
+    new_allocation.insert(allocation_4.0.into(), allocation_4.1);
+    new_allocation.insert(allocation_5.0.into(), allocation_5.1);
 
     let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -369,8 +355,12 @@ fn create_more_then_remove() {
     );
 
     let expected_actions_1 = vec![
-        CUProverAction::new_cc_job_repin(allocation_1.0, allocation_4.0, allocation_4.1),
-        CUProverAction::create_cu_prover(allocation_5.0, allocation_5.1),
+        CUProverAction::new_cc_job_repin(
+            allocation_1.0.into(),
+            allocation_4.0.into(),
+            allocation_4.1,
+        ),
+        CUProverAction::create_cu_prover(allocation_5.0.into(), allocation_5.1),
     ];
     let expected_roadmap_1 = CCProverAlignmentRoadmap {
         actions: expected_actions_1,
@@ -378,8 +368,12 @@ fn create_more_then_remove() {
     };
 
     let expected_actions_2 = vec![
-        CUProverAction::new_cc_job_repin(allocation_1.0, allocation_5.0, allocation_5.1),
-        CUProverAction::create_cu_prover(allocation_4.0, allocation_4.1),
+        CUProverAction::new_cc_job_repin(
+            allocation_1.0.into(),
+            allocation_5.0.into(),
+            allocation_5.1,
+        ),
+        CUProverAction::create_cu_prover(allocation_4.0.into(), allocation_4.1),
     ];
     let expected_roadmap_2 = CCProverAlignmentRoadmap {
         actions: expected_actions_2,
@@ -399,16 +393,16 @@ fn remove_more_then_create() {
     let allocation_3 = (3, test_cu_id(3));
     let allocation_4 = (4, test_cu_id(4));
 
-    new_allocation.insert(allocation_3.0, allocation_3.1);
-    new_allocation.insert(allocation_4.0, allocation_4.1);
+    new_allocation.insert(allocation_3.0.into(), allocation_3.1);
+    new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
     let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
-    current_allocation.insert(allocation_1.0, DumpProvider::running(allocation_1.1));
-    current_allocation.insert(allocation_2.0, DumpProvider::running(allocation_2.1));
-    current_allocation.insert(allocation_3.0, DumpProvider::running(allocation_3.1));
+    current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
+    current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
+    current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
     let actual_roadmap = CCProverAlignmentRoadmap::create_roadmap(
         new_allocation.clone(),
@@ -418,8 +412,12 @@ fn remove_more_then_create() {
     );
 
     let expected_actions_1 = vec![
-        CUProverAction::new_cc_job_repin(allocation_1.0, allocation_4.0, allocation_4.1),
-        CUProverAction::remove_cu_prover(allocation_2.0),
+        CUProverAction::new_cc_job_repin(
+            allocation_1.0.into(),
+            allocation_4.0.into(),
+            allocation_4.1,
+        ),
+        CUProverAction::remove_cu_prover(allocation_2.0.into()),
     ];
     let expected_roadmap_1 = CCProverAlignmentRoadmap {
         actions: expected_actions_1,
@@ -427,8 +425,12 @@ fn remove_more_then_create() {
     };
 
     let expected_actions_2 = vec![
-        CUProverAction::new_cc_job_repin(allocation_2.0, allocation_4.0, allocation_4.1),
-        CUProverAction::remove_cu_prover(allocation_1.0),
+        CUProverAction::new_cc_job_repin(
+            allocation_2.0.into(),
+            allocation_4.0.into(),
+            allocation_4.1,
+        ),
+        CUProverAction::remove_cu_prover(allocation_1.0.into()),
     ];
     let expected_roadmap_2 = CCProverAlignmentRoadmap {
         actions: expected_actions_2,

@@ -17,9 +17,11 @@
 use ccp_shared::types::Difficulty;
 use tokio::sync::mpsc;
 
-use ccp_shared::types::{GlobalNonce, LocalNonce, CUID};
+use crate::cu::RawProof;
+use ccp_shared::types::*;
+use cpu_topology::LogicalCoreId;
+use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::Cache;
-use randomx_rust_wrapper::Dataset;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
 use randomx_rust_wrapper::ResultHash;
@@ -30,12 +32,6 @@ use super::ProvingThreadFacade;
 fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
     let cache = Cache::new(&global_nonce, flags).unwrap();
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-    vm.hash(&local_nonce)
-}
-
-fn run_fast_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
-    let dataset = Dataset::new(&global_nonce, flags).unwrap();
-    let vm = RandomXVM::fast(dataset.handle(), flags).unwrap();
     vm.hash(&local_nonce)
 }
 
@@ -60,6 +56,42 @@ fn get_test_cu_id() -> CUID {
     ])
 }
 
+fn get_test_difficulty(difficulty: u8) -> Difficulty {
+    Difficulty::new([
+        0, difficulty, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0,
+    ])
+}
+
+#[allow(dead_code)]
+async fn create_thread_init_dataset(
+    core_id: LogicalCoreId,
+    global_nonce: GlobalNonce,
+    cu_id: CUID,
+) -> (ProvingThreadAsync, DatasetHandle, mpsc::Receiver<RawProof>) {
+    let flags = RandomXFlags::recommended_full_mem();
+
+    let (inlet, outlet) = mpsc::channel(1);
+
+    let mut thread = ProvingThreadAsync::new(core_id, inlet);
+    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
+    let actual_cache = thread
+        .create_cache(global_nonce, cu_id, flags)
+        .await
+        .unwrap();
+    thread
+        .initialize_dataset(
+            actual_cache.handle(),
+            actual_dataset.handle(),
+            0,
+            actual_dataset.items_count(),
+        )
+        .await
+        .unwrap();
+
+    (thread, actual_dataset.handle(), outlet)
+}
+
 #[tokio::test]
 async fn cache_creation_works() {
     let global_nonce = get_test_global_nonce();
@@ -68,8 +100,8 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let (inlet, _outlet) = mpsc::channel(1);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
         .await
@@ -92,10 +124,10 @@ async fn dataset_creation_works() {
     let local_nonce = get_test_local_nonce();
     let cu_id = get_test_cu_id();
 
-    let flags = RandomXFlags::recommended();
+    let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
+    let (inlet, _outlet) = mpsc::channel(1);
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -125,48 +157,109 @@ async fn dataset_creation_works() {
 }
 
 #[tokio::test]
-async fn prover_works() {
+async fn dataset_creation_works_with_two_threads() {
     let global_nonce = get_test_global_nonce();
+    let local_nonce = get_test_local_nonce();
     let cu_id = get_test_cu_id();
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
-    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
-    let actual_cache = thread
+    let (inlet, _outlet) = mpsc::channel(1);
+    let mut thread_1 = ProvingThreadAsync::new(2.into(), inlet.clone());
+    let mut thread_2 = ProvingThreadAsync::new(2.into(), inlet);
+    let actual_dataset = thread_1.allocate_dataset(flags).await.unwrap();
+    let actual_cache = thread_1
         .create_cache(global_nonce, cu_id, flags)
         .await
         .unwrap();
-    thread
+
+    let items_count = actual_dataset.items_count();
+    thread_1
         .initialize_dataset(
             actual_cache.handle(),
             actual_dataset.handle(),
             0,
-            actual_dataset.items_count(),
+            items_count / 2,
         )
         .await
         .unwrap();
-    let test_difficulty = Difficulty::new([
-        0, 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0,
-    ]);
-    thread
-        .run_cc_job(
+    thread_2
+        .initialize_dataset(
+            actual_cache.handle(),
             actual_dataset.handle(),
-            flags,
-            global_nonce,
-            test_difficulty,
-            cu_id,
+            items_count / 2,
+            items_count / 2,
         )
+        .await
+        .unwrap();
+
+    thread_1.stop().await.unwrap();
+    thread_2.stop().await.unwrap();
+
+    let flags = RandomXFlags::recommended_full_mem();
+    let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
+
+    let flags = RandomXFlags::recommended();
+    let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
+
+    assert_eq!(actual_result_hash, expected_result_hash);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cc_job_stopable() {
+    let global_nonce = get_test_global_nonce();
+    let cu_id = get_test_cu_id();
+    let (mut thread, actual_dataset, mut outlet) =
+        create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
+
+    let test_difficulty = get_test_difficulty(0xFF);
+    let flags = RandomXFlags::recommended_full_mem();
+    thread
+        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .await
+        .unwrap();
+
+    let handle = tokio::spawn(async move {
+        let flags = RandomXFlags::recommended();
+        let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
+
+        while let Some(proof) = outlet.recv().await {
+            let expected_result_hash = run_light_randomx(
+                global_nonce_cu.as_slice(),
+                proof.local_nonce.as_ref(),
+                flags,
+            );
+            assert!(expected_result_hash.into_slice() < test_difficulty);
+        }
+    });
+
+    thread.stop().await.unwrap();
+    let _ = handle.await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn prover_works() {
+    let global_nonce = get_test_global_nonce();
+    let cu_id = get_test_cu_id();
+    let (mut thread, actual_dataset, mut outlet) =
+        create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
+
+    let test_difficulty = get_test_difficulty(0xFF);
+    let flags = RandomXFlags::recommended_full_mem();
+    thread
+        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
         .await
         .unwrap();
 
     let proof = outlet.recv().await.unwrap();
-    println!("proof: {proof:?}");
+
+    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     thread.stop().await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    let _ = handle.await;
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
@@ -176,54 +269,5 @@ async fn prover_works() {
         flags,
     );
 
-    println!("expected_result_hash: {expected_result_hash:?}");
     assert!(expected_result_hash.into_slice() < test_difficulty);
-}
-
-#[tokio::test]
-async fn cc_job_stopable() {
-    let global_nonce = get_test_global_nonce();
-    let cu_id = get_test_cu_id();
-
-    let flags = RandomXFlags::recommended_full_mem();
-
-    let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2, inlet);
-    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
-    let actual_cache = thread
-        .create_cache(global_nonce, cu_id, flags)
-        .await
-        .unwrap();
-    thread
-        .initialize_dataset(
-            actual_cache.handle(),
-            actual_dataset.handle(),
-            0,
-            actual_dataset.items_count(),
-        )
-        .await
-        .unwrap();
-
-    let test_difficulty = Difficulty::new([
-        0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0,
-    ]);
-    thread
-        .run_cc_job(
-            actual_dataset.handle(),
-            flags,
-            global_nonce,
-            test_difficulty,
-            cu_id,
-        )
-        .await
-        .unwrap();
-
-    std::thread::sleep(std::time::Duration::from_secs(2));
-    thread.stop().await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(2));
-
-    let result = outlet.try_recv();
-
-    println!("result {result:?}");
 }
