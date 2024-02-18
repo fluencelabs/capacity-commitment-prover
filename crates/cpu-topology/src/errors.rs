@@ -16,15 +16,25 @@
 
 use thiserror::Error as ThisError;
 
+use crate::LogicalCoreId;
 use crate::PhysicalCoreId;
 
 #[derive(Debug, ThisError)]
 pub enum CPUTopologyError {
+    #[error(transparent)]
+    RawHwlocError(#[from] hwlocality::errors::RawHwlocError),
+
+    #[error(transparent)]
+    TypeToDepthError(#[from] hwlocality::object::depth::TypeToDepthError),
+
+    #[error(transparent)]
+    CPUBindingError(#[from] hwlocality::cpu::binding::CpuBindingError),
+
     #[error("topology allocation failed, probably not enough free memory")]
     TopologyAllocationFailed,
 
-    #[error("{0:?}")]
-    TypeDepthError(hwloc2::TypeDepthError),
+    #[error("physical core id {core_id} is too big to be represented as a signed int")]
+    LogicalCoreIdTooBig { core_id: LogicalCoreId },
 
     #[error("physical core with {core_id} id not found")]
     PhysicalCoreNotFound { core_id: PhysicalCoreId },
@@ -34,9 +44,6 @@ pub enum CPUTopologyError {
 
     #[error("cpuset for a physical core with {core_id} not found")]
     CPUSetNotFound { core_id: PhysicalCoreId },
-
-    #[error("{0:?}")]
-    CPUBindError(hwloc2::CpuBindError),
 }
 
 impl CPUTopologyError {
@@ -51,16 +58,8 @@ impl CPUTopologyError {
     pub fn cpuset_not_found(core_id: PhysicalCoreId) -> Self {
         Self::CPUSetNotFound { core_id }
     }
-}
 
-impl From<hwloc2::TypeDepthError> for CPUTopologyError {
-    fn from(value: hwloc2::TypeDepthError) -> Self {
-        Self::TypeDepthError(value)
-    }
-}
-
-impl From<hwloc2::CpuBindError> for CPUTopologyError {
-    fn from(value: hwloc2::CpuBindError) -> Self {
-        Self::CPUBindError(value)
+    pub fn logical_core_too_big(core_id: LogicalCoreId) -> Self {
+        Self::LogicalCoreIdTooBig { core_id }
     }
 }

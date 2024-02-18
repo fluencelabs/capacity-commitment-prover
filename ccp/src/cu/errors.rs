@@ -44,7 +44,7 @@ pub enum CUProverError {
     ThreadAllocation(#[from] ThreadAllocationError),
 
     #[error(transparent)]
-    ThreadPinningFailed(CPUTopologyError),
+    TopologyError(#[from] CPUTopologyError),
 }
 
 #[derive(ThisError, Debug)]
@@ -60,10 +60,6 @@ impl CUProverError {
     pub fn logical_cpus_not_found(core_id: PhysicalCoreId) -> Self {
         let thread_allocation_error = ThreadAllocationError::LogicalCPUNotFound { core_id };
         Self::ThreadAllocation(thread_allocation_error)
-    }
-
-    pub fn thread_pinning_error(topology_error: CPUTopologyError) -> Self {
-        Self::ThreadPinningFailed(topology_error)
     }
 }
 

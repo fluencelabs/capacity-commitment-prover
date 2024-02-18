@@ -38,8 +38,9 @@ impl ThreadAllocator {
     pub(crate) fn new(
         thread_policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
+        topology: &CPUTopology,
     ) -> CUResult<ThreadAllocator> {
-        let allocation_strategy = Self::create_allocate_strategy(thread_policy, core_id)?;
+        let allocation_strategy = Self::create_allocate_strategy(thread_policy, core_id, topology)?;
 
         Ok(Self {
             allocation_strategy,
@@ -65,10 +66,9 @@ impl ThreadAllocator {
     pub(crate) fn create_allocate_strategy(
         thread_policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
+        topology: &CPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
         use super::ThreadDistributionPolicy;
-
-        let topology = CPUTopology::new().map_err(ThreadAllocationError::TopologyError)?;
 
         let logical_cores = topology
             .logical_cores_for_physical(core_id)

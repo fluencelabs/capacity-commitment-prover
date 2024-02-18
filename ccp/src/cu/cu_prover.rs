@@ -18,13 +18,13 @@ use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
+use cpu_topology::CPUTopology;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
 use randomx::Dataset;
 use randomx::RandomXFlags;
 use randomx_rust_wrapper as randomx;
 
-use super::errors::CUProverError;
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread::RawProof;
@@ -40,6 +40,7 @@ pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
+    topology: CPUTopology,
     dataset: Dataset,
     status: CUStatus,
 }
@@ -58,8 +59,10 @@ impl CUProver {
         proof_receiver_inlet: mpsc::Sender<RawProof>,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
-        let mut threads = ThreadAllocator::new(config.thread_allocation_policy, core_id)?
-            .allocate(proof_receiver_inlet)?;
+        let topology = CPUTopology::new()?;
+        let mut threads =
+            ThreadAllocator::new(config.thread_allocation_policy, core_id, &topology)?
+                .allocate(proof_receiver_inlet)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -68,6 +71,7 @@ impl CUProver {
             threads,
             pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
+            topology,
             dataset,
             status: CUStatus::Idle,
         };
@@ -104,9 +108,7 @@ impl CUProver {
 
         use futures::FutureExt;
 
-        let logical_cores = cpu_topology::CPUTopology::new()
-            .and_then(|top| top.logical_cores_for_physical(core_id))
-            .map_err(CUProverError::thread_pinning_error)?;
+        let logical_cores = self.topology.logical_cores_for_physical(core_id)?;
         let distributor = RoundRobinDistributor {};
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
