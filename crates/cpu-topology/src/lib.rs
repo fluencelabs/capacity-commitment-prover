@@ -14,16 +14,27 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![deny(
+    dead_code,
+    nonstandard_style,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+    unused_unsafe,
+    unreachable_patterns
+)]
+
+mod cpu_topology;
 mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
+mod thread_pinning;
+mod types;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
+pub type CTResult<T> = Result<T, CPUTopologyError>;
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub use cpu_topology::CPUTopology;
+pub use errors::CPUTopologyError;
+pub use thread_pinning::pin_current_thread_to;
+pub use types::LogicalCoreId;
+pub use types::PhysicalCoreId;

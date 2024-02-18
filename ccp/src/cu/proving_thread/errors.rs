@@ -19,6 +19,8 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
+use cpu_topology::CPUTopologyError;
+use cpu_topology::LogicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
 
 #[derive(ThisError, Debug)]
@@ -28,6 +30,12 @@ pub enum ProvingThreadError {
 
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
+
+    #[error(transparent)]
+    CPUTopology(#[from] CPUTopologyError),
+
+    #[error("thread pinning to logical core {core_id} failed")]
+    ThreadPinFailed { core_id: LogicalCoreId },
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadError(Box<dyn Any + Send>),

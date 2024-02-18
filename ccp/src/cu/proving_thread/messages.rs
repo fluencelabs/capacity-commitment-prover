@@ -36,6 +36,7 @@ pub(crate) enum AsyncToSyncMessage {
     AllocateDataset(AllocateDataset),
     InitializeDataset(InitializeDataset),
     NewCCJob(NewCCJob),
+    PinThread(PinThread),
     Stop,
 }
 

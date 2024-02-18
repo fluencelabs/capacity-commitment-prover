@@ -38,7 +38,6 @@ pub struct CCPRpcHttpClient {
 
 impl CCPRpcHttpClient {
     pub async fn new(
-        &self,
         endpoint_url: String,
         _client_cpu_id: PhysicalCoreId,
     ) -> Result<Self, ClientError> {

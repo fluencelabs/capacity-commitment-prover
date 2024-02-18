@@ -14,6 +14,18 @@
  * limitations under the License.
  */
 
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![deny(
+    dead_code,
+    nonstandard_style,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+    unused_unsafe,
+    unreachable_patterns
+)]
+
 mod alignment_roadmap;
 mod cu;
 mod epoch;
@@ -27,4 +39,3 @@ pub use prover::CCProver;
 pub use prover::CCResult;
 
 pub(crate) use ccp_shared::types::*;
-pub(crate) type LogicalCoreId = usize;

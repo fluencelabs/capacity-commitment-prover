@@ -1,0 +1,16 @@
+[package]
+name = "cpu-topology"
+version = "0.1.0"
+description = "Contains utility functions to work with CPU"
+edition = "2021"
+authors = ["Fluence Labs"]
+repository = "https://github.com/fluencelabs/capacity-commitment-prover"
+publish = true
+
+[dependencies]
+core_affinity = { workspace = true }
+hwlocality = { workspace = true }
+newtype_derive = { workspace = true }
+nonempty = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

@@ -14,16 +14,10 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
+mod allocator;
+mod round_robin_distributor;
+mod threads_distribution_policy;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-pub(crate) use proving_thread::RawProof;
-
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub(crate) use allocator::ThreadAllocator;
+pub(crate) use round_robin_distributor::RoundRobinDistributor;
+pub(crate) use threads_distribution_policy::ThreadDistributionPolicy;
