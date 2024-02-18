@@ -17,11 +17,13 @@
 pub mod cu_prover;
 mod errors;
 mod proving_thread;
+mod proving_thread_utils;
 pub(crate) mod status;
 
 pub(crate) use cu_prover::CUProver;
 pub(crate) use cu_prover::CUProverConfig;
 pub(crate) use errors::CUProverError;
+pub(crate) use errors::ThreadAllocationError;
 pub(crate) use proving_thread::RawProof;
 
 pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;

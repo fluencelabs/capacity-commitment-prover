@@ -18,13 +18,13 @@ use ccp_shared::types::*;
 
 /// Describes a single epoch, contains global parameters, which come from the on-chain part.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) struct Epoch {
-    pub(crate) global_nonce: GlobalNonce,
-    pub(crate) difficulty: Difficulty,
+pub struct Epoch {
+    pub global_nonce: GlobalNonce,
+    pub difficulty: Difficulty,
 }
 
 impl Epoch {
-    pub(crate) fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
+    pub fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
         Self {
             global_nonce,
             difficulty,

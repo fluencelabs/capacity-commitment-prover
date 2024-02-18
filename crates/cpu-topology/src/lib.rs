@@ -14,19 +14,27 @@
  * limitations under the License.
  */
 
-mod cuid;
-mod difficulty;
-mod global_nonce;
-mod local_nonce;
+#![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
+#![deny(
+    dead_code,
+    nonstandard_style,
+    unused_imports,
+    unused_mut,
+    unused_variables,
+    unused_unsafe,
+    unreachable_patterns
+)]
 
-use std::collections::HashMap;
+mod cpu_topology;
+mod errors;
+mod thread_pinning;
+mod types;
 
-pub use cuid::CUID;
-pub use difficulty::Difficulty;
-pub use global_nonce::GlobalNonce;
-pub use local_nonce::LocalNonce;
-pub use local_nonce::LocalNonceInner;
+pub type CTResult<T> = Result<T, CPUTopologyError>;
 
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+pub use cpu_topology::CPUTopology;
+pub use errors::CPUTopologyError;
+pub use thread_pinning::pin_current_thread_to;
+pub use types::LogicalCoreId;
+pub use types::PhysicalCoreId;

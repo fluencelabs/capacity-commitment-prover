@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-mod cuid;
-mod difficulty;
-mod global_nonce;
-mod local_nonce;
+use cpu_topology::LogicalCoreId;
 
-use std::collections::HashMap;
+use super::threads_distribution_policy::ThreadDistributionPolicy;
 
-pub use cuid::CUID;
-pub use difficulty::Difficulty;
-pub use global_nonce::GlobalNonce;
-pub use local_nonce::LocalNonce;
-pub use local_nonce::LocalNonceInner;
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct RoundRobinDistributor;
 
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+impl ThreadDistributionPolicy for RoundRobinDistributor {
+    fn distribute(
+        &self,
+        thread_id: usize,
+        logical_cores: &nonempty::NonEmpty<LogicalCoreId>,
+    ) -> LogicalCoreId {
+        let logical_cores_count = logical_cores.len();
+        logical_cores[thread_id % logical_cores_count]
+    }
+}

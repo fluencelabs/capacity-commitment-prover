@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-mod cuid;
-mod difficulty;
-mod global_nonce;
-mod local_nonce;
+use crate::LogicalCoreId;
 
-use std::collections::HashMap;
-
-pub use cuid::CUID;
-pub use difficulty::Difficulty;
-pub use global_nonce::GlobalNonce;
-pub use local_nonce::LocalNonce;
-pub use local_nonce::LocalNonceInner;
-
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+/// Lightweight function which doesn't require topology to pin current thread to the specified core.
+/// Returns true, if pinning was successful.
+pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
+    let core_id = core_affinity::CoreId { id: core_id.into() };
+    core_affinity::set_for_current(core_id)
+}

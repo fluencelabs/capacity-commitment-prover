@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-mod cuid;
-mod difficulty;
-mod global_nonce;
-mod local_nonce;
+mod allocator;
+mod round_robin_distributor;
+mod threads_distribution_policy;
 
-use std::collections::HashMap;
-
-pub use cuid::CUID;
-pub use difficulty::Difficulty;
-pub use global_nonce::GlobalNonce;
-pub use local_nonce::LocalNonce;
-pub use local_nonce::LocalNonceInner;
-
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+pub(crate) use allocator::ThreadAllocator;
+pub(crate) use round_robin_distributor::RoundRobinDistributor;
+pub(crate) use threads_distribution_policy::ThreadDistributionPolicy;

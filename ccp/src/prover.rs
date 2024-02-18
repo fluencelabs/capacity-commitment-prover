@@ -126,7 +126,7 @@ impl CCProver {
 
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
-            threads_per_physical_core: config.threads_per_physical_core,
+            thread_allocation_policy: config.thread_allocation_policy,
         };
 
         Self {
@@ -155,6 +155,8 @@ impl CCProver {
         utility_core_id: LogicalCoreId,
     ) {
         tokio::spawn(async move {
+            cpu_topology::pin_current_thread_to(utility_core_id);
+
             let mut proof_idx = 0;
             let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
 
@@ -295,7 +297,7 @@ impl CCProver {
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover.repin(state.new_core_id).await?;
+            prover.pin(state.new_core_id).await?;
             prover
                 .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
                 .await?;
