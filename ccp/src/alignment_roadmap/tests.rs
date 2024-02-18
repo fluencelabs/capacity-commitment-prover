@@ -17,7 +17,8 @@
 use std::collections::HashMap;
 
 use ccp_shared::types::CUAllocation;
-use ccp_shared::types::LocalNonce;
+use ccp_shared::types::Difficulty;
+use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::CUID;
 
 use super::CCProverAlignmentRoadmap;
@@ -28,24 +29,24 @@ use crate::epoch::Epoch;
 use crate::status::CCStatus;
 
 fn test_cu_id(id: u8) -> CUID {
-    [
+    CUID::new([
         id, 2, 3, 4, 5, 6, 7, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0,
-    ]
+    ])
 }
 
-fn test_local_nonce(id: u8) -> LocalNonce {
-    [
-        id, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
+fn test_global_nonce(id: u8) -> GlobalNonce {
+    GlobalNonce::new([
+        id, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
         3, 2,
-    ]
+    ])
 }
 
-fn test_difficulty(id: u8) -> LocalNonce {
-    [
+fn test_difficulty(id: u8) -> Difficulty {
+    Difficulty::new([
         0, id, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
         3, 2,
-    ]
+    ])
 }
 
 struct DumpProvider {
@@ -78,7 +79,7 @@ fn alignment_works_if_prover_idle() {
     let allocation_3 = (3, test_cu_id(3));
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
-    let new_epoch = Epoch::new(test_local_nonce(1), test_difficulty(1));
+    let new_epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
 
     let current_allocation: HashMap<_, DumpProvider> = HashMap::new();
     let current_status = CCStatus::Idle;
@@ -112,7 +113,7 @@ fn applying_same_roadmap_idempotent() {
     let allocation_2 = (2, test_cu_id(2));
     new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
-    let epoch = Epoch::new(test_local_nonce(1), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -141,7 +142,7 @@ fn add_new_peer() {
     let allocation_3 = (3, test_cu_id(3));
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
-    let epoch = Epoch::new(test_local_nonce(1), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -176,7 +177,7 @@ fn remove_peer() {
     let allocation_2 = (2, test_cu_id(2));
     new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
-    let epoch = Epoch::new(test_local_nonce(1), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -213,13 +214,13 @@ fn new_epoch() {
     let allocation_3 = (3, test_cu_id(3));
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
-    let new_epoch = Epoch::new(test_local_nonce(2), test_difficulty(1));
+    let new_epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
     current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
-    let current_epoch = Epoch::new(test_local_nonce(1), test_difficulty(1));
+    let current_epoch = Epoch::new(test_global_nonce(1), test_difficulty(1));
     let current_status = CCStatus::Running {
         epoch: current_epoch,
     };
@@ -256,7 +257,7 @@ fn same_epoch_new_jobs() {
     new_allocation.insert(allocation_2.0.into(), allocation_3.1);
     new_allocation.insert(allocation_3.0.into(), allocation_1.1);
 
-    let epoch = Epoch::new(test_local_nonce(2), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -296,7 +297,7 @@ fn repinning_works() {
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
-    let epoch = Epoch::new(test_local_nonce(2), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -338,7 +339,7 @@ fn create_more_then_remove() {
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
     new_allocation.insert(allocation_5.0.into(), allocation_5.1);
 
-    let epoch = Epoch::new(test_local_nonce(2), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -395,7 +396,7 @@ fn remove_more_then_create() {
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
-    let epoch = Epoch::new(test_local_nonce(2), test_difficulty(1));
+    let epoch = Epoch::new(test_global_nonce(2), test_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
