@@ -1,4 +1,7 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use clap::Parser;
 use eyre::WrapErr as _;
@@ -34,7 +37,7 @@ struct ProverArgs {
     dir_to_store_persistent_state: PathBuf,
 }
 
-fn main() -> Result<(), eyre::Error> {
+fn main() -> eyre::Result<()> {
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .with_writer(std::io::stderr)
@@ -50,6 +53,12 @@ fn main() -> Result<(), eyre::Error> {
     if args.tokio_core_ids.is_empty() {
         eyre::bail!("please, define at least one --tokio-core-id");
     }
+
+    check_writable_dir(&args.prover_args.dir_to_store_proofs)
+        .wrap_err("The --dir-to-store-proofs value should be a writeable directory path")?;
+    check_writable_dir(&args.prover_args.dir_to_store_persistent_state).wrap_err(
+        "The --dir-to-store-persistent-state value should be a writeable directory path",
+    )?;
 
     #[cfg(target_os = "linux")]
     let tokio_cores = args.tokio_core_ids;
@@ -72,7 +81,7 @@ fn main() -> Result<(), eyre::Error> {
     runtime.block_on(async_main(args.bind_address, args.prover_args))
 }
 
-async fn async_main(bind_address: String, prover_args: ProverArgs) -> Result<(), eyre::Error> {
+async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Result<()> {
     // Build a prover
     let prover = build_prover(prover_args);
     tracing::info!("created prover");
@@ -103,4 +112,17 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
     };
 
     CCProver::new(prover_args.utility_core_id, config)
+}
+
+// Preliminary check that is useful on early diagnostics.
+fn check_writable_dir(path: &Path) -> eyre::Result<()> {
+    if path.is_dir() {
+        eyre::bail!("{path:?} is not a directory");
+    }
+    let meta = std::fs::metadata(path)?;
+    let perm = meta.permissions();
+    if perm.readonly() {
+        eyre::bail!("{path:?} is not writable");
+    }
+    Ok(())
 }
