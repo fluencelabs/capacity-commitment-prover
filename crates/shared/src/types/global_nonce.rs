@@ -14,15 +14,30 @@
  * limitations under the License.
  */
 
-mod global_nonce;
+use hex::FromHex;
+use serde::{Deserialize, Serialize};
 
-use std::collections::HashMap;
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+#[repr(transparent)]
+pub struct GlobalNonce([u8; 32]);
 
-use crate::RANDOMX_RESULT_SIZE;
+impl GlobalNonce {
+    pub fn new(inner: [u8; 32]) -> Self {
+        Self(inner)
+    }
+}
 
-pub use global_nonce::GlobalNonce;
-pub type LocalNonce = [u8; 32];
-pub type Difficulty = [u8; RANDOMX_RESULT_SIZE];
-pub type PhysicalCoreId = usize;
-pub type CUID = [u8; 32];
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+impl AsRef<[u8]> for GlobalNonce {
+    fn as_ref(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl FromHex for GlobalNonce {
+    type Error = <[u8; 32] as FromHex>::Error;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+        <[u8; 32]>::from_hex(hex).map(Self)
+    }
+}

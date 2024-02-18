@@ -10,4 +10,5 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+hex = "0.4.3"
 serde = { workspace = true }

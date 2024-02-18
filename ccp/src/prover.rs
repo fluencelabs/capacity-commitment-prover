@@ -156,7 +156,7 @@ impl CCProver {
     ) {
         tokio::spawn(async move {
             let mut proof_idx = 0;
-            let mut last_seen_global_nonce = [0u8; 32];
+            let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
 
             loop {
                 tokio::select! {
