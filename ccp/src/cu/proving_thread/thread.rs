@@ -17,6 +17,7 @@
 use std::thread;
 use std::thread::JoinHandle;
 
+use ccp_shared::types::LogicalCoreId;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
 use randomx::Cache;
@@ -33,7 +34,6 @@ use super::state::ThreadState;
 use super::PTResult;
 use crate::Difficulty;
 use crate::GlobalNonce;
-use crate::LogicalCoreId;
 use crate::CUID;
 
 const HASHES_PER_ROUND: usize = 1024;

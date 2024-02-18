@@ -22,6 +22,6 @@ pub type GlobalNonce = [u8; 32];
 pub type LocalNonce = [u8; 32];
 pub type Difficulty = [u8; RANDOMX_RESULT_SIZE];
 pub type CUID = [u8; 32];
-pub use cpu_topology::PhysicalCoreId;
 pub use cpu_topology::LogicalCoreId;
+pub use cpu_topology::PhysicalCoreId;
 pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;

@@ -22,6 +22,7 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
+use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
@@ -126,7 +127,7 @@ impl CCProver {
 
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
-            threads_per_physical_core: config.threads_per_physical_core,
+            thread_allocation_policy: config.thread_allocation_policy,
         };
 
         Self {

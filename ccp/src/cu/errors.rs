@@ -17,6 +17,8 @@
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
+use crate::cu::CUProverError::ThreadAllocation;
+use cpu_topology::{CPUTopologyError, PhysicalCoreId};
 use randomx_rust_wrapper::errors::RandomXError;
 
 use super::proving_thread::ProvingThreadError;
@@ -37,6 +39,25 @@ pub enum CUProverError {
 
     #[error(transparent)]
     IoError(#[from] std::io::Error),
+
+    #[error(transparent)]
+    ThreadAllocation(#[from] ThreadAllocationError),
+}
+
+#[derive(ThisError, Debug)]
+pub enum ThreadAllocationError {
+    #[error(transparent)]
+    TopologyError(#[from] CPUTopologyError),
+
+    #[error("no logical CPUs found for physical core with id {core_id}")]
+    LogicalCPUNotFound { core_id: PhysicalCoreId },
+}
+
+impl CUProverError {
+    pub fn logical_cpus_not_found(core_id: PhysicalCoreId) -> Self {
+        let thread_allocation_error = ThreadAllocationError::LogicalCPUNotFound { core_id };
+        Self::ThreadAllocation(thread_allocation_error)
+    }
 }
 
 impl From<Vec<ProvingThreadError>> for CUProverError {

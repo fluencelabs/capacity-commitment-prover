@@ -17,8 +17,8 @@
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use randomx_rust_wrapper::errors::RandomXError;
 use cpu_topology::CPUTopologyError;
+use randomx_rust_wrapper::errors::RandomXError;
 
 #[derive(ThisError, Debug)]
 pub enum ProvingThreadError {

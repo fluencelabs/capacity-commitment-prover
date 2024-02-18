@@ -28,7 +28,6 @@ chrono = { workspace = true }
 rand = { workspace = true }
 log = {workspace = true}
 nonempty = {workspace = true}
-hwloc2 = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

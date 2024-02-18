@@ -231,7 +231,6 @@ dependencies = [
  "chrono",
  "cpu-topology",
  "futures",
- "hwloc2",
  "log",
  "nonempty",
  "rand",

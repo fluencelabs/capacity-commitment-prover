@@ -5,7 +5,7 @@ use eyre::WrapErr as _;
 use tokio::sync::Mutex;
 
 use capacity_commitment_prover::CCProver;
-use ccp_config::CCPConfig;
+use ccp_config::{CCPConfig, ThreadsPerCoreAllocationPolicy};
 use ccp_rpc_server::CCPRcpHttpServer;
 use randomx_rust_wrapper::RandomXFlags;
 use tracing_subscriber::EnvFilter;
@@ -96,7 +96,7 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
     let randomx_flags = RandomXFlags::recommended_full_mem();
 
     let config = CCPConfig {
-        threads_per_physical_core: prover_args.threads_per_physical_core,
+        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {},
         randomx_flags,
         dir_to_store_proofs: prover_args.dir_to_store_proofs,
         dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,

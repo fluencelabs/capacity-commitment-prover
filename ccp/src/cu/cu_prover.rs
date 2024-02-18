@@ -16,6 +16,9 @@
 
 use tokio::sync::mpsc;
 
+use crate::cu::thread_allocator::ThreadAllocator;
+use crate::cu::CUProverError::ThreadAllocation;
+use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
@@ -47,7 +50,7 @@ pub struct CUProverConfig {
     pub randomx_flags: randomx::RandomXFlags,
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
-    pub threads_per_physical_core: std::num::NonZeroUsize,
+    pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
 }
 
 impl CUProver {
@@ -56,13 +59,8 @@ impl CUProver {
         proof_receiver_inlet: mpsc::Sender<RawProof>,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
-        let cpu_topology = cpu_topology::CPUTopology::new()?;
-        let logical_cores = cpu_topology.logical_cores_for_physical(core_id)?;
-
-        let threads = (0..config.threads_per_physical_core.into())
-            .map(|_| ProvingThread::new(core_id, proof_receiver_inlet.clone()))
-            .collect::<Vec<_>>();
-        let mut threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+        let mut threads = ThreadAllocator::new(config.thread_allocation_policy, core_id)?
+            .allocate_threads(proof_receiver_inlet)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
