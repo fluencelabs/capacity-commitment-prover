@@ -15,13 +15,15 @@
  */
 
 mod global_nonce;
+mod local_nonce;
 
 use std::collections::HashMap;
 
 use crate::RANDOMX_RESULT_SIZE;
 
 pub use global_nonce::GlobalNonce;
-pub type LocalNonce = [u8; 32];
+pub use local_nonce::LocalNonce;
+pub use local_nonce::LocalNonceInner;
 pub type Difficulty = [u8; RANDOMX_RESULT_SIZE];
 pub type PhysicalCoreId = usize;
 pub type CUID = [u8; 32];
