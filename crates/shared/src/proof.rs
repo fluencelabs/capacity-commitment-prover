@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+mod id;
+
 use serde::Deserialize;
 use serde::Serialize;
 
+pub use self::id::Idx;
 use crate::types;
 
 /// Uniquely identifies a proof.
@@ -25,7 +28,7 @@ pub struct CCProofId {
     pub global_nonce: types::GlobalNonce,
     pub difficulty: types::Difficulty,
     // unique in one epoch
-    pub idx: u64,
+    pub idx: Idx,
 }
 
 /// Contains all necessary information to submit proof to verify it.
@@ -37,7 +40,7 @@ pub struct CCProof {
 }
 
 impl CCProofId {
-    pub fn new(global_nonce: types::GlobalNonce, difficulty: types::Difficulty, id: u64) -> Self {
+    pub fn new(global_nonce: types::GlobalNonce, difficulty: types::Difficulty, id: Idx) -> Self {
         Self {
             global_nonce,
             difficulty,
@@ -51,7 +54,7 @@ impl CCProofId {
     }
 
     /// Returns true, if proofs was generated after the supplied proof index.
-    pub fn after_raw(&self, proof_idx: u64) -> bool {
+    pub fn after_raw(&self, proof_idx: Idx) -> bool {
         self.idx > proof_idx
     }
 }

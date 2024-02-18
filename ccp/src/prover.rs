@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::Idx;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
@@ -157,7 +158,7 @@ impl CCProver {
         tokio::spawn(async move {
             cpu_topology::pin_current_thread_to(utility_core_id);
 
-            let mut proof_idx = 0;
+            let mut proof_idx = Idx::zero();
             let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
 
             loop {
@@ -167,12 +168,12 @@ impl CCProver {
 
                         if proof.global_nonce != last_seen_global_nonce {
                             last_seen_global_nonce = proof.global_nonce;
-                            proof_idx = 0;
+                            proof_idx = Idx::zero();
                         }
                         let cc_proof_id = CCProofId::new(proof.global_nonce, proof.difficulty, proof_idx);
                         let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id);
                         proof_storage.store_new_proof(cc_proof).await?;
-                        proof_idx += 1;
+                        proof_idx.increment();
                     },
                     _ = &mut shutdown_outlet => {
                         log::info!("cc_prover:: utility thread was shutdown");
