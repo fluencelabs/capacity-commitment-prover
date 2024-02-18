@@ -120,7 +120,7 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
 
 // Preliminary check that is useful on early diagnostics.
 fn check_writable_dir(path: &Path) -> eyre::Result<()> {
-    if path.is_dir() {
+    if !path.is_dir() {
         eyre::bail!("{path:?} is not a directory");
     }
     let meta = std::fs::metadata(path)?;
