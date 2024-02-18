@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
 
@@ -11,20 +9,14 @@ pub enum OrHex<T> {
     Data(T),
 }
 
-impl<T> From<String> for OrHex<T> {
-    fn from(value: String) -> Self {
-        OrHex::String(value)
+impl<T> OrHex<T> {
+    pub fn from_str(s: impl Into<String>) -> OrHex<T> {
+        Self::String(s.into())
     }
 }
 
-impl<T> From<&str> for OrHex<T> {
-    fn from(value: &str) -> Self {
-        OrHex::String(value.to_owned())
-    }
-}
-
-impl<const N: usize> From<[u8; N]> for OrHex<[u8; N]> {
-    fn from(value: [u8; N]) -> Self {
+impl<T: FromHex> From<T> for OrHex<T> {
+    fn from(value: T) -> Self {
         OrHex::Data(value)
     }
 }
@@ -32,10 +24,14 @@ impl<const N: usize> From<[u8; N]> for OrHex<[u8; N]> {
 impl<T: FromHex> OrHex<T> {
     pub fn unhex(self) -> Result<T, <T as FromHex>::Error> {
         match self {
-            OrHex::String(s) => FromHex::from_hex(s),
+            OrHex::String(s) => from_hex_with_prefix(&s),
             OrHex::Data(data) => Ok(data),
         }
     }
+}
+
+fn from_hex_with_prefix<T: FromHex>(s: &str) -> Result<T, <T as FromHex>::Error> {
+    <_>::from_hex(s.trim_start_matches("0x"))
 }
 
 #[cfg(test)]
@@ -49,12 +45,16 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-        a::<Difficulty>("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        a::<Difficulty>(OrHex::from_str(
+            "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        ));
     }
 
     #[test]
     fn test_from_string() {
-        a::<Difficulty>("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        a::<Difficulty>(OrHex::from_str(
+            "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+        ));
     }
 
     #[test]
@@ -66,35 +66,35 @@ mod tests {
     #[test]
     fn test_str_into_data_prefix() {
         let dx: OrHex<Difficulty> =
-            "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".into();
-        let _d: Difficulty = dx.try_into().unwrap();
+            OrHex::from_str("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        let _d: Difficulty = dx.unhex().unwrap();
     }
 
     #[test]
     fn test_str_into_data_bare() {
         let dx: OrHex<Difficulty> =
-            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".into();
-        let _d: Difficulty = dx.try_into().unwrap();
+            OrHex::from_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        let _d: Difficulty = dx.unhex().unwrap();
     }
 
     #[test]
     fn test_data_into_data() {
         let dx: OrHex<Difficulty> = Difficulty::default().into();
-        let _d: Difficulty = dx.try_into().unwrap();
+        let _d: Difficulty = dx.unhex().unwrap();
     }
 
     #[test]
     fn test_invalid_hex() {
         let dx: OrHex<Difficulty> =
-            "FGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGFFFFFFFFFF".into();
-        assert!(TryInto::<Difficulty>::try_into(dx).is_err());
+            OrHex::from_str("FGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGFFFFFFFFFF");
+        assert!(dx.unhex().is_err());
     }
 
     #[test]
     fn test_invalid_len() {
         let dx: OrHex<Difficulty> =
-            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF".into();
-        assert!(TryInto::<Difficulty>::try_into(dx).is_err());
+            OrHex::from_str("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        assert!(dx.unhex().is_err());
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod tests {
         let a: Difficulty = [0xFF; 32];
         let j = serde_json::to_string(&a).unwrap();
         let o: OrHex<Difficulty> = serde_json::from_str(&j).unwrap();
-        let a2: Difficulty = o.try_into().unwrap();
+        let a2: Difficulty = o.unhex().unwrap();
         assert_eq!(a, a2);
     }
 
@@ -131,7 +131,7 @@ mod tests {
         let astr = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
         let j = serde_json::to_string(&astr).unwrap();
         let o: OrHex<Difficulty> = serde_json::from_str(&j).unwrap();
-        let a2: Difficulty = o.try_into().unwrap();
+        let a2: Difficulty = o.unhex().unwrap();
         assert_eq!(a, a2);
     }
 }
