@@ -17,15 +17,15 @@
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
 
-pub type CuidInner = [u8; 32];
+pub type CUIDInner = [u8; 32];
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct CUID(CuidInner);
+pub struct CUID(CUIDInner);
 
 impl CUID {
-    pub fn new(inner: CuidInner) -> Self {
+    pub fn new(inner: CUIDInner) -> Self {
         Self(inner)
     }
 }
@@ -37,9 +37,9 @@ impl AsRef<[u8]> for CUID {
 }
 
 impl FromHex for CUID {
-    type Error = <CuidInner as FromHex>::Error;
+    type Error = <CUIDInner as FromHex>::Error;
 
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        CuidInner::from_hex(hex).map(Self)
+        CUIDInner::from_hex(hex).map(Self)
     }
 }
