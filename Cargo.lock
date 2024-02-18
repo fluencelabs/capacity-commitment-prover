@@ -1309,9 +1309,9 @@ dependencies = [
 
 [[package]]
 name = "randomx-rust-wrapper"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c685e108404eacf7da830630f8826ee9e06af7438a1889525f43f530800f4e5"
+checksum = "b7aa48f38e784474a889adefa62c6729137e8aba41e5caca2a2e879e4156ba65"
 dependencies = [
  "bitflags 2.4.2",
  "cmake",
