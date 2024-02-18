@@ -23,8 +23,8 @@ use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
 use randomx_rust_wrapper::ResultHash;
 
-use super::ProvingThread;
-use super::ProvingThreadAPI;
+use super::ProvingThreadAsync;
+use super::ProvingThreadFacade;
 
 fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
     let cache = Cache::new(&global_nonce, flags).unwrap();
@@ -68,7 +68,7 @@ async fn cache_creation_works() {
     let flags = RandomXFlags::recommended();
 
     let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThread::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2, inlet);
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
         .await
@@ -93,7 +93,7 @@ async fn dataset_creation_works() {
     let flags = RandomXFlags::recommended();
 
     let (inlet, outlet) = mpsc::channel(1);
-    let mut thread = ProvingThread::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -129,7 +129,7 @@ async fn prover_works() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThread::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -182,7 +182,7 @@ async fn cc_job_stopable() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThread::new(2, inlet);
+    let mut thread = ProvingThreadAsync::new(2, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
         .create_cache(global_nonce, cu_id, flags)
@@ -220,5 +220,4 @@ async fn cc_job_stopable() {
     let result = outlet.try_recv();
 
     println!("result {result:?}");
-
 }

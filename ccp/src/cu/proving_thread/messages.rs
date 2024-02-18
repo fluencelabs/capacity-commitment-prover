@@ -14,17 +14,24 @@
  * limitations under the License.
  */
 
-mod ptt_structs;
-mod ttp_structs;
+use tokio::sync::mpsc;
 
-pub(crate) use ptt_structs::*;
-pub(crate) use ttp_structs::*;
+mod async_to_sync;
+mod sync_to_async;
 
-use ccp_shared::types::CUID;
-use ccp_shared::types::{Difficulty, GlobalNonce, LocalNonce};
+pub(crate) use async_to_sync::*;
+pub(crate) use sync_to_async::*;
+
+pub(crate) type AsyncToSyncInlet = mpsc::Sender<AsyncToSyncMessage>;
+pub(crate) type AsyncToSyncOutlet = mpsc::Receiver<AsyncToSyncMessage>;
+
+pub(crate) type SyncToAsyncInlet = mpsc::Sender<SyncToAsyncMessage>;
+pub(crate) type SyncToAsyncOutlet = mpsc::Receiver<SyncToAsyncMessage>;
+
+use ccp_shared::types::*;
 
 #[derive(Debug)]
-pub(crate) enum ProverToThreadMessage {
+pub(crate) enum AsyncToSyncMessage {
     CreateCache(CreateCache),
     AllocateDataset(AllocateDataset),
     InitializeDataset(InitializeDataset),
@@ -33,7 +40,7 @@ pub(crate) enum ProverToThreadMessage {
 }
 
 #[derive(Debug)]
-pub(crate) enum ThreadToProverMessage {
+pub(crate) enum SyncToAsyncMessage {
     CacheCreated(CacheCreated),
     DatasetAllocated(DatasetAllocated),
     DatasetInitialized,

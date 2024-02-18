@@ -23,7 +23,7 @@ use randomx_rust_wrapper::RandomXFlags;
 
 use crate::LogicalCoreId;
 
-pub trait ProvingThreadAPI {
+pub trait ProvingThreadFacade {
     type Error;
 
     async fn create_cache(
@@ -54,5 +54,6 @@ pub trait ProvingThreadAPI {
 
     async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
 
-    async fn stop(&self) -> Result<(), Self::Error>;
+    /// Send a stop message to thread and join on it till it ends.
+    async fn stop(self) -> Result<(), Self::Error>;
 }
