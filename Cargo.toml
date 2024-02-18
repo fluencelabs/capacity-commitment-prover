@@ -4,6 +4,7 @@ members = [
     "ccp",
     "crates/config",
     "crates/cpu-utils",
+    "crates/msr",
     "crates/rpc-client",
     "crates/rpc-server",
     "crates/shared",
