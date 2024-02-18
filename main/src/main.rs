@@ -1,11 +1,13 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::Mutex;
 
 use capacity_commitment_prover::CCProver;
-use ccp_config::{CCPConfig, ThreadsPerCoreAllocationPolicy};
+use ccp_config::CCPConfig;
+use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_rpc_server::CCPRcpHttpServer;
 use randomx_rust_wrapper::RandomXFlags;
 use tracing_subscriber::EnvFilter;
@@ -24,12 +26,14 @@ struct Args {
 #[derive(Parser, Debug)]
 struct ProverArgs {
     #[arg(long)]
-    utility_core_id: usize,
+    utility_core_id: u32,
+
     #[arg(long)]
     threads_per_physical_core: std::num::NonZeroUsize,
 
     #[arg(long)]
     dir_to_store_proofs: PathBuf,
+
     #[arg(long)]
     dir_to_store_persistent_state: PathBuf,
 }
@@ -96,11 +100,13 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
     let randomx_flags = RandomXFlags::recommended_full_mem();
 
     let config = CCPConfig {
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {},
+        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: prover_args.threads_per_physical_core,
+        },
         randomx_flags,
         dir_to_store_proofs: prover_args.dir_to_store_proofs,
         dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,
     };
 
-    CCProver::new(prover_args.utility_core_id, config)
+    CCProver::new(prover_args.utility_core_id.into(), config)
 }

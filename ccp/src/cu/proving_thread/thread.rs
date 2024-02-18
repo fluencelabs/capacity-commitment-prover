@@ -57,7 +57,7 @@ impl ProvingThread {
         let (ttp_inlet, ttp_outlet) = mpsc::channel::<ThreadToProverMessage>(1);
 
         let thread_closure =
-            Self::create_thread_closure(ptt_outlet, ttp_inlet, proof_receiver_inlet);
+            Self::create_thread_closure(core_id, ptt_outlet, ttp_inlet, proof_receiver_inlet);
         let handle = thread::spawn(thread_closure);
 
         Self {
@@ -68,11 +68,15 @@ impl ProvingThread {
     }
 
     fn create_thread_closure(
+        core_id: LogicalCoreId,
         mut ptt_outlet: mpsc::Receiver<ProverToThreadMessage>,
         ttp_inlet: mpsc::Sender<ThreadToProverMessage>,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
         Box::new(move || -> PTResult<()> {
+            // TODO: handle error
+            cpu_topology::pin_current_thread_to(core_id);
+
             let ptt_message = ptt_outlet
                 .blocking_recv()
                 .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
@@ -254,8 +258,8 @@ impl ProvingThreadAPI for ProvingThread {
         self.inlet.send(message).await.map_err(Into::into)
     }
 
-    async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error> {
-        todo!()
+    async fn pin(&self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+        let message = ProverToThreadMessage::AllocateDataset()
     }
 
     async fn stop(&self) -> Result<(), Self::Error> {

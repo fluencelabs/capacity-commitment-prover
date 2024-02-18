@@ -60,6 +60,7 @@ impl ThreadAllocator {
             .map(|logical_core| ProvingThread::new(*logical_core, proof_receiver_inlet.clone()))
             .collect::<Vec<_>>();
         let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+
         Ok(threads)
     }
 }
@@ -70,10 +71,10 @@ impl ThreadAllocationStrategy {
         thread_policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
-        let logical_threads = topology
+        let logical_cores = topology
             .logical_cores_for_physical(core_id)
             .map_err(ThreadAllocationError::TopologyError)?;
-        if logical_threads.is_empty() {
+        if logical_cores.is_empty() {
             return Err(CUProverError::logical_cpus_not_found(core_id));
         }
 
@@ -82,12 +83,12 @@ impl ThreadAllocationStrategy {
                 threads_per_physical_core,
             } => threads_per_physical_core,
             ThreadsPerCoreAllocationPolicy::Optimal => unsafe {
-                std::num::NonZeroUsize::new_unchecked(logical_threads.len())
+                std::num::NonZeroUsize::new_unchecked(logical_cores.len())
             },
         };
 
         let strategy = (0..threads_count.get())
-            .map(|thread_id| logical_threads[thread_id % logical_threads.len()])
+            .map(|thread_id| logical_cores[thread_id % logical_cores.len()])
             .collect::<Vec<_>>();
         let strategy = Self(NonEmpty::from_vec(strategy).unwrap());
 

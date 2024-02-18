@@ -52,7 +52,7 @@ pub trait ProvingThreadAPI {
         cu_id: CUID,
     ) -> Result<(), Self::Error>;
 
-    async fn pin_thread(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
+    async fn pin(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
 
     async fn stop(&self) -> Result<(), Self::Error>;
 }

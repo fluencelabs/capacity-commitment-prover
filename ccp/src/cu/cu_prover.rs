@@ -98,8 +98,13 @@ impl CUProver {
             .await
     }
 
-    pub(crate) async fn repin(&mut self, core_id: PhysicalCoreId) -> CUResult<()> {
-        unimplemented!()
+    pub(crate) async fn repin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
+        use futures::FutureExt;
+
+        let closure = |_: usize, thread: &'threads mut ProvingThread| thread.pin().boxed();
+        self.run_on_all_threads(closure).await?;
+
+        Ok(())
     }
 
     #[allow(clippy::needless_lifetimes)]

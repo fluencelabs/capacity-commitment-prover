@@ -14,27 +14,13 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+use crate::LogicalCoreId;
 
-mod cpu_topology;
-mod errors;
-mod thread_pinning;
-mod types;
-
-pub type CTResult<T> = Result<T, CPUTopologyError>;
-
-pub use cpu_topology::CPUTopology;
-pub use errors::CPUTopologyError;
-pub use thread_pinning::pin_current_thread_to;
-pub use types::LogicalCoreId;
-pub use types::PhysicalCoreId;
+/// Lightweight function which doesn't require topology to pin current thread to the specified core.
+/// Returns true, if pinning was successful.
+pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
+    let core_id = core_affinity::CoreId {
+        id: core_id.into()
+    };
+    core_affinity::set_for_current(core_id)
+}
