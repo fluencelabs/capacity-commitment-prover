@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 nix = { version = "0.27.1" , features = ["uio"] }
 once_cell = "1.19.0"
+raw-cpuid = "11.0.1"
