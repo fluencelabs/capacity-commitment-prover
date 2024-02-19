@@ -104,12 +104,18 @@ where
     async fn get_proofs_after(
         &self,
         proof_idx: ProofIdx,
+        limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
-        let proofs = guard
+        let mut proofs = guard
             .get_proofs_after(proof_idx)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
+        if proofs.len() > limit {
+            proofs.select_nth_unstable_by_key(limit + 1, |p| p.id.idx);
+            proofs = proofs.drain(0..limit).collect();
+        }
+        proofs.sort_unstable_by_key(|p| p.id.idx);
         Ok(proofs)
     }
 }

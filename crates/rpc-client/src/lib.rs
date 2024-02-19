@@ -30,8 +30,11 @@ pub trait CCPRpc {
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned>;
 
     #[method(name = "get_proofs_after")]
-    async fn get_proofs_after(&self, proof_idx: ProofIdx)
-        -> Result<Vec<CCProof>, ErrorObjectOwned>;
+    async fn get_proofs_after(
+        &self,
+        proof_idx: ProofIdx,
+        limit: usize,
+    ) -> Result<Vec<CCProof>, ErrorObjectOwned>;
 }
 
 pub struct CCPRpcHttpClient {
@@ -67,7 +70,11 @@ impl CCPRpcHttpClient {
         CCPRpcClient::on_no_active_commitment(&self.inner).await
     }
 
-    pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, ClientError> {
-        CCPRpcClient::get_proofs_after(&self.inner, proof_idx).await
+    pub async fn get_proofs_after(
+        &self,
+        proof_idx: ProofIdx,
+        limit: usize,
+    ) -> Result<Vec<CCProof>, ClientError> {
+        CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
     }
 }

@@ -3,6 +3,7 @@
     "method":"ccp_get_proofs_after",
     "id":"48",
     "params": {
-	    "proof_idx": 8
+	    "proof_idx": 8,
+        "limit": 1024
     }
 }
