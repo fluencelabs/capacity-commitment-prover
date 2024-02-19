@@ -58,12 +58,14 @@ impl ProvingThreadSync {
     }
 
     fn proving_closure(
-        _core_id: LogicalCoreId,
+        core_id: LogicalCoreId,
         mut ats_outlet: AsyncToSyncOutlet,
         sta_inlet: SyncToAsyncInlet,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
     ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
         Box::new(move || {
+            let _ = cpu_utils::pinning::pin_current_thread_to(core_id);
+
             let ptt_message = ats_outlet
                 .blocking_recv()
                 .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;

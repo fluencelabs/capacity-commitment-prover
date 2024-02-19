@@ -103,8 +103,11 @@ async fn cu_prover_produces_correct_proof() {
 
         while let Some(proof) = outlet.recv().await {
             found_proof_count += 1;
-            let expected_result_hash =
-                run_light_randomx(global_nonce_cu.as_slice(), proof.local_nonce.as_ref(), flags);
+            let expected_result_hash = run_light_randomx(
+                global_nonce_cu.as_slice(),
+                proof.local_nonce.as_ref(),
+                flags,
+            );
             assert!(expected_result_hash.into_slice() < difficulty);
         }
 
