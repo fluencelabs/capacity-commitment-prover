@@ -24,7 +24,7 @@ pub fn run_light_randomx(
     local_nonce: &[u8],
     flags: RandomXFlags,
 ) -> ResultHash {
-    let cache = Cache::new(&global_nonce, flags).unwrap();
+    let cache = Cache::new(global_nonce, flags).unwrap();
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-    vm.hash(&local_nonce)
+    vm.hash(local_nonce)
 }

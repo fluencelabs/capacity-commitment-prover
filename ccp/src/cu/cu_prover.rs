@@ -141,14 +141,23 @@ impl CUProver {
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let thread_init_length = dataset.items_count() / (self.threads.len() as u64);
+        let threads_number = self.threads.len() as u64;
+        let dataset_size = dataset.items_count();
+        let thread_workload_size = dataset_size / threads_number;
+
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
+            let workload_size = if thread_id as u64 == threads_number - 1 {
+                thread_workload_size + (dataset_size % threads_number)
+            } else {
+                thread_workload_size
+            };
+
             thread
                 .initialize_dataset(
                     cache.clone(),
                     dataset.clone(),
-                    thread_id as u64 * thread_init_length,
-                    thread_init_length,
+                    thread_id as u64 * thread_workload_size,
+                    workload_size,
                 )
                 .boxed()
         };
