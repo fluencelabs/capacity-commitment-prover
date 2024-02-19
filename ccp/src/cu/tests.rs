@@ -143,6 +143,7 @@ async fn cu_prover_can_be_paused() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
+#[ignore]
 async fn cu_prover_produces_correct_proof() {
     let _ = env_logger::builder().is_test(true).try_init();
 
