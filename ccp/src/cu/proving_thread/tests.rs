@@ -14,54 +14,19 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::Difficulty;
 use tokio::sync::mpsc;
 
-use crate::cu::RawProof;
-use ccp_shared::types::*;
-use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::dataset::DatasetHandle;
-use randomx_rust_wrapper::Cache;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
-use randomx_rust_wrapper::ResultHash;
+
+use ccp_shared::types::*;
+use cpu_utils::LogicalCoreId;
+use ccp_shared::meet_difficulty::MeetDifficulty;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;
-
-fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
-    let cache = Cache::new(&global_nonce, flags).unwrap();
-    let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-    vm.hash(&local_nonce)
-}
-
-fn get_test_global_nonce() -> GlobalNonce {
-    GlobalNonce::new([
-        1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ])
-}
-
-fn get_test_local_nonce() -> LocalNonce {
-    LocalNonce::new([
-        1, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ])
-}
-
-fn get_test_cu_id() -> CUID {
-    CUID::new([
-        2, 2, 4, 4, 1, 6, 0, 2, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2, 3, 4, 6,
-        3, 2,
-    ])
-}
-
-fn get_test_difficulty(difficulty: u8) -> Difficulty {
-    Difficulty::new([
-        0, difficulty, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0,
-    ])
-}
+use crate::cu::RawProof;
 
 #[allow(dead_code)]
 async fn create_thread_init_dataset(
@@ -232,7 +197,7 @@ async fn cc_job_stopable() {
                 proof.local_nonce.as_ref(),
                 flags,
             );
-            assert!(expected_result_hash.into_slice() < test_difficulty);
+            assert!(expected_result_hash.meet_difficulty(&test_difficulty));
         }
     });
 
@@ -269,5 +234,45 @@ async fn prover_works() {
         flags,
     );
 
-    assert!(expected_result_hash.into_slice() < test_difficulty);
+    assert!(expected_result_hash.meet_difficulty(&test_difficulty));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn prover_produces_repeatable_hashes() {
+    let global_nonce = get_test_global_nonce();
+    let cu_id = get_test_cu_id();
+    let (mut thread, actual_dataset, mut outlet) =
+        create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
+
+    let test_difficulty = get_test_difficulty(0xFF);
+
+    let handle = tokio::spawn(async move {
+        let mut proofs = Vec::new();
+        while let Some(proof) = outlet.recv().await {
+            proofs.push(proof)
+        }
+
+        proofs
+    });
+
+    let flags = RandomXFlags::recommended_full_mem();
+    thread
+        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .await
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
+
+    thread.stop().await.unwrap();
+    let proofs = handle.await?;
+
+    let flags = RandomXFlags::recommended();
+    let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let expected_result_hash = run_light_randomx(
+        global_nonce_cu.as_slice(),
+        proof.local_nonce.as_ref(),
+        flags,
+    );
+
+    assert!(expected_result_hash.meet_difficulty(&test_difficulty));
 }

@@ -8,6 +8,7 @@ members = [
     "crates/rpc-server",
     "crates/shared",
     "crates/utils",
+    "crates/test-utils",
     "main",
 ]
 
@@ -18,8 +19,8 @@ ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
 ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
+ccp-test-utils = { path = "./crates/test-utils", version = "0.1.0" }
 
-cpu-utils = { path = "./crates/cpu-utils", version = "0.1.0" }
 randomx-rust-wrapper = "0.4"
 
 async-trait = "0.1.77"

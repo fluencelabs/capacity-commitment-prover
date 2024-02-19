@@ -1,0 +1,10 @@
+[package]
+name = "ccp-test-utils"
+version = "0.1.0"
+description = "Various utils for CCP tests"
+edition = "2021"
+authors = ["Fluence Labs"]
+publish = false
+
+[dependencies]
+ccp-shared = { workspace = true }
