@@ -41,7 +41,7 @@ pub trait NoxCCPApi: Send {
     ///  - Nox (re)started
     fn on_active_commitment(
         &mut self,
-        epooch_parameters: EpochParameters,
+        epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
