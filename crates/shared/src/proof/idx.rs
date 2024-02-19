@@ -20,7 +20,9 @@ use std::str::FromStr;
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(
+    Debug, Copy, Clone, Hash, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize,
+)]
 #[repr(transparent)]
 #[serde(transparent)]
 pub struct ProofIdx(u64);

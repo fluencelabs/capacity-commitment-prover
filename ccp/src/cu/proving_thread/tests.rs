@@ -16,6 +16,7 @@
 
 use tokio::sync::mpsc;
 
+use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::*;
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
@@ -197,7 +198,7 @@ async fn cc_job_stopable() {
                 proof.local_nonce.as_ref(),
                 flags,
             );
-            assert!(expected_result_hash.into_slice() < test_difficulty);
+            assert!(expected_result_hash.meet_difficulty(&test_difficulty));
         }
     });
 
@@ -234,5 +235,52 @@ async fn prover_works() {
         flags,
     );
 
-    assert!(expected_result_hash.into_slice() < test_difficulty);
+    assert!(expected_result_hash.meet_difficulty(&test_difficulty));
+}
+
+fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: Difficulty) {
+    use randomx_rust_wrapper::cache::Cache;
+
+    let flags = RandomXFlags::recommended();
+
+    for proof in proofs {
+        let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&proof.global_nonce, &proof.cu_id);
+        let cache = Cache::new(&global_nonce_cu, flags).unwrap();
+        let vm = RandomXVM::light(cache.handle(), flags).unwrap();
+
+        let result = vm.hash(proof.local_nonce.as_ref());
+        assert_eq!(result, proof.result_hash);
+        assert!(result.meet_difficulty(&difficulty));
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn prover_produces_repeatable_hashes() {
+    let global_nonce = test::generate_global_nonce(1);
+    let cu_id = test::generate_cu_id(1);
+    let (mut thread, actual_dataset, mut outlet) =
+        create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
+
+    let difficulty = test::generate_difficulty(0xFF);
+
+    let handle = tokio::spawn(async move {
+        let mut proofs = Vec::new();
+        while let Some(proof) = outlet.recv().await {
+            proofs.push(proof)
+        }
+
+        proofs
+    });
+
+    let flags = RandomXFlags::recommended_full_mem();
+    thread
+        .run_cc_job(actual_dataset, flags, global_nonce, difficulty, cu_id)
+        .await
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
+
+    thread.stop().await.unwrap();
+    let proofs = handle.await.unwrap();
+    batch_proof_verification(proofs.into_iter(), difficulty);
 }

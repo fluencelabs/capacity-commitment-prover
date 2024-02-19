@@ -80,7 +80,7 @@ impl RandomXJob {
         self.vm.hash_next(self.local_nonce.get())
     }
 
-    pub(crate) fn create_golden_proof(&mut self) -> RawProof {
+    pub(crate) fn create_golden_proof(&mut self, result_hash: ResultHash) -> RawProof {
         self.local_nonce.prev();
 
         let proof = RawProof::new(
@@ -88,6 +88,7 @@ impl RandomXJob {
             self.difficulty,
             *self.local_nonce.get(),
             self.cu_id,
+            result_hash,
         );
         self.local_nonce.next();
 

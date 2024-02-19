@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
-pub mod meet_difficulty;
-pub mod nox_ccp_api;
-pub mod proof;
-pub mod types;
+use crate::types::Difficulty;
+use crate::types::ResultHash;
 
-/// Size of the RandomX result hash in bytes.
-pub const RANDOMX_RESULT_SIZE: usize = 32;
+pub trait MeetDifficulty {
+    fn meet_difficulty(&self, difficulty: &Difficulty) -> bool;
+}
+
+impl MeetDifficulty for ResultHash {
+    fn meet_difficulty(&self, difficulty: &Difficulty) -> bool {
+        self.as_ref() < difficulty.as_ref()
+    }
+}

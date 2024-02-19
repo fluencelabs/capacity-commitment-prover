@@ -157,6 +157,8 @@ impl ProvingThreadSync {
         mut job: RandomXJob,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
     ) -> PTResult<RandomXJob> {
+        use ccp_shared::meet_difficulty::MeetDifficulty;
+
         let is_last_iteration = |hash_id: usize| -> bool { hash_id == HASHES_PER_ROUND - 1 };
 
         job.hash_first();
@@ -168,10 +170,10 @@ impl ProvingThreadSync {
                 job.hash_next()
             };
 
-            if result_hash.as_ref() < &job.difficulty {
+            if result_hash.meet_difficulty(&job.difficulty) {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
 
-                let proof = job.create_golden_proof();
+                let proof = job.create_golden_proof(result_hash);
                 proof_receiver_inlet.blocking_send(proof)?;
             }
         }

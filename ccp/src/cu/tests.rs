@@ -18,6 +18,7 @@ use tokio::sync::mpsc;
 
 use crate::cu::RawProof;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::{Difficulty, GlobalNonce, CUID};
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
@@ -108,7 +109,7 @@ async fn cu_prover_produces_correct_proof() {
                 proof.local_nonce.as_ref(),
                 flags,
             );
-            assert!(expected_result_hash.into_slice() < difficulty);
+            assert!(expected_result_hash.meet_difficulty(&difficulty));
         }
 
         found_proof_count
@@ -142,8 +143,8 @@ fn batch_proof_verification(
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
 
     for proof in proofs {
-        let result = vm.hash(&proof.local_nonce.as_ref());
-        if result.into_slice() > difficulty {
+        let result = vm.hash(proof.local_nonce.as_ref());
+        if !result.meet_difficulty(&difficulty) {
             return false;
         }
     }

@@ -14,23 +14,27 @@
  * limitations under the License.
  */
 
+use serde::Deserialize;
+use serde::Serialize;
+
 use hex::FromHex;
-use serde::{Deserialize, Serialize};
+
+pub type GlobalNonceInner = [u8; 32];
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
-pub struct GlobalNonce([u8; 32]);
+pub struct GlobalNonce(GlobalNonceInner);
 
 impl GlobalNonce {
-    pub fn new(inner: [u8; 32]) -> Self {
+    pub fn new(inner: GlobalNonceInner) -> Self {
         Self(inner)
     }
 }
 
-impl AsRef<[u8]> for GlobalNonce {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
+impl AsRef<GlobalNonceInner> for GlobalNonce {
+    fn as_ref(&self) -> &GlobalNonceInner {
+        &self.0
     }
 }
 
@@ -38,6 +42,6 @@ impl FromHex for GlobalNonce {
     type Error = <[u8; 32] as FromHex>::Error;
 
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        <[u8; 32]>::from_hex(hex).map(Self)
+        GlobalNonceInner::from_hex(hex).map(Self)
     }
 }

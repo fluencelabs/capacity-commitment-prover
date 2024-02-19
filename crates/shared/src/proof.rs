@@ -23,7 +23,7 @@ pub use self::idx::ProofIdx;
 use crate::types;
 
 /// Uniquely identifies a proof.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CCProofId {
     pub global_nonce: types::GlobalNonce,
     pub difficulty: types::Difficulty,
@@ -32,11 +32,12 @@ pub struct CCProofId {
 }
 
 /// Contains all necessary information to submit proof to verify it.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CCProof {
     pub id: CCProofId,
     pub local_nonce: types::LocalNonce,
     pub cu_id: types::CUID,
+    pub result_hash: types::ResultHash,
 }
 
 impl CCProofId {
@@ -64,11 +65,17 @@ impl CCProofId {
 }
 
 impl CCProof {
-    pub fn new(id: CCProofId, local_nonce: types::LocalNonce, cu_id: types::CUID) -> Self {
+    pub fn new(
+        id: CCProofId,
+        local_nonce: types::LocalNonce,
+        cu_id: types::CUID,
+        result_hash: types::ResultHash,
+    ) -> Self {
         Self {
             id,
             local_nonce,
             cu_id,
+            result_hash,
         }
     }
 

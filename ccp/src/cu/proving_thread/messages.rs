@@ -53,6 +53,7 @@ pub(crate) struct RawProof {
     pub(crate) difficulty: Difficulty,
     pub(crate) local_nonce: LocalNonce,
     pub(crate) cu_id: CUID,
+    pub(crate) result_hash: ResultHash,
 }
 
 impl RawProof {
@@ -61,6 +62,7 @@ impl RawProof {
         difficulty: Difficulty,
         local_nonce: impl Into<LocalNonceInner>,
         cu_id: CUID,
+        result_hash: ResultHash,
     ) -> Self {
         let local_nonce = LocalNonce::new(local_nonce.into());
         Self {
@@ -68,6 +70,7 @@ impl RawProof {
             difficulty,
             local_nonce,
             cu_id,
+            result_hash,
         }
     }
 }
