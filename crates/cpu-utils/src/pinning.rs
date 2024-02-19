@@ -25,11 +25,9 @@ pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
     core_affinity::set_for_current(core_id)
 }
 
-pub fn pin_current_thread_to_cpuset<'core_id>(
-    core_ids: impl Iterator<Item = &'core_id LogicalCoreId>,
-) -> bool {
+pub fn pin_current_thread_to_cpuset(core_ids: impl Iterator<Item = LogicalCoreId>) -> bool {
     let core_ids = core_ids
-        .map(|&core_id| {
+        .map(|core_id| {
             let id = core_id.into();
             CoreId { id }
         })
