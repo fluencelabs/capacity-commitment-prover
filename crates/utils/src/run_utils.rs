@@ -15,7 +15,7 @@
  */
 
 /// Runs the provided closure on all supplied runnables concurrently in the unordered way.
-pub async fn run_on_all<'future, Runnable, T, E>(
+pub async fn run_unordered<'future, Runnable, T, E>(
     runnables: impl Iterator<Item = Runnable>,
     closure: impl Fn(usize, Runnable) -> futures::future::BoxFuture<'future, Result<T, E>>,
 ) -> Result<Vec<T>, Vec<E>>
@@ -26,7 +26,7 @@ where
     use futures::stream::FuturesUnordered;
     use futures::StreamExt;
 
-    let (results, thread_errors): (Vec<_>, Vec<_>) = runnables
+    let (results, errors): (Vec<_>, Vec<_>) = runnables
         .enumerate()
         .map(|(thread_id, thread)| closure(thread_id, thread))
         .collect::<FuturesUnordered<_>>()
@@ -35,16 +35,15 @@ where
         .into_iter()
         .partition(Result::is_ok);
 
-    if thread_errors.is_empty() {
-        let results = results.into_iter().map(Result::unwrap).collect::<Vec<_>>();
-
+    if errors.is_empty() {
+        let results = unwrap(results.into_iter(), Result::unwrap);
         return Ok(results);
     }
 
-    let thread_errors = thread_errors
-        .into_iter()
-        .map(Result::unwrap_err)
-        .collect::<Vec<_>>();
+    let errors = unwrap(errors.into_iter(), Result::unwrap_err);
+    Err(errors)
+}
 
-    Err(thread_errors)
+fn unwrap<W, U>(wrapped_values: impl Iterator<Item = W>, unwrapper: impl FnMut(W) -> U) -> Vec<U> {
+    wrapped_values.map(unwrapper).collect::<Vec<_>>()
 }

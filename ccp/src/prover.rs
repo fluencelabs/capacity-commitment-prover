@@ -27,7 +27,7 @@ use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::*;
-use ccp_utils::run_utils::run_on_all;
+use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
 use crate::cu::CUProver;
@@ -76,7 +76,7 @@ impl NoxCCPApi for CCProver {
         let closure =
             move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.stop().boxed();
 
-        run_on_all(self.cu_provers.drain(), closure).await?;
+        run_unordered(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
 
         Ok(())
@@ -130,7 +130,7 @@ impl CCProver {
         let closure = move |_: usize, (_, prover): (&PhysicalCoreId, &'provers mut CUProver)| {
             prover.pause().boxed()
         };
-        run_on_all(self.cu_provers.iter_mut(), closure).await?;
+        run_unordered(self.cu_provers.iter_mut(), closure).await?;
 
         self.status = CCStatus::Idle;
 
