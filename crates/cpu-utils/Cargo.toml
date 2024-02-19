@@ -1,5 +1,5 @@
 [package]
-name = "cpu-topology"
+name = "cpu-utils"
 version = "0.1.0"
 description = "Contains utility functions to work with CPU"
 edition = "2021"

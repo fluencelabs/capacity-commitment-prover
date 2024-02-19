@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use cpu_topology::LogicalCoreId;
+use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::cache::CacheHandle;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;

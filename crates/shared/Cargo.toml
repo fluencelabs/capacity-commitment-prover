@@ -10,6 +10,6 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-cpu-topology = { workspace = true }
+cpu-utils = { workspace = true }
 hex = "0.4.3"
 serde = { workspace = true }

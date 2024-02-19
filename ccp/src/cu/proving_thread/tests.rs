@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 use ccp_shared::types::*;
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
-use cpu_topology::LogicalCoreId;
+use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;

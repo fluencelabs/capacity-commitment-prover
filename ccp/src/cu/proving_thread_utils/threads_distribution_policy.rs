@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use cpu_topology::LogicalCoreId;
+use cpu_utils::LogicalCoreId;
 
 pub(crate) trait ThreadDistributionPolicy {
     /// Returns a particular logical core id where the supplied proving thread id
