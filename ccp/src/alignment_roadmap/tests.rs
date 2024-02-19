@@ -232,7 +232,7 @@ fn same_epoch_new_jobs() {
     new_allocation.insert(allocation_2.0.into(), allocation_3.1);
     new_allocation.insert(allocation_3.0.into(), allocation_1.1);
 
-    let epoch = test::generate_epoch_params(2,1);
+    let epoch = test::generate_epoch_params(2, 1);
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -272,7 +272,7 @@ fn repinning_works() {
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
-    let epoch = test::generate_epoch_params(2,1);
+    let epoch = test::generate_epoch_params(2, 1);
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();

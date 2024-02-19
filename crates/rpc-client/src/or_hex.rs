@@ -10,6 +10,7 @@ pub enum OrHex<T> {
 }
 
 impl<T> OrHex<T> {
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: impl Into<String>) -> OrHex<T> {
         Self::String(s.into())
     }
