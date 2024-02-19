@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
-use cpu_topology::CPUTopology;
+use cpu_utils::CPUTopology;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
 use randomx::Dataset;

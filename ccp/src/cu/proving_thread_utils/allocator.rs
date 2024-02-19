@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
-use cpu_topology::CPUTopology;
+use cpu_utils::CPUTopology;
 
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::ProvingThreadAsync;

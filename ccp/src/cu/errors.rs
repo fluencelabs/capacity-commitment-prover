@@ -17,8 +17,8 @@
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use cpu_topology::CPUTopologyError;
-use cpu_topology::PhysicalCoreId;
+use cpu_utils::CPUTopologyError;
+use cpu_utils::PhysicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
 
 use super::proving_thread::ProvingThreadError;

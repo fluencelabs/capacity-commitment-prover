@@ -19,8 +19,8 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use cpu_topology::CPUTopologyError;
-use cpu_topology::LogicalCoreId;
+use cpu_utils::CPUTopologyError;
+use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
 
 #[derive(ThisError, Debug)]

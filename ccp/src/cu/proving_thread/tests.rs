@@ -19,7 +19,7 @@ use tokio::sync::mpsc;
 
 use crate::cu::RawProof;
 use ccp_shared::types::*;
-use cpu_topology::LogicalCoreId;
+use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::Cache;
 use randomx_rust_wrapper::RandomXFlags;
