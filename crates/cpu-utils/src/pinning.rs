@@ -25,6 +25,9 @@ pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
     core_affinity::set_for_current(core_id)
 }
 
+/// Lightweight function which doesn't require topology to pin current thread to the specified
+/// core ids
+/// Returns true, if pinning was successful.
 pub fn pin_current_thread_to_cpuset(core_ids: impl Iterator<Item = LogicalCoreId>) -> bool {
     let core_ids = core_ids
         .map(|core_id| {
