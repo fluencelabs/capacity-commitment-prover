@@ -28,11 +28,31 @@ impl LocalNonce {
     pub fn new(inner: LocalNonceInner) -> Self {
         Self(inner)
     }
+
+    /// Creates a new random nonce.
+    /// It uses random generator to be sure that in the next start with the same parameters,
+    /// CCP won't do the same job twice.
+    pub fn random() -> Self {
+        use rand::RngCore;
+
+        let mut rng = rand::thread_rng();
+        let mut nonce_inner = LocalNonceInner::default();
+
+        rng.fill_bytes(&mut nonce_inner);
+
+        LocalNonce::new(nonce_inner)
+    }
 }
 
 impl AsRef<LocalNonceInner> for LocalNonce {
     fn as_ref(&self) -> &LocalNonceInner {
         &self.0
+    }
+}
+
+impl AsMut<LocalNonceInner> for LocalNonce {
+    fn as_mut(&mut self) -> &mut LocalNonceInner {
+        &mut self.0
     }
 }
 

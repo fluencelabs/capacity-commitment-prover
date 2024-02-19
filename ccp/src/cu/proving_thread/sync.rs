@@ -175,7 +175,7 @@ impl ProvingThreadSync {
                 job.hash_next()
             };
 
-            if result_hash.meet_difficulty(&job.difficulty) {
+            if result_hash.meet_difficulty(&job.epoch.difficulty) {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
 
                 let proof = job.create_golden_proof(result_hash);

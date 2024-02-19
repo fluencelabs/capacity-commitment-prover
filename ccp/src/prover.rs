@@ -34,7 +34,6 @@ use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::cu::RawProof;
-use crate::epoch::Epoch;
 use crate::errors::CCProverError;
 use crate::proof_storage_worker::ProofStorageWorker;
 use crate::status::CCStatus;
@@ -57,11 +56,9 @@ impl NoxCCPApi for CCProver {
 
     async fn on_active_commitment(
         &mut self,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let new_epoch = Epoch::new(global_nonce, difficulty);
         let roadmap = CCProverAlignmentRoadmap::create_roadmap(
             new_allocation,
             new_epoch,
@@ -163,11 +160,11 @@ impl CCProver {
                     Some(proof) = proof_receiver_outlet.recv() => {
                         log::debug!("cc_prover: new proof_received {proof:?}");
 
-                        if proof.global_nonce != last_seen_global_nonce {
-                            last_seen_global_nonce = proof.global_nonce;
+                        if proof.epoch.global_nonce != last_seen_global_nonce {
+                            last_seen_global_nonce = proof.epoch.global_nonce;
                             proof_idx = ProofIdx::zero();
                         }
-                        let cc_proof_id = CCProofId::new(proof.global_nonce, proof.difficulty, proof_idx);
+                        let cc_proof_id = CCProofId::new(proof.epoch, proof_idx);
                         let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id, proof.result_hash);
                         proof_storage.store_new_proof(cc_proof).await?;
                         proof_idx.increment();
@@ -244,7 +241,7 @@ impl CCProver {
     pub(self) fn cu_creation<'prover, 'futures: 'prover>(
         &'prover mut self,
         state: actions_state::CreateCUProverState,
-        epoch: Epoch,
+        epoch: EpochParameters,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let proof_receiver_inlet = self.proof_receiver_inlet.clone();
@@ -252,9 +249,7 @@ impl CCProver {
         async move {
             let mut prover =
                 CUProver::create(prover_config, proof_receiver_inlet, state.new_core_id).await?;
-            prover
-                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
-                .await?;
+            prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(CUProverPostAction::Keep(prover))
         }
@@ -276,13 +271,11 @@ impl CCProver {
     pub(self) fn new_cc_job<'prover, 'futures: 'prover>(
         &'prover mut self,
         state: actions_state::NewCCJobState,
-        epoch: Epoch,
+        epoch: EpochParameters,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover
-                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
-                .await?;
+            prover.new_epoch(epoch, state.new_cu_id).await?;
             Ok(CUProverPostAction::Keep(prover))
         }
         .boxed()
@@ -291,14 +284,12 @@ impl CCProver {
     pub(self) fn new_cc_job_repin<'prover, 'futures: 'prover>(
         &'prover mut self,
         state: actions_state::NewCCJobWithRepiningState,
-        epoch: Epoch,
+        epoch: EpochParameters,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.pin(state.new_core_id).await?;
-            prover
-                .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
-                .await?;
+            prover.new_epoch(epoch, state.new_cu_id).await?;
             Ok(CUProverPostAction::Keep(prover))
         }
         .boxed()

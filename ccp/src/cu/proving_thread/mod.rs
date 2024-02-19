@@ -27,7 +27,6 @@ mod tests;
 pub(crate) use async_::ProvingThreadAsync;
 pub(crate) use errors::ProvingThreadError;
 pub(crate) use facade::ProvingThreadFacade;
-pub(crate) use local_nonce::LocalNonce;
 pub(crate) use messages::RawProof;
 
 pub(crate) type PTResult<T> = Result<T, errors::ProvingThreadError>;

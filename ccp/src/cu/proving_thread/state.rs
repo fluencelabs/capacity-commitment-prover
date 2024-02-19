@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 
+use ccp_shared::types::LocalNonce;
 use randomx::dataset::DatasetHandle;
 use randomx::ResultHash;
 use randomx_rust_wrapper as randomx;
 
+use super::local_nonce::NonceIterable;
 use super::messages::NewCCJob;
-use super::LocalNonce;
 use super::PTResult;
 use crate::cu::RawProof;
-use crate::Difficulty;
 
 #[derive(Debug)]
 pub(crate) enum ThreadState {
@@ -37,10 +37,9 @@ pub(crate) enum ThreadState {
 #[derive(Debug)]
 pub(crate) struct RandomXJob {
     pub(crate) vm: randomx::RandomXVM<DatasetHandle>,
-    pub(crate) global_nonce: GlobalNonce,
     pub(crate) local_nonce: LocalNonce,
+    pub(crate) epoch: EpochParameters,
     pub(crate) cu_id: CUID,
-    pub(crate) difficulty: Difficulty,
 }
 
 impl RandomXJob {
@@ -48,8 +47,7 @@ impl RandomXJob {
         let NewCCJob {
             dataset,
             flags,
-            global_nonce,
-            difficulty,
+            epoch,
             cu_id,
         } = cc_job;
 
@@ -58,16 +56,15 @@ impl RandomXJob {
 
         let params = Self {
             vm,
-            global_nonce,
             local_nonce,
+            epoch,
             cu_id,
-            difficulty,
         };
         Ok(params)
     }
 
     pub(crate) fn hash_first(&mut self) {
-        self.vm.hash_first(self.local_nonce.get());
+        self.vm.hash_first(self.local_nonce.as_ref());
     }
 
     pub(crate) fn hash_last(&mut self) -> ResultHash {
@@ -77,19 +74,13 @@ impl RandomXJob {
 
     pub(crate) fn hash_next(&mut self) -> ResultHash {
         self.local_nonce.next();
-        self.vm.hash_next(self.local_nonce.get())
+        self.vm.hash_next(self.local_nonce.as_ref())
     }
 
     pub(crate) fn create_golden_proof(&mut self, result_hash: ResultHash) -> RawProof {
         self.local_nonce.prev();
 
-        let proof = RawProof::new(
-            self.global_nonce,
-            self.difficulty,
-            *self.local_nonce.get(),
-            self.cu_id,
-            result_hash,
-        );
+        let proof = RawProof::new(self.epoch, self.local_nonce, self.cu_id, result_hash);
         self.local_nonce.next();
 
         proof

@@ -42,7 +42,6 @@ impl CPUTopology {
         let physical_core_ids = self
             .topology
             .objects_with_type(ObjectType::Core)
-            .into_iter()
             .map(|value| PhysicalCoreId::from(value.logical_index() as u32))
             .collect::<Vec<_>>();
 

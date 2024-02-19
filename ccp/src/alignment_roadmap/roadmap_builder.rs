@@ -22,13 +22,12 @@ use ccp_shared::types::*;
 use super::roadmap::CCProverAlignmentRoadmap;
 use super::roadmap::CUProverAction;
 use crate::cu::status::ToCUStatus;
-use crate::epoch::Epoch;
 use crate::status::CCStatus;
 
 #[derive(Debug)]
 pub(super) struct RoadmapBuilderState {
     is_new_epoch: bool,
-    epoch: Epoch,
+    epoch: EpochParameters,
     unprepared_allocation_actions: Vec<(PhysicalCoreId, CUID)>,
     unprepared_removal_actions: Vec<PhysicalCoreId>,
     actions: Vec<CUProverAction>,
@@ -37,7 +36,7 @@ pub(super) struct RoadmapBuilderState {
 pub(super) struct RoadmapBuilder {}
 
 impl RoadmapBuilder {
-    pub(super) fn from(new_epoch: Epoch, current_status: CCStatus) -> BuilderFirstStage {
+    pub(super) fn from(new_epoch: EpochParameters, current_status: CCStatus) -> BuilderFirstStage {
         let is_new_epoch = match current_status {
             CCStatus::Running { epoch } => new_epoch != epoch,
             CCStatus::Idle => true,

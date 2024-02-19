@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-use crate::epoch::Epoch;
+use ccp_shared::types::EpochParameters;
 
 /// Represents a status of a CC prover.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CCStatus {
-    Running { epoch: Epoch },
+    Running { epoch: EpochParameters },
     Idle,
 }
 

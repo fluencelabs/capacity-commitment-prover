@@ -32,7 +32,7 @@ use crate::cu::RawProof;
 #[allow(dead_code)]
 async fn create_thread_init_dataset(
     core_id: LogicalCoreId,
-    global_nonce: GlobalNonce,
+    epoch: EpochParameters,
     cu_id: CUID,
 ) -> (ProvingThreadAsync, DatasetHandle, mpsc::Receiver<RawProof>) {
     let flags = RandomXFlags::recommended_full_mem();
@@ -42,7 +42,7 @@ async fn create_thread_init_dataset(
     let mut thread = ProvingThreadAsync::new(core_id, inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
-        .create_cache(global_nonce, cu_id, flags)
+        .create_cache(epoch.global_nonce, cu_id, flags)
         .await
         .unwrap();
     thread
@@ -176,21 +176,20 @@ async fn dataset_creation_works_with_two_threads() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn cc_job_stopable() {
-    let global_nonce = test::generate_global_nonce(4);
+    let epoch = test::generate_epoch_params(4, 0xFF);
     let cu_id = test::generate_cu_id(4);
     let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(2.into(), global_nonce, cu_id).await;
+        create_thread_init_dataset(2.into(), epoch, cu_id).await;
 
-    let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
     let handle = tokio::spawn(async move {
         let flags = RandomXFlags::recommended();
-        let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
+        let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
 
         while let Some(proof) = outlet.recv().await {
             let expected_result_hash = run_light_randomx(
@@ -198,7 +197,7 @@ async fn cc_job_stopable() {
                 proof.local_nonce.as_ref(),
                 flags,
             );
-            assert!(expected_result_hash.meet_difficulty(&test_difficulty));
+            assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
         }
     });
 
@@ -210,15 +209,15 @@ async fn cc_job_stopable() {
 async fn cc_job_pausable() {
     use std::sync;
 
-    let global_nonce = test::generate_global_nonce(5);
+    let epoch = test::generate_epoch_params(5, 0xFF);
     let cu_id = test::generate_cu_id(5);
-    let (mut thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(3.into(), global_nonce, cu_id).await;
 
-    let test_difficulty = test::generate_difficulty(0xFF);
+    let (mut thread, actual_dataset, mut outlet) =
+        create_thread_init_dataset(3.into(), epoch, cu_id).await;
+
     let flags = RandomXFlags::recommended_full_mem();
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -259,15 +258,14 @@ async fn cc_job_pausable() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn proving_thread_works() {
-    let global_nonce = test::generate_global_nonce(6);
+    let epoch = test::generate_epoch_params(6, 0xFF);
     let cu_id = test::generate_cu_id(6);
     let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(4.into(), global_nonce, cu_id).await;
+        create_thread_init_dataset(4.into(), epoch, cu_id).await;
 
-    let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -279,14 +277,14 @@ async fn proving_thread_works() {
     let _ = handle.await;
 
     let flags = RandomXFlags::recommended();
-    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
     let expected_result_hash = run_light_randomx(
         global_nonce_cu.as_slice(),
         proof.local_nonce.as_ref(),
         flags,
     );
 
-    assert!(expected_result_hash.meet_difficulty(&test_difficulty));
+    assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
 }
 
 fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: Difficulty) {
@@ -296,7 +294,7 @@ fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: 
 
     for proof in proofs {
         let global_nonce_cu =
-            ccp_utils::hash::compute_global_nonce_cu(&proof.global_nonce, &proof.cu_id);
+            ccp_utils::hash::compute_global_nonce_cu(&proof.epoch.global_nonce, &proof.cu_id);
         let cache = Cache::new(&global_nonce_cu, flags).unwrap();
         let vm = RandomXVM::light(cache.handle(), flags).unwrap();
 
@@ -308,12 +306,10 @@ fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: 
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn proving_therad_produces_repeatable_hashes() {
-    let global_nonce = test::generate_global_nonce(7);
+    let epoch = test::generate_epoch_params(7, 0xFF);
     let cu_id = test::generate_cu_id(7);
     let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(5.into(), global_nonce, cu_id).await;
-
-    let difficulty = test::generate_difficulty(0xFF);
+        create_thread_init_dataset(5.into(), epoch, cu_id).await;
 
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
@@ -326,7 +322,7 @@ async fn proving_therad_produces_repeatable_hashes() {
 
     let flags = RandomXFlags::recommended_full_mem();
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -334,5 +330,5 @@ async fn proving_therad_produces_repeatable_hashes() {
 
     thread.stop().await.unwrap();
     let proofs = handle.await.unwrap();
-    batch_proof_verification(proofs.into_iter(), difficulty);
+    batch_proof_verification(proofs.into_iter(), epoch.difficulty);
 }
