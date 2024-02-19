@@ -79,8 +79,6 @@ impl CUProver {
     }
 
     pub(crate) async fn new_epoch(&mut self, epoch: EpochParameters, cu_id: CUID) -> CUResult<()> {
-        self.status = CUStatus::Running { cu_id };
-
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
         let cache = thread
@@ -92,6 +90,7 @@ impl CUProver {
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
+        self.status = CUStatus::Running { cu_id };
         self.run_proving_jobs(dataset_handle, epoch, cu_id).await
     }
 
