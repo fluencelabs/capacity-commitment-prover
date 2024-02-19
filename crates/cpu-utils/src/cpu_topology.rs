@@ -33,9 +33,20 @@ impl CPUTopology {
         Ok(Self { topology })
     }
 
-    pub fn physical_cores_count(&self) -> usize {
+    pub fn physical_cores_count_len(&self) -> usize {
+        self.physical_cores().map(|r| r.len()).unwrap_or(0)
+    }
+    pub fn physical_cores(&self) -> CTResult<NonEmpty<PhysicalCoreId>> {
         use hwlocality::object::types::ObjectType;
-        self.topology.objects_with_type(ObjectType::Core).len()
+
+        let physical_core_ids = self
+            .topology
+            .objects_with_type(ObjectType::Core)
+            .into_iter()
+            .map(|value| PhysicalCoreId::from(value.logical_index() as u32))
+            .collect::<Vec<_>>();
+
+        NonEmpty::from_vec(physical_core_ids).ok_or_else(|| CPUTopologyError::PhysicalCoresNotFound)
     }
 
     pub fn logical_cores_for_physical(

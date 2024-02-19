@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 
+use ccp_shared::proof::ProofIdx;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
 use jsonrpsee::server::ServerHandle;
@@ -100,7 +101,10 @@ where
     }
 
     #[instrument(skip(self))]
-    async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, ErrorObjectOwned> {
+    async fn get_proofs_after(
+        &self,
+        proof_idx: ProofIdx,
+    ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
         let proofs = guard
             .get_proofs_after(proof_idx)

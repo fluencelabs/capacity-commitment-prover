@@ -19,6 +19,8 @@ mod errors;
 mod proving_thread;
 mod proving_thread_utils;
 pub(crate) mod status;
+#[cfg(test)]
+mod tests;
 
 pub(crate) use cu_prover::CUProver;
 pub(crate) use cu_prover::CUProverConfig;

@@ -35,6 +35,7 @@ core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
 anyhow = "1.0"
 byteorder = "1.5"
 chrono = "0.4"
+env_logger = "0.10"
 jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }
 rand = "0.8"
 log = "0.4"

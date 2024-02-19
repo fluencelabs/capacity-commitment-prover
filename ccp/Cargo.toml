@@ -11,8 +11,10 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+cpu-utils = { workspace = true }
 ccp-config = { workspace = true }
 ccp-shared = { workspace = true }
+ccp-test-utils = { workspace = true }
 ccp-utils = { workspace = true }
 
 randomx-rust-wrapper = { workspace = true }
@@ -24,6 +26,7 @@ futures = { workspace = true }
 anyhow = { workspace = true }
 byteorder = { workspace = true }
 chrono = { workspace = true }
+env_logger = { workspace = true }
 rand = { workspace = true }
 log = {workspace = true}
 nonempty = {workspace = true}

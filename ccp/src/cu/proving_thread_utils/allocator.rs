@@ -50,7 +50,7 @@ impl ThreadAllocator {
     pub(crate) fn allocate(
         &self,
         proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> CUResult<nonempty::NonEmpty<ProvingThreadAsync>> {
+    ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
@@ -58,7 +58,7 @@ impl ThreadAllocator {
                 ProvingThreadAsync::new(*logical_core, proof_receiver_inlet.clone())
             })
             .collect::<Vec<_>>();
-        let threads = nonempty::NonEmpty::from_vec(threads).unwrap();
+        let threads = NonEmpty::from_vec(threads).unwrap();
 
         Ok(threads)
     }

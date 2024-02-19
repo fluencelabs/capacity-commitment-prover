@@ -15,6 +15,7 @@
  */
 
 use std::fmt::Display;
+use std::str::FromStr;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -39,5 +40,13 @@ impl ProofIdx {
 impl Display for ProofIdx {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for ProofIdx {
+    type Err = <u64 as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u64::from_str(s).map(ProofIdx)
     }
 }

@@ -97,7 +97,7 @@ impl NoxCCPApi for CCProver {
         }
     }
 
-    async fn get_proofs_after(&self, proof_idx: u64) -> Result<Vec<CCProof>, Self::Error> {
+    async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
         self.proof_storage
             .get_proofs_after(proof_idx)
             .await

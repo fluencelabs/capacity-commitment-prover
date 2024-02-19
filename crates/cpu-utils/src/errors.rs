@@ -36,6 +36,9 @@ pub enum CPUTopologyError {
     #[error("physical core id {core_id} is too big to be represented as a signed int")]
     LogicalCoreIdTooBig { core_id: LogicalCoreId },
 
+    #[error("physical cores not found")]
+    PhysicalCoresNotFound,
+
     #[error("physical core with {core_id} id not found")]
     PhysicalCoreNotFound { core_id: PhysicalCoreId },
 

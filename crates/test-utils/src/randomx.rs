@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-use randomx_rust_wrapper::RandomXVM;
-use randomx_rust_wrapper::RandomXFlags;
+use randomx_rust_wrapper::result_hash::ResultHash;
 use randomx_rust_wrapper::Cache;
+use randomx_rust_wrapper::RandomXFlags;
+use randomx_rust_wrapper::RandomXVM;
 
-use ccp_shared::types::
-
-fn run_light_randomx(global_nonce: &[u8], local_nonce: &[u8], flags: RandomXFlags) -> ResultHash {
-    let cache = Cache::new(&global_nonce, flags).unwrap();
+pub fn run_light_randomx(
+    global_nonce: &[u8],
+    local_nonce: &[u8],
+    flags: RandomXFlags,
+) -> ResultHash {
+    let cache = Cache::new(global_nonce, flags).unwrap();
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-    vm.hash(&local_nonce)
+    vm.hash(local_nonce)
 }
