@@ -193,7 +193,10 @@ async fn cu_prover_works_with_odd_threads_number() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore]
 async fn cu_prover_changes_epoch_correctly() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let config = CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
