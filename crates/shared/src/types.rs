@@ -26,6 +26,7 @@ pub use difficulty::Difficulty;
 pub use global_nonce::GlobalNonce;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
+pub use randomx_rust_wrapper::ResultHash;
 
 pub use cpu_utils::LogicalCoreId;
 pub use cpu_utils::PhysicalCoreId;

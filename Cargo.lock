@@ -103,9 +103,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.79"
+version = "1.0.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
+checksum = "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
 
 [[package]]
 name = "arrayvec"
@@ -313,6 +313,7 @@ version = "0.1.0"
 dependencies = [
  "cpu-utils",
  "hex",
+ "randomx-rust-wrapper",
  "serde",
 ]
 
@@ -1414,13 +1415,15 @@ dependencies = [
 
 [[package]]
 name = "randomx-rust-wrapper"
-version = "0.3.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7aa48f38e784474a889adefa62c6729137e8aba41e5caca2a2e879e4156ba65"
+checksum = "3cf0b5600b179645ca4f5b3d12c4872064ceb0eaeff5dd36e8a843aa7ff7e901"
 dependencies = [
  "bitflags 2.4.2",
  "cmake",
+ "hex",
  "libc",
+ "serde",
  "thiserror",
 ]
 
@@ -1618,9 +1621,9 @@ dependencies = [
 
 [[package]]
 name = "ryu"
-version = "1.0.16"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98d2aa92eebf49b69786be48e4477826b256916e84a57ff2a4f21923b48eb4c"
+checksum = "e86697c916019a8588c99b5fac3cead74ec0b4b819707a682fd4d23fa0ce1ba1"
 
 [[package]]
 name = "schannel"

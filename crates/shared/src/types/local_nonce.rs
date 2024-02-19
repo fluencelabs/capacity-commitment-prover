@@ -30,9 +30,9 @@ impl LocalNonce {
     }
 }
 
-impl AsRef<[u8]> for LocalNonce {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
+impl AsRef<LocalNonceInner> for LocalNonce {
+    fn as_ref(&self) -> &LocalNonceInner {
+        &self.0
     }
 }
 

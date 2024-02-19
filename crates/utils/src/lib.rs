@@ -14,8 +14,8 @@ pub fn compute_global_nonce_cu(
     use sha3::Digest;
 
     let mut hasher = sha3::Keccak256::new();
-    hasher.update(global_nonce);
-    hasher.update(cu_id);
+    hasher.update(global_nonce.as_ref());
+    hasher.update(cu_id.as_ref());
 
     hasher.finalize()
 }

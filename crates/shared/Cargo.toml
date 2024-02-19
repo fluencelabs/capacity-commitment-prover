@@ -11,5 +11,8 @@ doctest = false
 
 [dependencies]
 cpu-utils = { workspace = true }
-hex = "0.4.3"
+
+randomx-rust-wrapper = {workspace = true}
+
+hex = { workspace = true }
 serde = { workspace = true }

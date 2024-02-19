@@ -30,9 +30,9 @@ impl CUID {
     }
 }
 
-impl AsRef<[u8]> for CUID {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
+impl AsRef<CUIDInner> for CUID {
+    fn as_ref(&self) -> &CUIDInner {
+        &self.0
     }
 }
 

@@ -32,9 +32,9 @@ impl Difficulty {
     }
 }
 
-impl AsRef<[u8]> for Difficulty {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
+impl AsRef<DifficultyInner> for Difficulty {
+    fn as_ref(&self) -> &DifficultyInner {
+        &self.0
     }
 }
 
