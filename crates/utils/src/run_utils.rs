@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-pub async fn run_on_all_runnables<'future, Runnable, T, E>(
+/// Runs the provided closure on all supplied runnables concurrently in the unordered way.
+pub async fn run_on_all<'future, Runnable, T, E>(
     runnables: impl Iterator<Item = Runnable>,
     closure: impl Fn(usize, Runnable) -> futures::future::BoxFuture<'future, Result<T, E>>,
 ) -> Result<Vec<T>, Vec<E>>

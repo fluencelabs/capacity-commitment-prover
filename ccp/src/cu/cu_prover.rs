@@ -18,7 +18,7 @@ use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
-use ccp_utils::run_utils::run_on_all_runnables;
+use ccp_utils::run_utils::run_on_all;
 use cpu_utils::CPUTopology;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
@@ -116,7 +116,7 @@ impl CUProver {
             let core_id = distributor.distribute(thread_id, &logical_cores);
             thread.pin(core_id).boxed()
         };
-        run_on_all_runnables(self.threads.iter_mut(), closure).await?;
+        run_on_all(self.threads.iter_mut(), closure).await?;
 
         Ok(())
     }
@@ -126,7 +126,7 @@ impl CUProver {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| thread.pause().boxed();
-        run_on_all_runnables(self.threads.iter_mut(), closure).await?;
+        run_on_all(self.threads.iter_mut(), closure).await?;
 
         self.status = CUStatus::Idle;
 
@@ -137,7 +137,7 @@ impl CUProver {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
-        run_on_all_runnables(self.threads.into_iter(), closure).await?;
+        run_on_all(self.threads.into_iter(), closure).await?;
 
         Ok(())
     }
@@ -175,7 +175,7 @@ impl CUProver {
                 .boxed()
         };
 
-        run_on_all_runnables(self.threads.iter_mut(), closure).await?;
+        run_on_all(self.threads.iter_mut(), closure).await?;
         Ok(())
     }
 
@@ -201,7 +201,7 @@ impl CUProver {
                 )
                 .boxed()
         };
-        run_on_all_runnables(self.threads.iter_mut(), closure).await?;
+        run_on_all(self.threads.iter_mut(), closure).await?;
 
         Ok(())
     }
