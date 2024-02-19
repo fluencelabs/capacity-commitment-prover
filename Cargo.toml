@@ -7,6 +7,7 @@ members = [
     "crates/rpc-client",
     "crates/rpc-server",
     "crates/shared",
+    "crates/test-utils",
     "crates/utils",
     "main",
 ]
@@ -17,6 +18,7 @@ ccp-config = { path = "./crates/config", version = "0.1.0" }
 ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
 ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }
+ccp-test-utils = { path = "./crates/test-utils", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 
 cpu-utils = { path = "./crates/cpu-utils", version = "0.1.0" }
@@ -33,6 +35,7 @@ core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
 anyhow = "1.0"
 byteorder = "1.5"
 chrono = "0.4"
+env_logger = "0.10"
 jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }
 rand = "0.8"
 log = "0.4"

@@ -1,0 +1,15 @@
+[package]
+name = "ccp-test-utils"
+version = "0.1.0"
+description = "Various test utils for CCP"
+authors = ["Fluence Labs"]
+edition = "2021"
+publish = false
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ccp-shared = { workspace = true }
+
+randomx-rust-wrapper = {workspace = true}
