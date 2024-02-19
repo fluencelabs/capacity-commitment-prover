@@ -59,9 +59,10 @@ impl RawProof {
     pub(crate) fn new(
         global_nonce: GlobalNonce,
         difficulty: Difficulty,
-        local_nonce: LocalNonce,
+        local_nonce: impl Into<LocalNonceInner>,
         cu_id: CUID,
     ) -> Self {
+        let local_nonce = LocalNonce::new(local_nonce.into());
         Self {
             global_nonce,
             difficulty,

@@ -76,7 +76,6 @@ async fn cu_prover_can_be_stopped() {
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
 
-    println!("stop");
     let result = prover.stop().await;
     let _ = handle.await;
     assert!(result.is_ok());
@@ -84,8 +83,6 @@ async fn cu_prover_can_be_stopped() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_produces_correct_proof() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
     let config = CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
@@ -107,7 +104,7 @@ async fn cu_prover_produces_correct_proof() {
         while let Some(proof) = outlet.recv().await {
             found_proof_count += 1;
             let expected_result_hash =
-                run_light_randomx(global_nonce_cu.as_slice(), &proof.local_nonce, flags);
+                run_light_randomx(global_nonce_cu.as_slice(), proof.local_nonce.as_ref(), flags);
             assert!(expected_result_hash.into_slice() < difficulty);
         }
 
@@ -122,7 +119,6 @@ async fn cu_prover_produces_correct_proof() {
     std::thread::sleep(std::time::Duration::from_secs(10));
     let result = prover.stop().await;
     let found_proof_count = handle.await.unwrap();
-    println!("proofs count is {found_proof_count}");
 
     assert!(result.is_ok());
     assert!(found_proof_count > 0);
@@ -143,7 +139,7 @@ fn batch_proof_verification(
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
 
     for proof in proofs {
-        let result = vm.hash(&proof.local_nonce);
+        let result = vm.hash(&proof.local_nonce.as_ref());
         if result.into_slice() > difficulty {
             return false;
         }
@@ -154,8 +150,6 @@ fn batch_proof_verification(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_works_with_odd_threads_number() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
     let config = CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
@@ -200,8 +194,6 @@ async fn cu_prover_works_with_odd_threads_number() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn cu_prover_changes_epoch_correctly() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
     let config = CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
@@ -254,9 +246,6 @@ async fn cu_prover_changes_epoch_correctly() {
     assert!(result.is_ok());
     assert!(!first_epoch_proofs.is_empty());
     assert!(!second_epoch_proofs.is_empty());
-
-    println!("first epoch proofs {}", first_epoch_proofs.len());
-    println!("second epoch proofs {}", second_epoch_proofs.len());
 
     assert!(batch_proof_verification(
         global_nonce,

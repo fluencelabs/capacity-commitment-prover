@@ -17,29 +17,29 @@
 use ccp_shared::types::*;
 
 pub fn generate_global_nonce(first_byte: u8) -> GlobalNonce {
-    [
+    GlobalNonce::new([
         first_byte, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2,
         3, 4, 6, 3, 2,
-    ]
+    ])
 }
 
 pub fn generate_local_nonce(first_byte: u8) -> LocalNonce {
-    [
+    LocalNonce::new([
         first_byte, 2, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2,
         3, 4, 6, 3, 2,
-    ]
+    ])
 }
 
 pub fn generate_cu_id(first_byte: u8) -> CUID {
-    [
+    CUID::new([
         first_byte, 2, 3, 4, 5, 6, 7, 8, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0,
-    ]
+    ])
 }
 
 pub fn generate_difficulty(difficulty: u8) -> Difficulty {
-    [
+    Difficulty::new([
         0, difficulty, 3, 4, 3, 4, 3, 1, 2, 4, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2,
         3, 4, 6, 3, 2,
-    ]
+    ])
 }

@@ -14,19 +14,28 @@
  * limitations under the License.
  */
 
-mod cuid;
-mod difficulty;
-mod global_nonce;
-mod local_nonce;
+use std::fmt::Display;
 
-use std::collections::HashMap;
+use serde::Deserialize;
+use serde::Serialize;
 
-pub use cuid::CUID;
-pub use difficulty::Difficulty;
-pub use global_nonce::GlobalNonce;
-pub use local_nonce::LocalNonce;
-pub use local_nonce::LocalNonceInner;
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[repr(transparent)]
+#[serde(transparent)]
+pub struct ProofIdx(u64);
 
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
-pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
+impl ProofIdx {
+    pub fn zero() -> Self {
+        Self(0)
+    }
+
+    pub fn increment(&mut self) {
+        self.0 += 1;
+    }
+}
+
+impl Display for ProofIdx {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}

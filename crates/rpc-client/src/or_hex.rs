@@ -111,14 +111,14 @@ mod tests {
 
     #[test]
     fn serialize_vec() {
-        let a = OrHex::<Difficulty>::Data([0xFF; 32]);
+        let a = OrHex::<Difficulty>::Data(Difficulty::new([0xFF; 32]));
         let j = serde_json::to_value(&a).unwrap();
         assert_eq!(j, json!(vec![0xFF; 32]));
     }
 
     #[test]
     fn deserialize_from_array() {
-        let a: Difficulty = [0xFF; 32];
+        let a: Difficulty = Difficulty::new([0xFF; 32]);
         let j = serde_json::to_string(&a).unwrap();
         let o: OrHex<Difficulty> = serde_json::from_str(&j).unwrap();
         let a2: Difficulty = o.unhex().unwrap();
@@ -127,7 +127,7 @@ mod tests {
 
     #[test]
     fn deserialize_from_string() {
-        let a: Difficulty = [0xFF; 32];
+        let a: Difficulty = Difficulty::new([0xFF; 32]);
         let astr = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
         let j = serde_json::to_string(&astr).unwrap();
         let o: OrHex<Difficulty> = serde_json::from_str(&j).unwrap();

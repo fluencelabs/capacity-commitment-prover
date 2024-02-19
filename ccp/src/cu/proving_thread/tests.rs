@@ -74,10 +74,11 @@ async fn cache_creation_works() {
     thread.stop().await.unwrap();
 
     let actual_vm = RandomXVM::light(actual_cache.handle(), flags).unwrap();
-    let actual_result_hash = actual_vm.hash(&local_nonce);
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -110,11 +111,12 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
-    let actual_result_hash = actual_vm.hash(&local_nonce);
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -161,11 +163,12 @@ async fn dataset_creation_works_with_two_threads() {
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
-    let actual_result_hash = actual_vm.hash(&local_nonce);
+    let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash = run_light_randomx(global_nonce_cu.as_slice(), &local_nonce, flags);
+    let expected_result_hash =
+        run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
     assert_eq!(actual_result_hash, expected_result_hash);
 }
@@ -189,8 +192,11 @@ async fn cc_job_stopable() {
         let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
 
         while let Some(proof) = outlet.recv().await {
-            let expected_result_hash =
-                run_light_randomx(global_nonce_cu.as_slice(), &proof.local_nonce, flags);
+            let expected_result_hash = run_light_randomx(
+                global_nonce_cu.as_slice(),
+                proof.local_nonce.as_ref(),
+                flags,
+            );
             assert!(expected_result_hash.into_slice() < test_difficulty);
         }
     });
@@ -222,8 +228,11 @@ async fn prover_works() {
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
-    let expected_result_hash =
-        run_light_randomx(global_nonce_cu.as_slice(), &proof.local_nonce, flags);
+    let expected_result_hash = run_light_randomx(
+        global_nonce_cu.as_slice(),
+        proof.local_nonce.as_ref(),
+        flags,
+    );
 
     assert!(expected_result_hash.into_slice() < test_difficulty);
 }

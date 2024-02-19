@@ -91,7 +91,7 @@ fn applying_same_roadmap_idempotent() {
     let allocation_2 = (2, test::generate_cu_id(2));
     new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(1), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(1), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -120,7 +120,7 @@ fn add_new_peer() {
     let allocation_3 = (3, test::generate_cu_id(3));
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(1), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(1), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -155,7 +155,7 @@ fn remove_peer() {
     let allocation_2 = (2, test::generate_cu_id(2));
     new_allocation.insert(allocation_2.0.into(), allocation_2.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(1), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(1), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -192,13 +192,13 @@ fn new_epoch() {
     let allocation_3 = (3, test::generate_cu_id(3));
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
 
-    let new_epoch = Epoch::new(test::generate_local_nonce(2), test::generate_difficulty(1));
+    let new_epoch = Epoch::new(test::generate_global_nonce(2), test::generate_difficulty(1));
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
     current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
-    let current_epoch = Epoch::new(test::generate_local_nonce(1), test::generate_difficulty(1));
+    let current_epoch = Epoch::new(test::generate_global_nonce(1), test::generate_difficulty(1));
     let current_status = CCStatus::Running {
         epoch: current_epoch,
     };
@@ -235,7 +235,7 @@ fn same_epoch_new_jobs() {
     new_allocation.insert(allocation_2.0.into(), allocation_3.1);
     new_allocation.insert(allocation_3.0.into(), allocation_1.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(2), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(2), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -275,7 +275,7 @@ fn repinning_works() {
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(2), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(2), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -317,7 +317,7 @@ fn create_more_then_remove() {
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
     new_allocation.insert(allocation_5.0.into(), allocation_5.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(2), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(2), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();
@@ -374,7 +374,7 @@ fn remove_more_then_create() {
     new_allocation.insert(allocation_3.0.into(), allocation_3.1);
     new_allocation.insert(allocation_4.0.into(), allocation_4.1);
 
-    let epoch = Epoch::new(test::generate_local_nonce(2), test::generate_difficulty(1));
+    let epoch = Epoch::new(test::generate_global_nonce(2), test::generate_difficulty(1));
     let current_status = CCStatus::Running { epoch };
 
     let mut current_allocation: HashMap<_, DumpProvider> = HashMap::new();

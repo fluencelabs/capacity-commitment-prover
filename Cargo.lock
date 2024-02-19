@@ -314,6 +314,7 @@ name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
  "cpu-topology",
+ "hex",
  "serde",
 ]
 
