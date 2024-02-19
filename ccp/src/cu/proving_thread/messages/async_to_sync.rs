@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::cache::CacheHandle;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
 
-use crate::Difficulty;
 use crate::GlobalNonce;
 use crate::CUID;
 
@@ -47,8 +47,7 @@ pub(crate) struct InitializeDataset {
 pub(crate) struct NewCCJob {
     pub(crate) dataset: DatasetHandle,
     pub(crate) flags: RandomXFlags,
-    pub(crate) global_nonce: GlobalNonce,
-    pub(crate) difficulty: Difficulty,
+    pub(crate) epoch: EpochParameters,
     pub(crate) cu_id: CUID,
 }
 
@@ -93,15 +92,13 @@ impl NewCCJob {
     pub fn new(
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Self {
         Self {
             dataset,
             flags,
-            global_nonce,
-            difficulty,
+            epoch,
             cu_id,
         }
     }

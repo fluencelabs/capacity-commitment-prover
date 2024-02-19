@@ -47,8 +47,7 @@ pub trait ProvingThreadFacade {
         &mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Result<(), Self::Error>;
 

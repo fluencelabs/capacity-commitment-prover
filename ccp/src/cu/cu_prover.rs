@@ -78,18 +78,13 @@ impl CUProver {
         Ok(prover)
     }
 
-    pub(crate) async fn new_epoch(
-        &mut self,
-        global_nonce: GlobalNonce,
-        cu_id: CUID,
-        difficulty: Difficulty,
-    ) -> CUResult<()> {
+    pub(crate) async fn new_epoch(&mut self, epoch: EpochParameters, cu_id: CUID) -> CUResult<()> {
         self.status = CUStatus::Running { cu_id };
 
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
         let cache = thread
-            .create_cache(global_nonce, cu_id, randomx_flags)
+            .create_cache(epoch.global_nonce, cu_id, randomx_flags)
             .await?;
 
         let dataset_handle = self.dataset.handle();
@@ -97,8 +92,7 @@ impl CUProver {
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, global_nonce, difficulty, cu_id)
-            .await
+        self.run_proving_jobs(dataset_handle, epoch, cu_id).await
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -171,8 +165,7 @@ impl CUProver {
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
         dataset: DatasetHandle,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        epoch: EpochParameters,
         cu_id: CUID,
     ) -> CUResult<()> {
         use futures::FutureExt;
@@ -180,13 +173,7 @@ impl CUProver {
         let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| {
             thread
-                .run_cc_job(
-                    dataset.clone(),
-                    randomx_flags,
-                    global_nonce,
-                    difficulty,
-                    cu_id,
-                )
+                .run_cc_job(dataset.clone(), randomx_flags, epoch, cu_id)
                 .boxed()
         };
         run_on_all_threads(self.threads.iter_mut(), closure).await?;

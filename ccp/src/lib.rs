@@ -28,7 +28,6 @@
 
 mod alignment_roadmap;
 mod cu;
-mod epoch;
 mod errors;
 mod proof_storage_worker;
 pub mod prover;

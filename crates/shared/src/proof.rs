@@ -25,8 +25,7 @@ use crate::types;
 /// Uniquely identifies a proof.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CCProofId {
-    pub global_nonce: types::GlobalNonce,
-    pub difficulty: types::Difficulty,
+    pub epoch: types::EpochParameters,
     // unique in one epoch
     pub idx: ProofIdx,
 }
@@ -41,16 +40,8 @@ pub struct CCProof {
 }
 
 impl CCProofId {
-    pub fn new(
-        global_nonce: types::GlobalNonce,
-        difficulty: types::Difficulty,
-        id: ProofIdx,
-    ) -> Self {
-        Self {
-            global_nonce,
-            difficulty,
-            idx: id,
-        }
+    pub fn new(epoch: types::EpochParameters, id: ProofIdx) -> Self {
+        Self { epoch, idx: id }
     }
 
     /// Returns true, if proofs was generated after the supplied one.

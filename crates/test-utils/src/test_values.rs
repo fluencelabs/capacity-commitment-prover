@@ -16,6 +16,13 @@
 
 use ccp_shared::types::*;
 
+pub fn generate_epoch_params(nonce: u8, difficulty: u8) -> EpochParameters {
+    let global_nonce = generate_global_nonce(nonce);
+    let difficulty = generate_difficulty(difficulty);
+
+    EpochParameters::new(global_nonce, difficulty)
+}
+
 pub fn generate_global_nonce(first_byte: u8) -> GlobalNonce {
     GlobalNonce::new([
         first_byte, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 1, 2, 3, 2, 3, 3, 4, 2, 1, 4, 5, 6, 1, 2,

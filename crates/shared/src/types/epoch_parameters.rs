@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::*;
+use serde::Deserialize;
+use serde::Serialize;
+
+use crate::types::Difficulty;
+use crate::types::GlobalNonce;
 
 /// Describes a single epoch, contains global parameters, which come from the on-chain part.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Epoch {
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EpochParameters {
     pub global_nonce: GlobalNonce,
     pub difficulty: Difficulty,
 }
 
-impl Epoch {
+impl EpochParameters {
     pub fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
         Self {
             global_nonce,

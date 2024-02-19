@@ -16,6 +16,7 @@
 
 mod cuid;
 mod difficulty;
+mod epoch_parameters;
 mod global_nonce;
 mod local_nonce;
 
@@ -23,6 +24,7 @@ use std::collections::HashMap;
 
 pub use cuid::CUID;
 pub use difficulty::Difficulty;
+pub use epoch_parameters::EpochParameters;
 pub use global_nonce::GlobalNonce;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 
-use ccp_shared::proof::ProofIdx;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
 use jsonrpsee::server::ServerHandle;
@@ -15,7 +14,9 @@ use ccp_rpc_client::CCPRpcServer;
 use ccp_rpc_client::OrHex;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
@@ -83,8 +84,9 @@ where
         }
 
         let mut guard = self.cc_prover.lock().await;
+        let epoch = EpochParameters::new(global_nonce, difficulty);
         guard
-            .on_active_commitment(global_nonce, difficulty, cu_allocation_real)
+            .on_active_commitment(epoch, cu_allocation_real)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())

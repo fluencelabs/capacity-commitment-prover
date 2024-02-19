@@ -14,62 +14,49 @@
  * limitations under the License.
  */
 
-use rand::RngCore;
+use ccp_shared::types::LocalNonce;
 
-pub(crate) const LOCAL_NONCE_SIZE: usize = 32;
+pub(crate) trait NonceIterable {
+    /// Generates the next nonce.
+    fn next(&mut self);
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct LocalNonce {
-    nonce: [u8; LOCAL_NONCE_SIZE],
+    /// Returns back to the previous nonce/
+    fn prev(&mut self);
 }
 
-impl LocalNonce {
-    /// Creates a new random nonce.
-    /// It uses random generator to be sure that in the next start with the same parameters,
-    /// CCP won't do the same job twice.
-    pub(crate) fn random() -> Self {
-        let mut rng = rand::thread_rng();
-        let mut nonce = [0u8; LOCAL_NONCE_SIZE];
-
-        rng.fill_bytes(&mut nonce);
-
-        Self { nonce }
-    }
-
-    /// Generates the next nonce.
-    pub(crate) fn next(&mut self) {
+impl NonceIterable for LocalNonce {
+    fn next(&mut self) {
         let mut nonce_as_u64: u64 = u64::from_le_bytes(
-            self.nonce[0..std::mem::size_of::<u64>()]
+            self.as_mut()[0..std::mem::size_of::<u64>()]
                 .try_into()
                 .unwrap(),
         );
         nonce_as_u64 = nonce_as_u64.wrapping_add(1);
-        self.nonce[0..std::mem::size_of::<u64>()].copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
+        self.as_mut()[0..std::mem::size_of::<u64>()]
+            .copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
     }
 
-    pub(crate) fn prev(&mut self) {
+    fn prev(&mut self) {
         let mut nonce_as_u64: u64 = u64::from_le_bytes(
-            self.nonce[0..std::mem::size_of::<u64>()]
+            self.as_mut()[0..std::mem::size_of::<u64>()]
                 .try_into()
                 .unwrap(),
         );
         nonce_as_u64 = nonce_as_u64.wrapping_sub(1);
-        self.nonce[0..std::mem::size_of::<u64>()].copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
-    }
-
-    pub(crate) fn get(&self) -> &[u8; LOCAL_NONCE_SIZE] {
-        &self.nonce
+        self.as_mut()[0..std::mem::size_of::<u64>()]
+            .copy_from_slice(&u64::to_le_bytes(nonce_as_u64));
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::LocalNonce;
+    use super::NonceIterable;
 
     #[test]
     fn next_works() {
         let mut nonce = LocalNonce::random();
-        let nonce_first = nonce.get();
+        let nonce_first = nonce.as_ref();
         let nonce_first_as_u64 = u64::from_le_bytes(
             nonce_first[0..std::mem::size_of::<u64>()]
                 .try_into()
@@ -77,7 +64,7 @@ mod tests {
         );
 
         nonce.next();
-        let nonce_second = nonce.get();
+        let nonce_second = nonce.as_ref();
         let nonce_second_as_u64 = u64::from_le_bytes(
             nonce_second[0..std::mem::size_of::<u64>()]
                 .try_into()
@@ -90,7 +77,7 @@ mod tests {
     #[test]
     fn prev_works() {
         let mut nonce = LocalNonce::random();
-        let nonce_first = nonce.get();
+        let nonce_first = nonce.as_ref();
         let nonce_first_as_u64 = u64::from_le_bytes(
             nonce_first[0..std::mem::size_of::<u64>()]
                 .try_into()
@@ -98,7 +85,7 @@ mod tests {
         );
 
         nonce.prev();
-        let nonce_second = nonce.get();
+        let nonce_second = nonce.as_ref();
         let nonce_second_as_u64 = u64::from_le_bytes(
             nonce_second[0..std::mem::size_of::<u64>()]
                 .try_into()
@@ -111,26 +98,26 @@ mod tests {
     #[test]
     fn next_prev_idempotent() {
         let mut nonce = LocalNonce::random();
-        let nonce_first = nonce.get().to_owned();
+        let nonce_first = nonce.as_ref().to_owned();
 
         nonce.prev();
-        assert_ne!(&nonce_first, nonce.get());
+        assert_ne!(&nonce_first, nonce.as_ref());
         nonce.next();
 
-        let nonce_second = nonce.get();
+        let nonce_second = nonce.as_ref();
         assert_eq!(&nonce_first, nonce_second);
     }
 
     #[test]
     fn prev_next_idempotent() {
         let mut nonce = LocalNonce::random();
-        let nonce_first = nonce.get().to_owned();
+        let nonce_first = nonce.as_ref().to_owned();
 
         nonce.next();
-        assert_ne!(&nonce_first, nonce.get());
+        assert_ne!(&nonce_first, nonce.as_ref());
         nonce.prev();
 
-        let nonce_second = nonce.get();
+        let nonce_second = nonce.as_ref();
         assert_eq!(&nonce_first, nonce_second);
     }
 }

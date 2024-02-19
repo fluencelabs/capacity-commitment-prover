@@ -49,8 +49,7 @@ pub(crate) enum SyncToAsyncMessage {
 
 #[derive(Debug)]
 pub(crate) struct RawProof {
-    pub(crate) global_nonce: GlobalNonce,
-    pub(crate) difficulty: Difficulty,
+    pub(crate) epoch: EpochParameters,
     pub(crate) local_nonce: LocalNonce,
     pub(crate) cu_id: CUID,
     pub(crate) result_hash: ResultHash,
@@ -58,16 +57,13 @@ pub(crate) struct RawProof {
 
 impl RawProof {
     pub(crate) fn new(
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
-        local_nonce: impl Into<LocalNonceInner>,
+        epoch: EpochParameters,
+        local_nonce: LocalNonce,
         cu_id: CUID,
         result_hash: ResultHash,
     ) -> Self {
-        let local_nonce = LocalNonce::new(local_nonce.into());
         Self {
-            global_nonce,
-            difficulty,
+            epoch,
             local_nonce,
             cu_id,
             result_hash,
