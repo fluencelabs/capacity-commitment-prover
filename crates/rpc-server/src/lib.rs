@@ -20,10 +20,6 @@ use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
 
-// The proof size is less 600 bytes encoded in JSON; the limit for RPC response is 10485760,
-// that makes maximal possible value ca. 17000.
-const MAX_PROOF_NUMBER: usize = 1024;
-
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<P>>,
@@ -108,16 +104,18 @@ where
     async fn get_proofs_after(
         &self,
         proof_idx: ProofIdx,
+        limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
         let guard = self.cc_prover.lock().await;
         let mut proofs = guard
             .get_proofs_after(proof_idx)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
-        if proofs.len() > MAX_PROOF_NUMBER {
-            // please note that the order here is arbitrary
-            proofs = proofs.drain(0..MAX_PROOF_NUMBER).collect();
+        if proofs.len() > limit {
+            proofs.select_nth_unstable_by_key(limit + 1, |p| p.id.idx);
+            proofs = proofs.drain(0..limit).collect();
         }
+        proofs.sort_unstable_by_key(|p| p.id.idx);
         Ok(proofs)
     }
 }
