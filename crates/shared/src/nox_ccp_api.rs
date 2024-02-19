@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use crate::proof::ProofIdx;
+
 use super::proof::CCProof;
 use super::types::*;
 
@@ -52,6 +54,6 @@ pub trait NoxCCPApi: Send {
     /// Returns proofs after the provided proof idx for current epoch.
     fn get_proofs_after(
         &self,
-        proof_idx: u64,
+        proof_idx: ProofIdx,
     ) -> impl std::future::Future<Output = Result<Vec<CCProof>, Self::Error>> + Send;
 }
