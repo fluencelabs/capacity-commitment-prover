@@ -18,6 +18,7 @@ use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
+use ccp_utils::run_utils::run_unordered;
 use cpu_utils::CPUTopology;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
@@ -79,8 +80,6 @@ impl CUProver {
     }
 
     pub(crate) async fn new_epoch(&mut self, epoch: EpochParameters, cu_id: CUID) -> CUResult<()> {
-        self.status = CUStatus::Running { cu_id };
-
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
         let cache = thread
@@ -92,6 +91,7 @@ impl CUProver {
         self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
+        self.status = CUStatus::Running { cu_id };
         self.run_proving_jobs(dataset_handle, epoch, cu_id).await
     }
 
@@ -109,7 +109,19 @@ impl CUProver {
             let core_id = distributor.distribute(thread_id, &logical_cores);
             thread.pin(core_id).boxed()
         };
-        run_on_all_threads(self.threads.iter_mut(), closure).await?;
+        run_unordered(self.threads.iter_mut(), closure).await?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::needless_lifetimes)]
+    pub(crate) async fn pause<'threads>(&'threads mut self) -> CUResult<()> {
+        use futures::FutureExt;
+
+        let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| thread.pause().boxed();
+        run_unordered(self.threads.iter_mut(), closure).await?;
+
+        self.status = CUStatus::Idle;
 
         Ok(())
     }
@@ -118,7 +130,7 @@ impl CUProver {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
-        run_on_all_threads(self.threads.into_iter(), closure).await?;
+        run_unordered(self.threads.into_iter(), closure).await?;
 
         Ok(())
     }
@@ -156,9 +168,8 @@ impl CUProver {
                 .boxed()
         };
 
-        run_on_all_threads(self.threads.iter_mut(), closure)
-            .await
-            .map_err(Into::into)
+        run_unordered(self.threads.iter_mut(), closure).await?;
+        Ok(())
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -176,7 +187,7 @@ impl CUProver {
                 .run_cc_job(dataset.clone(), randomx_flags, epoch, cu_id)
                 .boxed()
         };
-        run_on_all_threads(self.threads.iter_mut(), closure).await?;
+        run_unordered(self.threads.iter_mut(), closure).await?;
 
         Ok(())
     }
@@ -186,35 +197,4 @@ impl ToCUStatus for CUProver {
     fn status(&self) -> CUStatus {
         self.status
     }
-}
-
-async fn run_on_all_threads<'future, Thread, T, E>(
-    threads: impl Iterator<Item = Thread>,
-    closure: impl Fn(usize, Thread) -> futures::future::BoxFuture<'future, Result<T, E>>,
-) -> Result<(), Vec<E>>
-where
-    T: Send + std::fmt::Debug,
-{
-    use futures::stream::FuturesUnordered;
-    use futures::StreamExt;
-
-    let (_, thread_errors): (Vec<_>, Vec<_>) = threads
-        .enumerate()
-        .map(|(thread_id, thread)| closure(thread_id, thread))
-        .collect::<FuturesUnordered<_>>()
-        .collect::<Vec<_>>()
-        .await
-        .into_iter()
-        .partition(Result::is_ok);
-
-    if thread_errors.is_empty() {
-        return Ok(());
-    }
-
-    let thread_errors = thread_errors
-        .into_iter()
-        .map(Result::unwrap_err)
-        .collect::<Vec<_>>();
-
-    Err(thread_errors)
 }

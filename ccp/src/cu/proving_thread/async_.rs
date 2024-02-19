@@ -119,7 +119,7 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     }
 
     async fn run_cc_job(
-        &mut self,
+        &self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
         epoch: EpochParameters,
@@ -133,6 +133,21 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     async fn pin(&self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
         let message = AsyncToSyncMessage::PinThread(PinThread { core_id });
         self.inlet.send(message).await.map_err(Into::into)
+    }
+
+    async fn pause(&mut self) -> Result<(), Self::Error> {
+        let message = AsyncToSyncMessage::Pause;
+        self.inlet.send(message).await?;
+
+        match self.outlet.recv().await {
+            Some(SyncToAsyncMessage::Paused) => Ok(()),
+            Some(message) => Err(ProvingThreadError::channel_error(format!(
+                "expected the Paused event, but {message:?} received"
+            ))),
+            None => Err(ProvingThreadError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
+        }
     }
 
     async fn stop(self) -> Result<(), Self::Error> {

@@ -44,7 +44,7 @@ pub trait ProvingThreadFacade {
     ) -> Result<(), Self::Error>;
 
     async fn run_cc_job(
-        &mut self,
+        &self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
         epoch: EpochParameters,
@@ -52,6 +52,9 @@ pub trait ProvingThreadFacade {
     ) -> Result<(), Self::Error>;
 
     async fn pin(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
+
+    /// Pauses proving thread till the next message.
+    async fn pause(&mut self) -> Result<(), Self::Error>;
 
     /// Send a stop message to thread and join on it till it ends.
     async fn stop(self) -> Result<(), Self::Error>;

@@ -37,6 +37,7 @@ pub(crate) enum AsyncToSyncMessage {
     InitializeDataset(InitializeDataset),
     NewCCJob(NewCCJob),
     PinThread(PinThread),
+    Pause,
     Stop,
 }
 
@@ -45,6 +46,7 @@ pub(crate) enum SyncToAsyncMessage {
     CacheCreated(CacheCreated),
     DatasetAllocated(DatasetAllocated),
     DatasetInitialized,
+    Paused,
 }
 
 #[derive(Debug)]

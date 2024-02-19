@@ -36,3 +36,9 @@ pub enum CCProverError {
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
 }
+
+impl From<Vec<CUProverError>> for CCProverError {
+    fn from(errors: Vec<CUProverError>) -> Self {
+        Self::CUProverErrors(errors)
+    }
+}
