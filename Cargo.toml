@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "ccp",
     "crates/config",
-    "crates/cpu-topology",
+    "crates/cpu-utils",
     "crates/rpc-client",
     "crates/rpc-server",
     "crates/shared",
@@ -19,7 +19,7 @@ ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
 
-cpu-topology = { path = "./crates/cpu-topology", version = "0.1.0" }
+cpu-utils = { path = "./crates/cpu-utils", version = "0.1.0" }
 randomx-rust-wrapper = "0.3"
 
 async-trait = "0.1.77"

@@ -235,7 +235,7 @@ dependencies = [
  "ccp-shared",
  "ccp-utils",
  "chrono",
- "cpu-topology",
+ "cpu-utils",
  "futures",
  "log",
  "nonempty",
@@ -311,7 +311,7 @@ dependencies = [
 name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
- "cpu-topology",
+ "cpu-utils",
  "hex",
  "serde",
 ]
@@ -435,7 +435,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cpu-topology"
+name = "cpu-utils"
 version = "0.1.0"
 dependencies = [
  "core_affinity",

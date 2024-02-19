@@ -156,7 +156,7 @@ impl CCProver {
         utility_core_id: LogicalCoreId,
     ) {
         tokio::spawn(async move {
-            cpu_topology::pin_current_thread_to(utility_core_id);
+            cpu_utils::pinning::pin_current_thread_to(utility_core_id);
 
             let mut proof_idx = ProofIdx::zero();
             let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);

@@ -27,6 +27,6 @@ pub use global_nonce::GlobalNonce;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
 
-pub use cpu_topology::LogicalCoreId;
-pub use cpu_topology::PhysicalCoreId;
+pub use cpu_utils::LogicalCoreId;
+pub use cpu_utils::PhysicalCoreId;
 pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;
