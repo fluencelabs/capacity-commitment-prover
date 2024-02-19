@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 cpu-utils = { workspace = true }
 
-randomx-rust-wrapper = {workspace = true}
+randomx-rust-wrapper = { workspace = true }
 
 hex = { workspace = true }
 serde = { workspace = true }

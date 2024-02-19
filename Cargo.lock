@@ -235,7 +235,6 @@ dependencies = [
  "ccp-shared",
  "ccp-utils",
  "chrono",
- "cpu-utils",
  "futures",
  "log",
  "nonempty",
@@ -315,6 +314,14 @@ dependencies = [
  "hex",
  "randomx-rust-wrapper",
  "serde",
+]
+
+[[package]]
+name = "ccp-test-utils"
+version = "0.1.0"
+dependencies = [
+ "ccp-shared",
+ "randomx-rust-wrapper",
 ]
 
 [[package]]

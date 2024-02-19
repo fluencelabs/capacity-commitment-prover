@@ -20,9 +20,9 @@ use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
 
+use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::*;
 use cpu_utils::LogicalCoreId;
-use ccp_shared::meet_difficulty::MeetDifficulty;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;

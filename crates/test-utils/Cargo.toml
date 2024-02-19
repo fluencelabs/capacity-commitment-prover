@@ -8,3 +8,5 @@ publish = false
 
 [dependencies]
 ccp-shared = { workspace = true }
+
+randomx-rust-wrapper = { workspace = true }
