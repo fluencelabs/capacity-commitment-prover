@@ -21,7 +21,6 @@ use ccp_shared::types::*;
 
 use super::roadmap_builder::RoadmapBuilder;
 use crate::cu::status::ToCUStatus;
-use crate::epoch::Epoch;
 use crate::status::CCStatus;
 
 use actions_state::*;
@@ -31,13 +30,13 @@ use actions_state::*;
 #[derive(Debug, Eq)]
 pub(crate) struct CCProverAlignmentRoadmap {
     pub(crate) actions: Vec<CUProverAction>,
-    pub(crate) epoch: Epoch,
+    pub(crate) epoch: EpochParameters,
 }
 
 impl CCProverAlignmentRoadmap {
     pub(crate) fn create_roadmap<T: ToCUStatus>(
         new_allocation: CUAllocation,
-        new_epoch: Epoch,
+        new_epoch: EpochParameters,
         current_allocation: &HashMap<PhysicalCoreId, T>,
         current_status: CCStatus,
     ) -> CCProverAlignmentRoadmap {

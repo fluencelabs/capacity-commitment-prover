@@ -315,6 +315,7 @@ version = "0.1.0"
 dependencies = [
  "cpu-utils",
  "hex",
+ "rand",
  "randomx-rust-wrapper",
  "serde",
 ]

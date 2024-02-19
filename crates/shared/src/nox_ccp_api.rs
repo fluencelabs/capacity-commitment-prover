@@ -41,8 +41,7 @@ pub trait NoxCCPApi: Send {
     ///  - Nox (re)started
     fn on_active_commitment(
         &mut self,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 

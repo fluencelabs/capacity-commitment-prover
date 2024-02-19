@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::EpochParameters;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
 use randomx::Cache;
@@ -26,7 +27,6 @@ use super::errors::ProvingThreadError;
 use super::facade::ProvingThreadFacade;
 use super::messages::*;
 use super::sync::ProvingThreadSync;
-use crate::Difficulty;
 use crate::GlobalNonce;
 use crate::LogicalCoreId;
 use crate::CUID;
@@ -122,11 +122,10 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         &mut self,
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        global_nonce: GlobalNonce,
-        difficulty: Difficulty,
+        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(dataset, flags, global_nonce, difficulty, cu_id);
+        let message = NewCCJob::new(dataset, flags, epoch, cu_id);
         let message = AsyncToSyncMessage::NewCCJob(message);
         self.inlet.send(message).await.map_err(Into::into)
     }

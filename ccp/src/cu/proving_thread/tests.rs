@@ -183,8 +183,9 @@ async fn cc_job_stopable() {
 
     let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
+    let epoch = EpochParameters::new(global_nonce, test_difficulty);
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -215,8 +216,9 @@ async fn prover_works() {
 
     let test_difficulty = test::generate_difficulty(0xFF);
     let flags = RandomXFlags::recommended_full_mem();
+    let epoch = EpochParameters::new(global_nonce, test_difficulty);
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, test_difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -244,7 +246,8 @@ fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: 
     let flags = RandomXFlags::recommended();
 
     for proof in proofs {
-        let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&proof.global_nonce, &proof.cu_id);
+        let global_nonce_cu =
+            ccp_utils::compute_global_nonce_cu(&proof.epoch.global_nonce, &proof.cu_id);
         let cache = Cache::new(&global_nonce_cu, flags).unwrap();
         let vm = RandomXVM::light(cache.handle(), flags).unwrap();
 
@@ -273,8 +276,9 @@ async fn prover_produces_repeatable_hashes() {
     });
 
     let flags = RandomXFlags::recommended_full_mem();
+    let epoch = EpochParameters::new(global_nonce, difficulty);
     thread
-        .run_cc_job(actual_dataset, flags, global_nonce, difficulty, cu_id)
+        .run_cc_job(actual_dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
