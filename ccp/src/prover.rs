@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use ccp_shared::proof::ProofIdx;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
@@ -26,7 +25,9 @@ use ccp_config::CCPConfig;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
+use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::*;
+use ccp_utils::run_utils::run_on_all_runnables;
 
 use crate::alignment_roadmap::*;
 use crate::cu::CUProver;
@@ -43,7 +44,7 @@ use crate::LogicalCoreId;
 pub type CCResult<T> = Result<T, CCProverError>;
 
 pub struct CCProver {
-    active_provers: HashMap<PhysicalCoreId, CUProver>,
+    cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
@@ -64,7 +65,7 @@ impl NoxCCPApi for CCProver {
         let roadmap = CCProverAlignmentRoadmap::create_roadmap(
             new_allocation,
             new_epoch,
-            &self.active_provers,
+            &self.cu_provers,
             self.status,
         );
         self.status = CCStatus::Running { epoch: new_epoch };
@@ -72,29 +73,13 @@ impl NoxCCPApi for CCProver {
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        use futures::stream::FuturesUnordered;
-        use futures::StreamExt;
+        let closure =
+            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.stop().boxed();
 
-        let results = self
-            .active_provers
-            .drain()
-            .map(|(_, prover)| prover.stop())
-            .collect::<FuturesUnordered<_>>()
-            .collect::<Vec<_>>()
-            .await;
-
-        let errors = results
-            .into_iter()
-            .map(Result::unwrap_err)
-            .collect::<Vec<_>>();
-
+        run_on_all_runnables(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
 
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(CCProverError::CUProverErrors(errors))
-        }
+        Ok(())
     }
 
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
@@ -131,13 +116,25 @@ impl CCProver {
         };
 
         Self {
-            active_provers: HashMap::new(),
+            cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
             proof_storage,
         }
+    }
+
+    #[allow(clippy::needless_lifetimes)]
+    pub async fn pause<'provers>(&'provers mut self) -> CCResult<()> {
+        let closure = move |_: usize, (_, prover): (&PhysicalCoreId, &'provers mut CUProver)| {
+            prover.pause().boxed()
+        };
+        run_on_all_runnables(self.cu_provers.iter_mut(), closure).await?;
+
+        self.status = CCStatus::Idle;
+
+        Ok(())
     }
 
     pub async fn stop(mut self) -> CCResult<()> {
@@ -228,7 +225,7 @@ impl RoadmapAlignable for CCProver {
                 CUProverPostAction::NotApplicable => None,
             })
             .collect::<Vec<_>>();
-        self.active_provers.extend(provers_to_keep);
+        self.cu_provers.extend(provers_to_keep);
 
         if errors.is_empty() {
             return Ok(());
@@ -268,7 +265,7 @@ impl CCProver {
         &'prover mut self,
         state: actions_state::RemoveCUProverState,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
-        let prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
             Ok(CUProverPostAction::Nothing)
@@ -281,7 +278,7 @@ impl CCProver {
         state: actions_state::NewCCJobState,
         epoch: Epoch,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
-        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover
                 .new_epoch(epoch.global_nonce, state.new_cu_id, epoch.difficulty)
@@ -296,7 +293,7 @@ impl CCProver {
         state: actions_state::NewCCJobWithRepiningState,
         epoch: Epoch,
     ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
-        let mut prover = self.active_provers.remove(&state.current_core_id).unwrap();
+        let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.pin(state.new_core_id).await?;
             prover

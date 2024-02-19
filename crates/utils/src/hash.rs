@@ -14,5 +14,24 @@
  * limitations under the License.
  */
 
-pub mod hash;
-pub mod run_utils;
+use sha3::digest::core_api::CoreWrapper;
+use sha3::digest::Output;
+use sha3::Keccak256Core;
+
+use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::CUID;
+
+/// Computes global nonce specific for a particular CU by
+/// keccak(global_nonce + cu_id)
+pub fn compute_global_nonce_cu(
+    global_nonce: &GlobalNonce,
+    cu_id: &CUID,
+) -> Output<CoreWrapper<Keccak256Core>> {
+    use sha3::Digest;
+
+    let mut hasher = sha3::Keccak256::new();
+    hasher.update(global_nonce.as_ref());
+    hasher.update(cu_id.as_ref());
+
+    hasher.finalize()
+}

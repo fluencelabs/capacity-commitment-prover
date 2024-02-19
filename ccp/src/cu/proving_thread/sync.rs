@@ -109,7 +109,7 @@ impl ProvingThreadSync {
         match message {
             AsyncToSyncMessage::CreateCache(params) => {
                 let global_nonce_cu =
-                    ccp_utils::compute_global_nonce_cu(&params.global_nonce, &params.cu_id);
+                    ccp_utils::hash::compute_global_nonce_cu(&params.global_nonce, &params.cu_id);
                 let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
 
                 let ttp_message = CacheCreated::new(cache);
@@ -146,6 +146,11 @@ impl ProvingThreadSync {
             AsyncToSyncMessage::PinThread(params) => {
                 // TODO: propagate error
                 cpu_utils::pinning::pin_current_thread_to(params.core_id);
+                Ok(ThreadState::WaitForMessage)
+            }
+
+            AsyncToSyncMessage::Pause => {
+                sta_inlet.blocking_send(SyncToAsyncMessage::Paused)?;
                 Ok(ThreadState::WaitForMessage)
             }
 

@@ -332,6 +332,7 @@ name = "ccp-utils"
 version = "0.1.0"
 dependencies = [
  "ccp-shared",
+ "futures",
  "sha3",
 ]
 

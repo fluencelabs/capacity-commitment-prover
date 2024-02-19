@@ -8,4 +8,5 @@ publish = true
 
 [dependencies]
 ccp-shared = {workspace = true}
+futures = { workspace = true }
 sha3 = { workspace = true }
