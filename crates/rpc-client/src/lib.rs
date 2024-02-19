@@ -66,4 +66,8 @@ impl CCPRpcHttpClient {
     pub async fn on_no_active_commitment(&self) -> Result<(), ClientError> {
         CCPRpcClient::on_no_active_commitment(&self.inner).await
     }
+
+    pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, ClientError> {
+        CCPRpcClient::get_proofs_after(&self.inner, proof_idx).await
+    }
 }
