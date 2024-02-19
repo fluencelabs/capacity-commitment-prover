@@ -26,14 +26,14 @@ where
     use futures::stream::FuturesUnordered;
     use futures::StreamExt;
 
-    let (results, errors): (Vec<_>, Vec<_>) = runnables
+    let (results, errors) = runnables
         .enumerate()
         .map(|(idx, runnable)| closure(idx, runnable))
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
         .await
         .into_iter()
-        .partition(Result::is_ok);
+        .partition::<Vec<_>, _>(Result::is_ok);
 
     if errors.is_empty() {
         let results = unwrap(results.into_iter(), Result::unwrap);
