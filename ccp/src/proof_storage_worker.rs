@@ -17,7 +17,7 @@
 use std::path::PathBuf;
 use tokio::fs::DirEntry;
 
-use ccp_shared::proof::CCProof;
+use ccp_shared::proof::{CCProof, ProofIdx};
 
 const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde deserializer shouldn't fail";
@@ -50,7 +50,7 @@ impl ProofStorageWorker {
 
     /// Gets proofs from the proof directory, which proof_id is strictly bigger than
     /// the provided proof id.
-    pub async fn get_proofs_after(&self, proof_idx: u64) -> tokio::io::Result<Vec<CCProof>> {
+    pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> tokio::io::Result<Vec<CCProof>> {
         let mut proofs = Vec::new();
 
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
@@ -75,7 +75,7 @@ impl ProofStorageWorker {
         }
     }
 
-    async fn is_file_suitable(entry: &DirEntry, proof_idx: u64) -> tokio::io::Result<bool> {
+    async fn is_file_suitable(entry: &DirEntry, proof_idx: ProofIdx) -> tokio::io::Result<bool> {
         use std::str::FromStr;
 
         if !entry.file_type().await?.is_file() {
@@ -89,8 +89,8 @@ impl ProofStorageWorker {
             None => return Ok(false),
         };
 
-        match u64::from_str(file_name_str) {
-            Ok(current_proof_idx) => Ok(current_proof_idx > proof_idx),
+        match ProofIdx::from_str(file_name_str) {
+            Ok(current_proof_idx) => Ok(proof_idx < current_proof_idx),
             // if the file name isn't u64, then again someone else put a file into
             // the proof directory, ignore it
             Err(_) => Ok(false),
