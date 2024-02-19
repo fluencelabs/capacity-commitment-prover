@@ -28,7 +28,7 @@ where
 
     let (results, errors): (Vec<_>, Vec<_>) = runnables
         .enumerate()
-        .map(|(thread_id, thread)| closure(thread_id, thread))
+        .map(|(idx, runnable)| closure(idx, runnable))
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
         .await

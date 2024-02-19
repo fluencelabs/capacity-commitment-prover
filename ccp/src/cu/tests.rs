@@ -82,6 +82,71 @@ async fn cu_prover_can_be_stopped() {
     assert!(result.is_ok());
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn cu_prover_can_be_paused() {
+    use std::sync;
+
+    let config = CUProverConfig {
+        randomx_flags: RandomXFlags::recommended_full_mem(),
+        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
+        },
+    };
+
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let cu_id = test::generate_cu_id(1);
+
+    let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
+
+    let is_thread_paused_cloned = is_thread_paused.clone();
+    let handle = tokio::spawn(async move {
+        let mut proofs_before_pause = Vec::new();
+        let mut proofs_after_pause = Vec::new();
+
+        while let Some(proof) = outlet.recv().await {
+            let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
+            if !*is_thread_paused_locked.borrow() {
+                proofs_before_pause.push(proof);
+            } else {
+                proofs_after_pause.push(proof);
+            }
+        }
+
+        (proofs_before_pause, proofs_after_pause)
+    });
+
+    prover
+        .new_epoch(
+            test::generate_global_nonce(1),
+            cu_id,
+            test::generate_difficulty(0xFF),
+        )
+        .await
+        .unwrap();
+
+    let actual_status = prover.status();
+    assert_eq!(actual_status, CUStatus::Running { cu_id });
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
+    prover.pause().await.unwrap();
+
+    let status = prover.status();
+    assert_eq!(status, CUStatus::Idle);
+
+    {
+        let is_thread_paused_locked = is_thread_paused.lock().unwrap();
+        *is_thread_paused_locked.borrow_mut() = true;
+    }
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
+    prover.stop().await.unwrap();
+
+    let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
+    assert!(!proofs_before_pause.is_empty());
+    assert!(proofs_after_pause.is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_produces_correct_proof() {
     let config = CUProverConfig {
@@ -99,7 +164,7 @@ async fn cu_prover_produces_correct_proof() {
 
     let handle = tokio::spawn(async move {
         let flags = RandomXFlags::recommended();
-        let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
+        let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
         let mut found_proof_count = 0;
 
         while let Some(proof) = outlet.recv().await {
@@ -138,7 +203,7 @@ fn batch_proof_verification(
     use randomx_rust_wrapper::RandomXVM;
 
     let flags = RandomXFlags::recommended();
-    let global_nonce_cu = ccp_utils::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
     let cache = Cache::new(&global_nonce_cu, flags).unwrap();
     let vm = RandomXVM::light(cache.handle(), flags).unwrap();
 
