@@ -20,8 +20,8 @@ use std::collections::HashSet;
 use ccp_shared::types::*;
 
 use super::roadmap::CCProverAlignmentRoadmap;
-use super::roadmap::CUProverPreAction;
 use super::roadmap::CUProverAction;
+use super::roadmap::CUProverPreAction;
 use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
 
@@ -31,7 +31,7 @@ pub(super) struct RoadmapBuilderState {
     epoch: EpochParameters,
     unprepared_allocation_actions: Vec<(PhysicalCoreId, CUID)>,
     unprepared_removal_actions: Vec<PhysicalCoreId>,
-    pre_actions: Vec<CUProverPreAction>,
+    pre_action: CUProverPreAction,
     actions: Vec<CUProverAction>,
 }
 
@@ -49,7 +49,7 @@ impl RoadmapBuilder {
             epoch: new_epoch,
             unprepared_allocation_actions: Vec::new(),
             unprepared_removal_actions: Vec::new(),
-            pre_actions: Vec::new(),
+            pre_action: CUProverPreAction::no_action(),
             actions: Vec::new(),
         };
 
@@ -59,7 +59,7 @@ impl RoadmapBuilder {
 
     fn clean_proofs_if_new_epoch(mut state: RoadmapBuilderState) -> RoadmapBuilderState {
         if state.is_new_epoch {
-            state.pre_actions.push(CUProverPreAction::cleanup_proof_cache())
+            state.pre_action = CUProverPreAction::cleanup_proof_cache()
         }
 
         state
@@ -242,6 +242,7 @@ impl BuilderSixStage {
 
     pub(super) fn build(self) -> CCProverAlignmentRoadmap {
         CCProverAlignmentRoadmap {
+            pre_action: self.state.pre_action,
             actions: self.state.actions,
             epoch: self.state.epoch,
         }

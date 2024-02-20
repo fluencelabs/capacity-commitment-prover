@@ -193,10 +193,18 @@ impl RoadmapAlignable for CCProver {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
-        let CCProverAlignmentRoadmap { pre_actions, actions, epoch } = roadmap;
+        let CCProverAlignmentRoadmap {
+            pre_action,
+            actions,
+            epoch,
+        } = roadmap;
 
-        if !pre_actions.is_empty() {
-
+        match pre_action {
+            CUProverPreAction::NoAction => {}
+            CUProverPreAction::CleanupProofCache => {
+                self.pause().await?;
+                self.proof_storage.remove_proofs().await?;
+            }
         }
 
         let actions_as_futures = actions
@@ -206,7 +214,6 @@ impl RoadmapAlignable for CCProver {
                 CUProverAction::RemoveCUProver(state) => self.cu_removal(state),
                 CUProverAction::NewCCJob(state) => self.new_cc_job(state, epoch),
                 CUProverAction::NewCCJobWithRepining(state) => self.new_cc_job_repin(state, epoch),
-                CUProverAction::CleanupProofCache => self.cleanup_proof_cache(),
             })
             .collect::<FuturesUnordered<_>>();
 
@@ -293,17 +300,6 @@ impl CCProver {
             prover.pin(state.new_core_id).await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
             Ok(AlignmentPostAction::KeepProver(prover))
-        }
-        .boxed()
-    }
-
-    pub(self) fn cleanup_proof_cache<'prover, 'futures: 'prover>(
-        &'prover mut self,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
-        let proof_storage = self.proof_storage.clone();
-        async move {
-            proof_storage.remove_proofs().await?;
-            Ok(AlignmentPostAction::Nothing)
         }
         .boxed()
     }
