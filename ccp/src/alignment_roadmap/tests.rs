@@ -22,6 +22,7 @@ use ccp_test_utils::test_values as test;
 
 use super::CCProverAlignmentRoadmap;
 use crate::alignment_roadmap::CUProverAction;
+use crate::alignment_roadmap::CUProverPreAction;
 use crate::cu::status::CUStatus;
 use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
@@ -66,13 +67,14 @@ fn alignment_works_if_prover_idle() {
         &current_allocation,
         current_status,
     );
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![
-        CUProverAction::clean_proof_cache(),
         CUProverAction::create_cu_prover(allocation_1.0.into(), allocation_1.1),
         CUProverAction::create_cu_prover(allocation_2.0.into(), allocation_2.1),
         CUProverAction::create_cu_prover(allocation_3.0.into(), allocation_3.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch: new_epoch,
     };
@@ -132,11 +134,13 @@ fn add_new_peer() {
         current_status,
     );
 
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![CUProverAction::create_cu_prover(
         allocation_3.0.into(),
         allocation_3.1,
     )];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch,
     };
@@ -169,8 +173,10 @@ fn remove_peer() {
         current_status,
     );
 
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![CUProverAction::remove_cu_prover(allocation_3.0.into())];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch,
     };
@@ -207,13 +213,14 @@ fn new_epoch() {
         current_status,
     );
 
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![
-        CUProverAction::clean_proof_cache(),
         CUProverAction::new_cc_job(allocation_1.0.into(), allocation_1.1),
         CUProverAction::new_cc_job(allocation_2.0.into(), allocation_2.1),
         CUProverAction::new_cc_job(allocation_3.0.into(), allocation_3.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch: new_epoch,
     };
@@ -247,12 +254,14 @@ fn same_epoch_new_jobs() {
         current_status,
     );
 
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![
         CUProverAction::new_cc_job(allocation_1.0.into(), allocation_2.1),
         CUProverAction::new_cc_job(allocation_2.0.into(), allocation_3.1),
         CUProverAction::new_cc_job(allocation_3.0.into(), allocation_1.1),
     ];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch,
     };
@@ -287,12 +296,14 @@ fn repinning_works() {
         current_status,
     );
 
+    let pre_action = CUProverPreAction::cleanup_proof_cache();
     let expected_actions = vec![CUProverAction::new_cc_job_repin(
         allocation_1.0.into(),
         allocation_4.0.into(),
         allocation_4.1,
     )];
     let expected_roadmap = CCProverAlignmentRoadmap {
+        pre_action,
         actions: expected_actions,
         epoch,
     };
@@ -329,6 +340,7 @@ fn create_more_then_remove() {
         current_status,
     );
 
+    let pre_action_1 = CUProverPreAction::cleanup_proof_cache();
     let expected_actions_1 = vec![
         CUProverAction::new_cc_job_repin(
             allocation_1.0.into(),
@@ -338,10 +350,12 @@ fn create_more_then_remove() {
         CUProverAction::create_cu_prover(allocation_5.0.into(), allocation_5.1),
     ];
     let expected_roadmap_1 = CCProverAlignmentRoadmap {
+        pre_action: pre_action_1,
         actions: expected_actions_1,
         epoch,
     };
 
+    let pre_action_2 = CUProverPreAction::cleanup_proof_cache();
     let expected_actions_2 = vec![
         CUProverAction::new_cc_job_repin(
             allocation_1.0.into(),
@@ -351,6 +365,7 @@ fn create_more_then_remove() {
         CUProverAction::create_cu_prover(allocation_4.0.into(), allocation_4.1),
     ];
     let expected_roadmap_2 = CCProverAlignmentRoadmap {
+        pre_action: pre_action_2,
         actions: expected_actions_2,
         epoch,
     };
@@ -386,6 +401,7 @@ fn remove_more_then_create() {
         current_status,
     );
 
+    let pre_action_1 = CUProverPreAction::cleanup_proof_cache();
     let expected_actions_1 = vec![
         CUProverAction::new_cc_job_repin(
             allocation_1.0.into(),
@@ -395,10 +411,12 @@ fn remove_more_then_create() {
         CUProverAction::remove_cu_prover(allocation_2.0.into()),
     ];
     let expected_roadmap_1 = CCProverAlignmentRoadmap {
+        pre_action: pre_action_1,
         actions: expected_actions_1,
         epoch,
     };
 
+    let pre_action_2 = CUProverPreAction::cleanup_proof_cache();
     let expected_actions_2 = vec![
         CUProverAction::new_cc_job_repin(
             allocation_2.0.into(),
@@ -408,6 +426,7 @@ fn remove_more_then_create() {
         CUProverAction::remove_cu_prover(allocation_1.0.into()),
     ];
     let expected_roadmap_2 = CCProverAlignmentRoadmap {
+        pre_action: pre_action_2,
         actions: expected_actions_2,
         epoch,
     };

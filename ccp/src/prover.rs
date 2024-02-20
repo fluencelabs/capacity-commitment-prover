@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#[cfg(test)]
+mod tests;
+
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;

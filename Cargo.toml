@@ -47,4 +47,4 @@ serde_json = "1.0"
 sha3 = "0.10"
 thiserror = "1.0"
 tracing = "0.1.40"
-
+test-log = "0.2.14"
