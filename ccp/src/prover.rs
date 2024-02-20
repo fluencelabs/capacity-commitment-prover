@@ -34,7 +34,7 @@ use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::cu::RawProof;
 use crate::errors::CCProverError;
-use crate::proof_cleaner::ProofCleaner;
+use crate::proof_storage::ProofStorageDrainer;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::LogicalCoreId;
@@ -46,8 +46,8 @@ pub struct CCProver {
     cu_prover_config: CUProverConfig,
     status: CCStatus,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
-    utility_thread_shutdown: oneshot::Sender<()>,
-    proof_cleaner: ProofCleaner,
+
+    proof_consumer: ProofStorageDrainer,
 }
 
 impl NoxCCPApi for CCProver {
@@ -79,7 +79,7 @@ impl NoxCCPApi for CCProver {
     }
 
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.proof_storage
+        self.proof_consumer
             .get_proofs_after(proof_idx)
             .await
             .map_err(Into::into)
@@ -97,7 +97,7 @@ impl CCProver {
         let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
         let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
 
-        let proof_cleaner = ProofCleaner::new(config.dir_to_store_proofs.clone());
+        let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
         Self::spawn_utility_thread(
             proof_storage.clone(),
             proof_receiver_outlet,
@@ -116,7 +116,7 @@ impl CCProver {
             status: CCStatus::Idle,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
-            proof_cleaner,
+            proof_consumer: proof_cleaner,
         }
     }
 
@@ -201,7 +201,7 @@ impl RoadmapAlignable for CCProver {
             CUProverPreAction::NoAction => {}
             CUProverPreAction::CleanupProofCache => {
                 self.pause().await?;
-                self.proof_storage.remove_proofs().await?;
+                self.proof_consumer.remove_proofs().await?;
             }
         }
 

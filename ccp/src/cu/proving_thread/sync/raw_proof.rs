@@ -14,15 +14,27 @@
  * limitations under the License.
  */
 
-mod async_;
-mod facade;
-mod messages;
-pub(crate) mod sync;
-#[cfg(test)]
-mod tests;
+use ccp_shared::types::*;
 
-pub(crate) use async_::AsyncThreadError as ProvingThreadError;
-pub(crate) use async_::ProvingThreadAsync;
-pub(crate) use facade::ProvingThreadFacade;
+pub(crate) struct RawProof {
+    pub(crate) epoch: EpochParameters,
+    pub(crate) local_nonce: LocalNonce,
+    pub(crate) cu_id: CUID,
+    pub(crate) result_hash: ResultHash,
+}
 
-pub(crate) type PTResult<T> = Result<T, ProvingThreadError>;
+impl RawProof {
+    pub(crate) fn new(
+        epoch: EpochParameters,
+        local_nonce: LocalNonce,
+        cu_id: CUID,
+        result_hash: ResultHash,
+    ) -> Self {
+        Self {
+            epoch,
+            local_nonce,
+            cu_id,
+            result_hash,
+        }
+    }
+}

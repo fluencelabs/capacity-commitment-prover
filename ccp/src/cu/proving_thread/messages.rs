@@ -28,8 +28,6 @@ pub(crate) type AsyncToSyncOutlet = mpsc::Receiver<AsyncToSyncMessage>;
 pub(crate) type SyncToAsyncInlet = mpsc::Sender<SyncToAsyncMessage>;
 pub(crate) type SyncToAsyncOutlet = mpsc::Receiver<SyncToAsyncMessage>;
 
-use ccp_shared::types::*;
-
 #[derive(Debug)]
 pub(crate) enum AsyncToSyncMessage {
     CreateCache(CreateCache),
@@ -47,28 +45,4 @@ pub(crate) enum SyncToAsyncMessage {
     DatasetAllocated(DatasetAllocated),
     DatasetInitialized,
     Paused,
-}
-
-#[derive(Debug)]
-pub(crate) struct RawProof {
-    pub(crate) epoch: EpochParameters,
-    pub(crate) local_nonce: LocalNonce,
-    pub(crate) cu_id: CUID,
-    pub(crate) result_hash: ResultHash,
-}
-
-impl RawProof {
-    pub(crate) fn new(
-        epoch: EpochParameters,
-        local_nonce: LocalNonce,
-        cu_id: CUID,
-        result_hash: ResultHash,
-    ) -> Self {
-        Self {
-            epoch,
-            local_nonce,
-            cu_id,
-            result_hash,
-        }
-    }
 }

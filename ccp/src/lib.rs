@@ -29,7 +29,7 @@
 mod alignment_roadmap;
 mod cu;
 mod errors;
-mod proof_cleaner;
+mod proof_storage;
 pub mod prover;
 pub mod status;
 pub(crate) mod utility_thread;

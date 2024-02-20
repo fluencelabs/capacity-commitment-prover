@@ -14,15 +14,10 @@
  * limitations under the License.
  */
 
-mod async_;
-mod facade;
-mod messages;
-pub(crate) mod sync;
-#[cfg(test)]
-mod tests;
+mod errors;
+mod thread;
 
-pub(crate) use async_::AsyncThreadError as ProvingThreadError;
-pub(crate) use async_::ProvingThreadAsync;
-pub(crate) use facade::ProvingThreadFacade;
+pub(crate) use errors::AsyncThreadError;
+pub(crate) use thread::ProvingThreadAsync;
 
-pub(crate) type PTResult<T> = Result<T, ProvingThreadError>;
+pub(crate) type ATResult<T> = Result<T, errors::AsyncThreadError>;

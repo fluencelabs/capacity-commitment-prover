@@ -24,7 +24,7 @@ use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
 
 #[derive(ThisError, Debug)]
-pub enum ProvingThreadError {
+pub enum AsyncThreadError {
     #[error(transparent)]
     RandomXError(#[from] RandomXError),
 
@@ -41,7 +41,7 @@ pub enum ProvingThreadError {
     JoinThreadError(Box<dyn Any + Send>),
 }
 
-impl ProvingThreadError {
+impl AsyncThreadError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
     }
@@ -51,20 +51,20 @@ impl ProvingThreadError {
     }
 }
 
-impl<T> From<mpsc::error::SendError<T>> for ProvingThreadError {
+impl<T> From<mpsc::error::SendError<T>> for AsyncThreadError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }
 
-impl<T> From<mpsc::error::TrySendError<T>> for ProvingThreadError {
+impl<T> From<mpsc::error::TrySendError<T>> for AsyncThreadError {
     fn from(value: mpsc::error::TrySendError<T>) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }
 
-impl From<mpsc::error::TryRecvError> for ProvingThreadError {
+impl From<mpsc::error::TryRecvError> for AsyncThreadError {
     fn from(value: mpsc::error::TryRecvError) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }

@@ -15,19 +15,20 @@
  */
 
 use std::thread;
-use tokio::sync::mpsc;
 
+use cpu_utils::LogicalCoreId;
 use randomx::Cache;
 use randomx::Dataset;
 use randomx_rust_wrapper as randomx;
 use randomx_rust_wrapper::RandomXFlags;
 
-use super::errors::ProvingThreadError;
-use super::messages::*;
+use super::errors::SyncThreadError;
 use super::state::RandomXJob;
 use super::state::ThreadState;
-use super::PTResult;
-use crate::LogicalCoreId;
+use super::to_utility_message::ToUtilityInlet;
+use super::to_utility_message::ToUtilityMessage;
+use super::STResult;
+use crate::cu::proving_thread::messages::*;
 
 const HASHES_PER_ROUND: usize = 1024;
 
@@ -36,40 +37,43 @@ const CHANNEL_DROPPED_MESSAGE: &str =
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadSync {
-    handle: thread::JoinHandle<PTResult<()>>,
+    handle: thread::JoinHandle<STResult<()>>,
 }
 
 impl ProvingThreadSync {
     pub(crate) fn spawn(
         core_id: LogicalCoreId,
-        ats_outlet: AsyncToSyncOutlet,
-        sta_inlet: SyncToAsyncInlet,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        from_async: AsyncToSyncOutlet,
+        to_async: SyncToAsyncInlet,
+        to_utility: ToUtilityInlet,
     ) -> Self {
-        let thread_closure =
-            Self::proving_closure(core_id, ats_outlet, sta_inlet, proof_receiver_inlet);
+        let thread_closure = Self::proving_closure(core_id, from_async, to_async, to_utility);
         let handle = thread::spawn(thread_closure);
 
         Self { handle }
     }
 
-    pub(crate) fn join(self) -> PTResult<()> {
-        self.handle.join().map_err(ProvingThreadError::join_error)?
+    pub(crate) fn join(self) -> STResult<()> {
+        self.handle.join().map_err(SyncThreadError::join_error)?
     }
 
     fn proving_closure(
         core_id: LogicalCoreId,
-        mut ats_outlet: AsyncToSyncOutlet,
-        sta_inlet: SyncToAsyncInlet,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
-        Box::new(move || {
-            let _ = cpu_utils::pinning::pin_current_thread_to(core_id);
+        mut from_async: AsyncToSyncOutlet,
+        to_async: SyncToAsyncInlet,
+        to_utility: ToUtilityInlet,
+    ) -> Box<dyn FnMut() -> STResult<()> + Send + 'static> {
+        let inner_closure = move || {
+            if cpu_utils::pinning::pin_current_thread_to(core_id) {
+                to_utility.blocking_send(ToUtilityMessage::ErrorHappened(
+                    SyncThreadError::ThreadPinFailed { core_id },
+                ))?;
+            }
 
-            let ptt_message = ats_outlet
+            let message = from_async
                 .blocking_recv()
-                .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
-            let mut thread_state = Self::handle_prover_message(ptt_message, &sta_inlet)?;
+                .ok_or(SyncThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
+            let mut thread_state = Self::handle_message_from_async(message, &to_async, &to_utility)?;
 
             loop {
                 log::trace!("proving_thread_sync: new thread_state is {thread_state:?}");
@@ -80,30 +84,42 @@ impl ProvingThreadSync {
                     }
                     ThreadState::WaitForMessage => {
                         // block on the channel till it returns a new message
-                        let ptt_message = ats_outlet
+                        let message = from_async
                             .blocking_recv()
-                            .ok_or(ProvingThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
-                        Self::handle_prover_message(ptt_message, &sta_inlet)?
+                            .ok_or(SyncThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
+                        Self::handle_message_from_async(message, &to_async, &to_utility)?
                     }
                     ThreadState::CCJob { parameters } => {
                         use tokio::sync::mpsc::error::TryRecvError;
 
-                        let parameters = Self::cc_prove(parameters, proof_receiver_inlet.clone())?;
-                        match ats_outlet.try_recv() {
-                            Ok(message) => Self::handle_prover_message(message, &sta_inlet)?,
+                        let parameters = Self::cc_prove(parameters, &to_utility)?;
+                        match from_async.try_recv() {
+                            Ok(message) => {
+                                Self::handle_message_from_async(message, &to_async, &to_utility)?
+                            }
                             Err(TryRecvError::Empty) => ThreadState::CCJob { parameters },
                             Err(e) => Err(e)?,
                         }
                     }
                 };
             }
+        };
+
+        Box::new(move || match inner_closure() {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                let message = ToUtilityMessage::error_happened(e.clone());
+                to_utility.blocking_send(message)?;
+                Err(e)
+            }
         })
     }
 
-    fn handle_prover_message(
+    fn handle_message_from_async(
         message: AsyncToSyncMessage,
-        sta_inlet: &SyncToAsyncInlet,
-    ) -> PTResult<ThreadState> {
+        to_async: &SyncToAsyncInlet,
+        to_utility: &ToUtilityInlet,
+    ) -> STResult<ThreadState> {
         log::trace!("proving_thread_sync: handle message from CUProver: {message:?}");
 
         match message {
@@ -114,7 +130,7 @@ impl ProvingThreadSync {
 
                 let ttp_message = CacheCreated::new(cache);
                 let ttp_message = SyncToAsyncMessage::CacheCreated(ttp_message);
-                sta_inlet.blocking_send(ttp_message)?;
+                to_async.blocking_send(ttp_message)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -124,7 +140,7 @@ impl ProvingThreadSync {
 
                 let ttp_message = DatasetAllocated::new(dataset);
                 let ttp_message = SyncToAsyncMessage::DatasetAllocated(ttp_message);
-                sta_inlet.blocking_send(ttp_message)?;
+                to_async.blocking_send(ttp_message)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -133,7 +149,7 @@ impl ProvingThreadSync {
                 params
                     .dataset
                     .initialize(&params.cache, params.start_item, params.items_count);
-                sta_inlet.blocking_send(SyncToAsyncMessage::DatasetInitialized)?;
+                to_async.blocking_send(SyncToAsyncMessage::DatasetInitialized)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -144,13 +160,16 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::PinThread(params) => {
-                // TODO: propagate error
-                cpu_utils::pinning::pin_current_thread_to(params.core_id);
+                if cpu_utils::pinning::pin_current_thread_to(params.core_id) {
+                    to_utility.blocking_send(ToUtilityMessage::ErrorHappened(
+                        SyncThreadError::ThreadPinFailed { core_id },
+                    ))?;
+                }
                 Ok(ThreadState::WaitForMessage)
             }
 
             AsyncToSyncMessage::Pause => {
-                sta_inlet.blocking_send(SyncToAsyncMessage::Paused)?;
+                to_async.blocking_send(SyncToAsyncMessage::Paused)?;
                 Ok(ThreadState::WaitForMessage)
             }
 
@@ -158,10 +177,7 @@ impl ProvingThreadSync {
         }
     }
 
-    fn cc_prove(
-        mut job: RandomXJob,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
-    ) -> PTResult<RandomXJob> {
+    fn cc_prove(mut job: RandomXJob, to_utility: &ToUtilityInlet) -> STResult<RandomXJob> {
         use ccp_shared::meet_difficulty::MeetDifficulty;
 
         let is_last_iteration = |hash_id: usize| -> bool { hash_id == HASHES_PER_ROUND - 1 };
@@ -179,7 +195,8 @@ impl ProvingThreadSync {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", job.local_nonce);
 
                 let proof = job.create_golden_proof(result_hash);
-                proof_receiver_inlet.blocking_send(proof)?;
+                let message = ToUtilityMessage::proof_found(proof);
+                to_utility.blocking_send(message)?;
             }
         }
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+mod proof_storage_worker;
 mod thread;
 
 pub(crate) use thread::*;

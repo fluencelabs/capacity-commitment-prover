@@ -23,9 +23,9 @@ use randomx::ResultHash;
 use randomx_rust_wrapper as randomx;
 
 use super::local_nonce::NonceIterable;
-use super::messages::NewCCJob;
-use super::PTResult;
-use crate::cu::RawProof;
+use super::raw_proof::RawProof;
+use super::STResult;
+use crate::cu::proving_thread::messages::NewCCJob;
 
 #[derive(Debug)]
 pub(crate) enum ThreadState {
@@ -43,7 +43,7 @@ pub(crate) struct RandomXJob {
 }
 
 impl RandomXJob {
-    pub(crate) fn from_cc_job(cc_job: NewCCJob) -> PTResult<Self> {
+    pub(crate) fn from_cc_job(cc_job: NewCCJob) -> STResult<Self> {
         let NewCCJob {
             dataset,
             flags,

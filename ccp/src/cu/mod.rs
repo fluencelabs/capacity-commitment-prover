@@ -16,7 +16,7 @@
 
 pub mod cu_prover;
 mod errors;
-mod proving_thread;
+pub(crate) mod proving_thread;
 mod proving_thread_utils;
 pub(crate) mod status;
 #[cfg(test)]

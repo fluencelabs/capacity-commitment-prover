@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-use std::path::PathBuf;
+use tokio::sync::mpsc;
 
-#[derive(Debug)]
-pub(crate) struct ProofCleaner {
-    /// Path to a directory containing found proofs.
-    proof_directory: PathBuf,
+pub(crate) use super::errors::SyncThreadError;
+pub(crate) use super::raw_proof::RawProof;
+
+pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
+pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
+
+pub(crate) enum ToUtilityMessage {
+    ProofFound(RawProof),
+    ErrorHappened(SyncThreadError),
 }
 
-impl ProofCleaner {
-    /// Creates a a
-    pub fn new(proof_directory: PathBuf) -> Self {
-        Self { proof_directory }
+impl ToUtilityMessage {
+    pub(crate) fn proof_found(proof: RawProof) -> Self {
+        Self::ProofFound(proof)
     }
 
-    /// Removes all proofs in the proof directory, it's intended for cleanup storage
-    /// when a new epoch happened.
-    pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
-        tokio::fs::remove_dir_all(&self.proof_directory).await?;
-        tokio::fs::create_dir(&self.proof_directory).await
+    pub(crate) fn error_happened(error: SyncThreadError) -> Self {
+        Self::ErrorHappened(error)
     }
 }

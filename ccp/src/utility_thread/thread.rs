@@ -15,20 +15,38 @@
  */
 
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
+
+use cpu_utils::LogicalCoreId;
+use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::GlobalNonce;
+
+use crate::cu::proving_thread::sync::to_utility_message::*;
+
+type ThreadShutdownInlet = oneshot::Sender<()>;
+type ThreadShutdownOutlet = oneshot::Receiver<()>;
 
 pub(crate) struct UtilityThread {
+    thread_shutdown: ThreadShutdownInlet,
     handle: std::thread::JoinHandle<()>,
 }
 
 impl UtilityThread {
-    fn spawn(
-        proof_storage: Arc<ProofStorageWorker>,
-        mut proof_receiver_outlet: mpsc::Receiver<RawProof>,
-        mut shutdown_outlet: oneshot::Receiver<()>,
-        utility_core_id: LogicalCoreId,
-    ) {
-        tokio::spawn(async move {
-            cpu_utils::pinning::pin_current_thread_to(utility_core_id);
+    fn spawn(core_id: LogicalCoreId, thread_shutdown: ThreadShutdownInlet, to_utility: ToUtilityOutlet) {
+        let handle = tokio::spawn(Self::proving_closure(core_id, to_utility));
+
+        Self {
+            handle,
+            thread_shutdown
+        }
+    }
+
+    fn proving_closure(
+        core_id: LogicalCoreId,
+        to_utility: ToUtilityOutlet,
+    ) -> Box<dyn FnMut() -> PTResult<()> + Send + 'static> {
+        Box::new(move || {
+            cpu_utils::pinning::pin_current_thread_to(core_id);
 
             let mut proof_idx = ProofIdx::zero();
             let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
@@ -54,5 +72,6 @@ impl UtilityThread {
                     }
                 }
             }
-        });
+        })
+    }
 }
