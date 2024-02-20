@@ -7,6 +7,7 @@ use ccp_shared::{
     types::{CUAllocation, Difficulty, EpochParameters, GlobalNonce, CUID},
 };
 use randomx_rust_wrapper::RandomXFlags;
+use test_log::test;
 
 fn get_prover(
     dir_to_store_proofs: impl Into<PathBuf>,
@@ -51,7 +52,7 @@ fn get_cu_allocation() -> CUAllocation {
     }
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -64,7 +65,7 @@ async fn prover_on_active_commitment() {
     prover.stop().await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_no_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -74,7 +75,7 @@ async fn prover_on_no_active_commitment() {
     prover.stop().await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_no_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -87,7 +88,7 @@ async fn prover_on_active_no_active_commitment() {
     prover.stop().await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_reduce_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -108,7 +109,7 @@ async fn prover_on_active_reduce_on_active_commitment() {
     prover.stop().await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
 async fn prover_on_active_extend_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -137,7 +138,7 @@ async fn prover_on_active_extend_on_active_commitment() {
     prover.stop().await.unwrap();
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 3)]
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_reschedule_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
