@@ -1222,20 +1222,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "msr"
+version = "0.1.0"
+dependencies = [
+ "nix",
+ "once_cell",
+]
+
+[[package]]
 name = "newtype_derive"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac8cd24d9f185bb7223958d8c1ff7a961b74b1953fd05dba7cc568a63b3861ec"
 dependencies = [
  "rustc_version",
-]
-
-[[package]]
-name = "msr"
-version = "0.1.0"
-dependencies = [
- "nix",
- "once_cell",
 ]
 
 [[package]]
