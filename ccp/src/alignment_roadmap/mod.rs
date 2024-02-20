@@ -23,4 +23,5 @@ mod tests;
 pub(crate) use roadmap::actions_state;
 pub(crate) use roadmap::CCProverAlignmentRoadmap;
 pub(crate) use roadmap::CUProverAction;
+pub(crate) use roadmap::CUProverPreAction;
 pub(crate) use roadmap_alignable::RoadmapAlignable;
