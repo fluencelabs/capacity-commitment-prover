@@ -30,6 +30,50 @@ use crate::cu::status::CUStatus;
 use crate::cu::status::ToCUStatus;
 use crate::cu::RawProof;
 
+fn batch_proof_verification(
+    epoch: EpochParameters,
+    cu_id: CUID,
+    proofs: impl Iterator<Item = RawProof>,
+) -> bool {
+    use randomx_rust_wrapper::Cache;
+    use randomx_rust_wrapper::RandomXVM;
+
+    let flags = RandomXFlags::recommended();
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
+    let cache = Cache::new(&global_nonce_cu, flags).unwrap();
+    let vm = RandomXVM::light(cache.handle(), flags).unwrap();
+
+    for proof in proofs {
+        let result = vm.hash(proof.local_nonce.as_ref());
+        if !result.meet_difficulty(&epoch.difficulty) {
+            return false;
+        }
+    }
+
+    true
+}
+
+fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> bool {
+    use randomx_rust_wrapper::Cache;
+    use randomx_rust_wrapper::RandomXVM;
+
+    let flags = RandomXFlags::recommended();
+
+    for proof in proofs {
+        let global_nonce_cu =
+            ccp_utils::hash::compute_global_nonce_cu(&proof.epoch.global_nonce, &proof.cu_id);
+        let cache = Cache::new(&global_nonce_cu, flags).unwrap();
+        let vm = RandomXVM::light(cache.handle(), flags).unwrap();
+
+        let result = vm.hash(proof.local_nonce.as_ref());
+        if result != proof.result_hash || !result.meet_difficulty(&proof.epoch.difficulty) {
+            return false;
+        }
+    }
+
+    true
+}
+
 #[tokio::test]
 async fn idle_cu_prover_can_be_stopped() {
     let config = CUProverConfig {
@@ -112,13 +156,7 @@ async fn cu_prover_can_be_paused() {
     });
 
     let epoch = test::generate_epoch_params(1, 0xFF);
-    prover
-        .new_epoch(
-            epoch,
-            cu_id,
-        )
-        .await
-        .unwrap();
+    prover.new_epoch(epoch, cu_id).await.unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
@@ -143,8 +181,7 @@ async fn cu_prover_can_be_paused() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
-#[ignore]
-async fn cu_prover_produces_correct_proof() {
+async fn cu_prover_produces_correct_proofs() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = CUProverConfig {
@@ -157,7 +194,7 @@ async fn cu_prover_produces_correct_proof() {
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
-    let epoch_1 = test::generate_epoch_params(1, 0xFF);
+    let epoch_1 = test::generate_epoch_params(1, 0x80);
     let cu_id_1 = test::generate_cu_id(1);
 
     let handle = tokio::spawn(async move {
@@ -183,49 +220,6 @@ async fn cu_prover_produces_correct_proof() {
 
     assert!(result.is_ok());
     assert!(batch_proof_verification_local(proofs.into_iter()));
-}
-
-fn batch_proof_verification(
-    epoch: EpochParameters,
-    cu_id: CUID,
-    proofs: impl Iterator<Item = RawProof>,
-) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
-
-    let flags = RandomXFlags::recommended();
-    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
-    let cache = Cache::new(&global_nonce_cu, flags).unwrap();
-    let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-
-    for proof in proofs {
-        let result = vm.hash(proof.local_nonce.as_ref());
-        if !result.meet_difficulty(&epoch.difficulty) {
-            return false;
-        }
-    }
-
-    true
-}
-fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
-
-    let flags = RandomXFlags::recommended();
-
-    for proof in proofs {
-        let global_nonce_cu =
-            ccp_utils::hash::compute_global_nonce_cu(&proof.epoch.global_nonce, &proof.cu_id);
-        let cache = Cache::new(&global_nonce_cu, flags).unwrap();
-        let vm = RandomXVM::light(cache.handle(), flags).unwrap();
-
-        let result = vm.hash(proof.local_nonce.as_ref());
-        if result != proof.result_hash || !result.meet_difficulty(&proof.epoch.difficulty) {
-            return false;
-        }
-    }
-
-    true
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
@@ -261,42 +255,6 @@ async fn cu_prover_works_with_odd_threads_number() {
 
     assert!(result.is_ok());
     assert!(batch_proof_verification(epoch, cu_id, proofs.into_iter(),));
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn cu_prover_produces_correct_proofs() {
-    let _ = env_logger::builder().is_test(true).try_init();
-
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(3).unwrap(),
-        },
-    };
-
-    let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
-
-    let epoch = test::generate_epoch_params(2, 0x80);
-    let cu_id = test::generate_cu_id(1);
-
-    let handle = tokio::spawn(async move {
-        let mut proofs = Vec::new();
-
-        while let Some(proof) = outlet.recv().await {
-            proofs.push(proof)
-        }
-        proofs
-    });
-
-    prover.new_epoch(epoch, cu_id).await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(60));
-
-    let result = prover.stop().await;
-    assert!(result.is_ok());
-
-    let proofs = handle.await.unwrap();
-    assert!(batch_proof_verification_local(proofs.into_iter()));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
