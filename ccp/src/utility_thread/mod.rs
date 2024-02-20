@@ -14,28 +14,6 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+mod thread;
 
-mod alignment_roadmap;
-mod cu;
-mod errors;
-mod proof_storage_worker;
-pub mod prover;
-pub mod status;
-pub(crate) mod utility_thread;
-
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
-
-pub(crate) use ccp_shared::types::*;
+pub(crate) use thread::*;
