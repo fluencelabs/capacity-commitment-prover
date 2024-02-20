@@ -18,31 +18,18 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use cpu_utils::CPUTopologyError;
-use cpu_utils::LogicalCoreId;
-use randomx_rust_wrapper::errors::RandomXError;
-
 use crate::cu::proving_thread::sync::SyncThreadFacadeError;
 
 #[derive(ThisError, Debug)]
 pub enum AsyncThreadError {
     #[error(transparent)]
-    RandomXError(#[from] RandomXError),
-
-    #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
-
-    #[error(transparent)]
-    CPUTopology(#[from] CPUTopologyError),
-
-    #[error("thread pinning to logical core {core_id} failed")]
-    ThreadPinFailed { core_id: LogicalCoreId },
 
     #[error(transparent)]
     SyncThreadError(#[from] SyncThreadFacadeError),
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
-    JoinThreadError(Box<dyn Any + Send>),
+    JoinThreadFailed(Box<dyn Any + Send>),
 }
 
 impl AsyncThreadError {
@@ -51,24 +38,12 @@ impl AsyncThreadError {
     }
 
     pub fn join_error(error: Box<dyn Any + Send>) -> Self {
-        Self::JoinThreadError(error)
+        Self::JoinThreadFailed(error)
     }
 }
 
 impl<T> From<mpsc::error::SendError<T>> for AsyncThreadError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl<T> From<mpsc::error::TrySendError<T>> for AsyncThreadError {
-    fn from(value: mpsc::error::TrySendError<T>) -> Self {
-        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl From<mpsc::error::TryRecvError> for AsyncThreadError {
-    fn from(value: mpsc::error::TryRecvError) -> Self {
         AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }

@@ -64,12 +64,6 @@ impl<T> From<mpsc::error::SendError<T>> for SyncThreadError {
     }
 }
 
-impl<T> From<mpsc::error::TrySendError<T>> for SyncThreadError {
-    fn from(value: mpsc::error::TrySendError<T>) -> Self {
-        SyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
 impl From<mpsc::error::TryRecvError> for SyncThreadError {
     fn from(value: mpsc::error::TryRecvError) -> Self {
         SyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
@@ -78,18 +72,6 @@ impl From<mpsc::error::TryRecvError> for SyncThreadError {
 
 impl<T> From<mpsc::error::SendError<T>> for SyncThreadFacadeError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        SyncThreadFacadeError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl<T> From<mpsc::error::TrySendError<T>> for SyncThreadFacadeError {
-    fn from(value: mpsc::error::TrySendError<T>) -> Self {
-        SyncThreadFacadeError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl From<mpsc::error::TryRecvError> for SyncThreadFacadeError {
-    fn from(value: mpsc::error::TryRecvError) -> Self {
         SyncThreadFacadeError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }
