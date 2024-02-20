@@ -14,28 +14,24 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+use std::path::PathBuf;
 
-mod alignment_roadmap;
-mod cu;
-mod errors;
-mod proof_cleaner;
-pub mod prover;
-pub mod status;
-pub(crate) mod utility_thread;
+#[derive(Debug)]
+pub(crate) struct ProofCleaner {
+    /// Path to a directory containing found proofs.
+    proof_directory: PathBuf,
+}
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+impl ProofCleaner {
+    /// Creates a a
+    pub fn new(proof_directory: PathBuf) -> Self {
+        Self { proof_directory }
+    }
 
-pub(crate) use ccp_shared::types::*;
+    /// Removes all proofs in the proof directory, it's intended for cleanup storage
+    /// when a new epoch happened.
+    pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
+        tokio::fs::remove_dir_all(&self.proof_directory).await?;
+        tokio::fs::create_dir(&self.proof_directory).await
+    }
+}

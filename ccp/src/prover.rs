@@ -17,7 +17,6 @@
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
@@ -35,7 +34,7 @@ use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::cu::RawProof;
 use crate::errors::CCProverError;
-use crate::proof_storage_worker::ProofStorageWorker;
+use crate::proof_cleaner::ProofCleaner;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::LogicalCoreId;
@@ -48,7 +47,7 @@ pub struct CCProver {
     status: CCStatus,
     proof_receiver_inlet: mpsc::Sender<RawProof>,
     utility_thread_shutdown: oneshot::Sender<()>,
-    proof_storage: Arc<ProofStorageWorker>,
+    proof_cleaner: ProofCleaner,
 }
 
 impl NoxCCPApi for CCProver {
@@ -98,8 +97,7 @@ impl CCProver {
         let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
         let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
 
-        let proof_storage = ProofStorageWorker::new(config.dir_to_store_proofs.clone());
-        let proof_storage = Arc::new(proof_storage);
+        let proof_cleaner = ProofCleaner::new(config.dir_to_store_proofs.clone());
         Self::spawn_utility_thread(
             proof_storage.clone(),
             proof_receiver_outlet,
@@ -118,7 +116,7 @@ impl CCProver {
             status: CCStatus::Idle,
             proof_receiver_inlet,
             utility_thread_shutdown: shutdown_inlet,
-            proof_storage,
+            proof_cleaner,
         }
     }
 
@@ -164,7 +162,7 @@ impl CCProver {
                             last_seen_global_nonce = proof.epoch.global_nonce;
                             proof_idx = ProofIdx::zero();
                         }
-                        let cc_proof_id = CCProofId::new(proof.epoch, proof_idx);
+                        let cc_proof_id = CCProofId::new(proof.epoch.global_nonce, proof.epoch.difficulty, proof_idx);
                         let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id, proof.result_hash);
                         proof_storage.store_new_proof(cc_proof).await?;
                         proof_idx.increment();

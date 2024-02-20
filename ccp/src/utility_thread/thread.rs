@@ -13,29 +13,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
-
-mod alignment_roadmap;
-mod cu;
-mod errors;
-mod proof_cleaner;
-pub mod prover;
-pub mod status;
-pub(crate) mod utility_thread;
-
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
-
-pub(crate) use ccp_shared::types::*;
