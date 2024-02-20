@@ -20,6 +20,7 @@ use std::collections::HashSet;
 use ccp_shared::types::*;
 
 use super::roadmap::CCProverAlignmentRoadmap;
+use super::roadmap::CUProverPreAction;
 use super::roadmap::CUProverAction;
 use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
@@ -30,6 +31,7 @@ pub(super) struct RoadmapBuilderState {
     epoch: EpochParameters,
     unprepared_allocation_actions: Vec<(PhysicalCoreId, CUID)>,
     unprepared_removal_actions: Vec<PhysicalCoreId>,
+    pre_actions: Vec<CUProverPreAction>,
     actions: Vec<CUProverAction>,
 }
 
@@ -47,6 +49,7 @@ impl RoadmapBuilder {
             epoch: new_epoch,
             unprepared_allocation_actions: Vec::new(),
             unprepared_removal_actions: Vec::new(),
+            pre_actions: Vec::new(),
             actions: Vec::new(),
         };
 
@@ -56,7 +59,7 @@ impl RoadmapBuilder {
 
     fn clean_proofs_if_new_epoch(mut state: RoadmapBuilderState) -> RoadmapBuilderState {
         if state.is_new_epoch {
-            state.actions.push(CUProverAction::clean_proof_cache())
+            state.pre_actions.push(CUProverPreAction::cleanup_proof_cache())
         }
 
         state

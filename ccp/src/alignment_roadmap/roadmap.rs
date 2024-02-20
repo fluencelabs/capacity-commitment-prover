@@ -29,6 +29,7 @@ use actions_state::*;
 /// being applied to a CCP state, make it aligned with the Nox state.
 #[derive(Debug, Eq)]
 pub(crate) struct CCProverAlignmentRoadmap {
+    pub(crate) pre_actions: Vec<CUProverAction>,
     pub(crate) actions: Vec<CUProverAction>,
     pub(crate) epoch: EpochParameters,
 }
@@ -65,6 +66,15 @@ impl PartialEq for CCProverAlignmentRoadmap {
 }
 
 /// A single action intended to align CCP with an incoming CU allocation from Nox.
+/// This actions will be made before CUProverAction on stopped provers.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub(crate) enum CUProverPreAction {
+    /// Signals CCP to remove all collected proofs, this action is a result of epoch switching
+    /// and CCP will clean up old proofs to save space.
+    CleanupProofCache,
+}
+
+/// A single action intended to align CCP with an incoming CU allocation from Nox.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) enum CUProverAction {
     /// Encourage CCP to creates a new CU prover, intended to prove that the physical core with
@@ -83,10 +93,6 @@ pub(crate) enum CUProverAction {
     /// this actions tells CCP to repin the prover and run a new CC job on it.
     /// Epoch parameters for the CC job will be taken from CCProverAlignmentRoadmap::epoch.
     NewCCJobWithRepining(NewCCJobWithRepiningState),
-
-    /// Signals CCP to remove all collected proofs, this action is a result of epoch switching
-    /// and CCP will clean up old proofs to save space.
-    CleanupProofCache,
 }
 
 impl CUProverAction {
@@ -113,8 +119,10 @@ impl CUProverAction {
             new_cu_id,
         ))
     }
+}
 
-    pub(crate) fn clean_proof_cache() -> Self {
+impl CUProverPreAction {
+    pub(crate) fn cleanup_proof_cache() -> Self {
         Self::CleanupProofCache
     }
 }
