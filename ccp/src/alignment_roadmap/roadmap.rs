@@ -66,7 +66,7 @@ impl PartialEq for CCProverAlignmentRoadmap {
 }
 
 /// This action intended to align CCP with an incoming CU allocation from Nox.
-/// The actions will be made before CUProverAction on stopped provers.
+/// The action will be made before CUProverAction on stopped provers.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) enum CUProverPreAction {
     NoAction,
