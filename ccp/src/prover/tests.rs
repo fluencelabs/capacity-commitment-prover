@@ -4,8 +4,9 @@ use crate::CCProver;
 use ccp_config::CCPConfig;
 use ccp_shared::{
     nox_ccp_api::NoxCCPApi,
-    types::{CUAllocation, Difficulty, EpochParameters, GlobalNonce, CUID},
+    types::{CUAllocation, EpochParameters, CUID},
 };
+use ccp_test_utils::test_values::generate_epoch_params;
 use randomx_rust_wrapper::RandomXFlags;
 use test_log::test;
 
@@ -28,15 +29,7 @@ fn get_prover(
 }
 
 fn get_epoch_params() -> EpochParameters {
-    let global_nonce = GlobalNonce::new([
-        19, 220, 253, 189, 81, 248, 156, 137, 58, 114, 97, 73, 198, 62, 162, 50, 7, 65, 195, 219,
-        146, 4, 65, 13, 158, 165, 104, 3, 61, 64, 235, 230,
-    ]);
-    let difficulty = Difficulty::new([
-        0, 1, 20, 46, 211, 35, 45, 244, 66, 39, 119, 16, 52, 187, 177, 135, 126, 192, 43, 227, 206,
-        249, 254, 64, 220, 76, 59, 103, 226, 253, 139, 187,
-    ]);
-    EpochParameters::new(global_nonce, difficulty)
+    generate_epoch_params(1, 25)
 }
 
 fn get_cu_allocation() -> CUAllocation {
@@ -122,14 +115,13 @@ async fn prover_on_active_extend_on_active_commitment() {
         .await
         .unwrap();
 
-    cu_allocation
-        .insert(
-            4.into(),
-            CUID::new([
-                203, 92, 78, 52, 198, 0, 81, 15, 157, 50, 231, 155, 93, 107, 90, 171, 59, 181, 211,
-                102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
-            ]),
-        );
+    cu_allocation.insert(
+        4.into(),
+        CUID::new([
+            203, 92, 78, 52, 198, 0, 81, 15, 157, 50, 231, 155, 93, 107, 90, 171, 59, 181, 211,
+            102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
+        ]),
+    );
     prover
         .on_active_commitment(get_epoch_params(), cu_allocation)
         .await
@@ -152,14 +144,13 @@ async fn prover_on_active_reschedule_on_active_commitment() {
         .unwrap();
 
     cu_allocation.remove(&2.into()).unwrap();
-    cu_allocation
-        .insert(
-            4.into(),
-            CUID::new([
-                203, 92, 78, 52, 198, 0, 81, 15, 157, 50, 231, 155, 93, 107, 90, 171, 59, 181, 211,
-                102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
-            ]),
-        );
+    cu_allocation.insert(
+        4.into(),
+        CUID::new([
+            203, 92, 78, 52, 198, 0, 81, 15, 157, 50, 231, 155, 93, 107, 90, 171, 59, 181, 211,
+            102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
+        ]),
+    );
     prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
