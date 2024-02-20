@@ -15,13 +15,14 @@
  */
 
 use std::any::Any;
-
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
 use cpu_utils::CPUTopologyError;
 use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::errors::RandomXError;
+
+use crate::cu::proving_thread::sync::SyncThreadFacadeError;
 
 #[derive(ThisError, Debug)]
 pub enum AsyncThreadError {
@@ -36,6 +37,9 @@ pub enum AsyncThreadError {
 
     #[error("thread pinning to logical core {core_id} failed")]
     ThreadPinFailed { core_id: LogicalCoreId },
+
+    #[error(transparent)]
+    SyncThreadError(#[from] SyncThreadFacadeError),
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadError(Box<dyn Any + Send>),

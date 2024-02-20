@@ -147,8 +147,6 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     async fn stop(self) -> Result<(), Self::Error> {
         let message = AsyncToSyncMessage::Stop;
         self.to_sync.send(message).await?;
-        self.sync_thread.join()?;
-
-        Ok(())
+        self.sync_thread.join().map_err(Into::into)
     }
 }

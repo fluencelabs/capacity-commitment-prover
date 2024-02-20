@@ -24,5 +24,3 @@ mod tests;
 pub(crate) use async_::AsyncThreadError as ProvingThreadError;
 pub(crate) use async_::ProvingThreadAsync;
 pub(crate) use facade::ProvingThreadFacade;
-
-pub(crate) type PTResult<T> = Result<T, ProvingThreadError>;

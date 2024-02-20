@@ -21,6 +21,8 @@ mod state;
 mod thread;
 pub(crate) mod to_utility_message;
 
+pub(crate) use errors::SyncThreadFacadeError;
 pub(crate) use thread::ProvingThreadSync;
 
-pub(crate) type STResult<T> = Result<T, errors::SyncThreadError>;
+type STResult<T> = Result<T, errors::SyncThreadError>;
+pub(crate) type STFResult<T> = Result<T, errors::SyncThreadFacadeError>;

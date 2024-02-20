@@ -19,5 +19,3 @@ mod thread;
 
 pub(crate) use errors::AsyncThreadError;
 pub(crate) use thread::ProvingThreadAsync;
-
-pub(crate) type ATResult<T> = Result<T, errors::AsyncThreadError>;

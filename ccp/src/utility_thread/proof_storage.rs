@@ -21,12 +21,12 @@ use ccp_shared::proof::CCProof;
 const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
 
 #[derive(Debug)]
-pub struct ProofStorageWorker {
+pub struct ProofStorage {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
 }
 
-impl ProofStorageWorker {
+impl ProofStorage {
     /// Creates a proof storage worker, it exclusively owns the provided proof directory,
     /// e.g. it can remove it and them creates again to flush its content.
     pub fn new(proof_directory: PathBuf) -> Self {

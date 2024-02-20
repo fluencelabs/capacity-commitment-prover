@@ -16,6 +16,7 @@
 
 use ccp_shared::types::*;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RawProof {
     pub(crate) epoch: EpochParameters,
     pub(crate) local_nonce: LocalNonce,

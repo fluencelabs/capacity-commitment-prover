@@ -27,8 +27,10 @@ use super::state::RandomXJob;
 use super::state::ThreadState;
 use super::to_utility_message::ToUtilityInlet;
 use super::to_utility_message::ToUtilityMessage;
+use super::STFResult;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
+use crate::cu::proving_thread::sync::errors::SyncThreadFacadeError;
 
 const HASHES_PER_ROUND: usize = 1024;
 
@@ -37,7 +39,7 @@ const CHANNEL_DROPPED_MESSAGE: &str =
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadSync {
-    handle: thread::JoinHandle<STResult<()>>,
+    handle: thread::JoinHandle<STFResult<()>>,
 }
 
 impl ProvingThreadSync {
@@ -53,8 +55,10 @@ impl ProvingThreadSync {
         Self { handle }
     }
 
-    pub(crate) fn join(self) -> STResult<()> {
-        self.handle.join().map_err(SyncThreadError::join_error)?
+    pub(crate) fn join(self) -> STFResult<()> {
+        self.handle
+            .join()
+            .map_err(SyncThreadFacadeError::join_error)?
     }
 
     fn proving_closure(
@@ -62,18 +66,20 @@ impl ProvingThreadSync {
         mut from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
         to_utility: ToUtilityInlet,
-    ) -> Box<dyn FnMut() -> STResult<()> + Send + 'static> {
-        let inner_closure = move || {
+    ) -> Box<dyn FnMut() -> STFResult<()> + Send + 'static> {
+        let to_utility_outer = to_utility.clone();
+
+        let mut inner_closure = move || -> Result<(), SyncThreadError> {
             if cpu_utils::pinning::pin_current_thread_to(core_id) {
-                to_utility.blocking_send(ToUtilityMessage::ErrorHappened(
-                    SyncThreadError::ThreadPinFailed { core_id },
-                ))?;
+                let error = SyncThreadError::ThreadPinFailed { core_id };
+                to_utility.blocking_send(ToUtilityMessage::error_happened(core_id, error))?;
             }
 
             let message = from_async
                 .blocking_recv()
                 .ok_or(SyncThreadError::channel_error(CHANNEL_DROPPED_MESSAGE))?;
-            let mut thread_state = Self::handle_message_from_async(message, &to_async, &to_utility)?;
+            let mut thread_state =
+                Self::handle_message_from_async(message, &to_async, &to_utility)?;
 
             loop {
                 log::trace!("proving_thread_sync: new thread_state is {thread_state:?}");
@@ -107,10 +113,9 @@ impl ProvingThreadSync {
 
         Box::new(move || match inner_closure() {
             Ok(_) => Ok(()),
-            Err(e) => {
-                let message = ToUtilityMessage::error_happened(e.clone());
-                to_utility.blocking_send(message)?;
-                Err(e)
+            Err(error) => {
+                let message = ToUtilityMessage::error_happened(core_id, error);
+                to_utility_outer.blocking_send(message).map_err(Into::into)
             }
         })
     }
@@ -161,9 +166,11 @@ impl ProvingThreadSync {
 
             AsyncToSyncMessage::PinThread(params) => {
                 if cpu_utils::pinning::pin_current_thread_to(params.core_id) {
-                    to_utility.blocking_send(ToUtilityMessage::ErrorHappened(
-                        SyncThreadError::ThreadPinFailed { core_id },
-                    ))?;
+                    let error = SyncThreadError::ThreadPinFailed {
+                        core_id: params.core_id,
+                    };
+                    to_utility
+                        .blocking_send(ToUtilityMessage::error_happened(params.core_id, error))?;
                 }
                 Ok(ThreadState::WaitForMessage)
             }

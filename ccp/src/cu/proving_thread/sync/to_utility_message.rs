@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
 pub(crate) use super::errors::SyncThreadError;
@@ -24,7 +25,10 @@ pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
 
 pub(crate) enum ToUtilityMessage {
     ProofFound(RawProof),
-    ErrorHappened(SyncThreadError),
+    ErrorHappened {
+        thread_location: LogicalCoreId,
+        error: SyncThreadError,
+    },
 }
 
 impl ToUtilityMessage {
@@ -32,7 +36,10 @@ impl ToUtilityMessage {
         Self::ProofFound(proof)
     }
 
-    pub(crate) fn error_happened(error: SyncThreadError) -> Self {
-        Self::ErrorHappened(error)
+    pub(crate) fn error_happened(thread_location: LogicalCoreId, error: SyncThreadError) -> Self {
+        Self::ErrorHappened {
+            thread_location,
+            error,
+        }
     }
 }
