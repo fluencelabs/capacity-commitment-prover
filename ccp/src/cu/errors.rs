@@ -38,9 +38,6 @@ pub enum CUProverError {
     ChannelError(#[source] anyhow::Error),
 
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
-
-    #[error(transparent)]
     ThreadAllocation(#[from] ThreadAllocationError),
 
     #[error(transparent)]

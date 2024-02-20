@@ -179,10 +179,9 @@ impl CCProver {
 }
 
 #[derive(Debug)]
-enum CUProverPostAction {
-    Keep(CUProver),
+enum AlignmentPostAction {
+    KeepProver(CUProver),
     Nothing,
-    NotApplicable,
 }
 
 impl RoadmapAlignable for CCProver {
@@ -192,7 +191,19 @@ impl RoadmapAlignable for CCProver {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
-        let CCProverAlignmentRoadmap { actions, epoch } = roadmap;
+        let CCProverAlignmentRoadmap {
+            pre_action,
+            actions,
+            epoch,
+        } = roadmap;
+
+        match pre_action {
+            CUProverPreAction::NoAction => {}
+            CUProverPreAction::CleanupProofCache => {
+                self.pause().await?;
+                self.proof_storage.remove_proofs().await?;
+            }
+        }
 
         let actions_as_futures = actions
             .into_iter()
@@ -201,7 +212,6 @@ impl RoadmapAlignable for CCProver {
                 CUProverAction::RemoveCUProver(state) => self.cu_removal(state),
                 CUProverAction::NewCCJob(state) => self.new_cc_job(state, epoch),
                 CUProverAction::NewCCJobWithRepining(state) => self.new_cc_job_repin(state, epoch),
-                CUProverAction::CleanupProofCache => self.cleanup_proof_cache(),
             })
             .collect::<FuturesUnordered<_>>();
 
@@ -215,9 +225,8 @@ impl RoadmapAlignable for CCProver {
             .into_iter()
             .map(Result::unwrap)
             .flat_map(|prover_post_action| match prover_post_action {
-                CUProverPostAction::Keep(prover) => Some((prover.pinned_core_id(), prover)),
-                CUProverPostAction::Nothing => None,
-                CUProverPostAction::NotApplicable => None,
+                AlignmentPostAction::KeepProver(prover) => Some((prover.pinned_core_id(), prover)),
+                AlignmentPostAction::Nothing => None,
             })
             .collect::<Vec<_>>();
         self.cu_provers.extend(provers_to_keep);
@@ -240,7 +249,7 @@ impl CCProver {
         &'prover mut self,
         state: actions_state::CreateCUProverState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let proof_receiver_inlet = self.proof_receiver_inlet.clone();
 
@@ -249,7 +258,7 @@ impl CCProver {
                 CUProver::create(prover_config, proof_receiver_inlet, state.new_core_id).await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
-            Ok(CUProverPostAction::Keep(prover))
+            Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
     }
@@ -257,11 +266,11 @@ impl CCProver {
     pub(self) fn cu_removal<'prover, 'futures: 'prover>(
         &'prover mut self,
         state: actions_state::RemoveCUProverState,
-    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
         let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
-            Ok(CUProverPostAction::Nothing)
+            Ok(AlignmentPostAction::Nothing)
         }
         .boxed()
     }
@@ -270,11 +279,11 @@ impl CCProver {
         &'prover mut self,
         state: actions_state::NewCCJobState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.new_epoch(epoch, state.new_cu_id).await?;
-            Ok(CUProverPostAction::Keep(prover))
+            Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
     }
@@ -283,23 +292,12 @@ impl CCProver {
         &'prover mut self,
         state: actions_state::NewCCJobWithRepiningState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
+    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.pin(state.new_core_id).await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
-            Ok(CUProverPostAction::Keep(prover))
-        }
-        .boxed()
-    }
-
-    pub(self) fn cleanup_proof_cache<'prover, 'futures: 'prover>(
-        &'prover mut self,
-    ) -> future::BoxFuture<'futures, CUResult<CUProverPostAction>> {
-        let proof_storage = self.proof_storage.clone();
-        async move {
-            proof_storage.remove_proofs().await?;
-            Ok(CUProverPostAction::NotApplicable)
+            Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
     }
