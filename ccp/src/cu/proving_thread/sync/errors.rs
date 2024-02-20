@@ -25,7 +25,7 @@ use randomx_rust_wrapper::errors::RandomXError;
 /// Errors arisen inside sync thread,
 /// they are intended to be passed into the utility thread.
 #[derive(ThisError, Debug)]
-pub enum SyncThreadError {
+pub enum ProvingThreadSyncError {
     #[error(transparent)]
     RandomXError(#[from] RandomXError),
 
@@ -38,7 +38,7 @@ pub enum SyncThreadError {
 
 /// Errors arisen in the sync thread facade.
 #[derive(ThisError, Debug)]
-pub enum SyncThreadFacadeError {
+pub enum ProvingThreadSyncFacadeError {
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinError(Box<dyn Any + Send>),
 
@@ -46,32 +46,32 @@ pub enum SyncThreadFacadeError {
     ChannelError(#[from] anyhow::Error),
 }
 
-impl SyncThreadError {
+impl ProvingThreadSyncError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
     }
 }
 
-impl SyncThreadFacadeError {
+impl ProvingThreadSyncFacadeError {
     pub(crate) fn join_error(error: Box<dyn Any + Send>) -> Self {
         Self::JoinError(error)
     }
 }
 
-impl<T> From<mpsc::error::SendError<T>> for SyncThreadError {
+impl<T> From<mpsc::error::SendError<T>> for ProvingThreadSyncError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        SyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        ProvingThreadSyncError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }
 
-impl From<mpsc::error::TryRecvError> for SyncThreadError {
+impl From<mpsc::error::TryRecvError> for ProvingThreadSyncError {
     fn from(value: mpsc::error::TryRecvError) -> Self {
-        SyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        ProvingThreadSyncError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }
 
-impl<T> From<mpsc::error::SendError<T>> for SyncThreadFacadeError {
+impl<T> From<mpsc::error::SendError<T>> for ProvingThreadSyncFacadeError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        SyncThreadFacadeError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        ProvingThreadSyncFacadeError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
     }
 }

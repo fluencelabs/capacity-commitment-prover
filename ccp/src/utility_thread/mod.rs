@@ -18,11 +18,11 @@ mod errors;
 mod proof_storage;
 mod thread;
 
-pub use errors::UTError;
+pub use errors::UtilityThreadError;
 pub(crate) use thread::*;
 
 pub(crate) mod message {
     pub(crate) use crate::cu::proving_thread::sync::to_utility_message::*;
 }
 
-pub(crate) type UTResult<T> = Result<T, errors::UTError>;
+pub(crate) type UTResult<T> = Result<T, errors::UtilityThreadError>;

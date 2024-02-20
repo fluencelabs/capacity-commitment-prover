@@ -17,5 +17,5 @@
 mod errors;
 mod thread;
 
-pub(crate) use errors::AsyncThreadError;
+pub(crate) use errors::ProvingThreadAsyncError;
 pub(crate) use thread::ProvingThreadAsync;

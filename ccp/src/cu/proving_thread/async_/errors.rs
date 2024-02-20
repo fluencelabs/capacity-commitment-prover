@@ -18,21 +18,21 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use crate::cu::proving_thread::sync::SyncThreadFacadeError;
+use crate::cu::proving_thread::sync::ProvingThreadSyncFacadeError;
 
 #[derive(ThisError, Debug)]
-pub enum AsyncThreadError {
+pub enum ProvingThreadAsyncError {
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
 
     #[error(transparent)]
-    SyncThreadError(#[from] SyncThreadFacadeError),
+    SyncThreadError(#[from] ProvingThreadSyncFacadeError),
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadFailed(Box<dyn Any + Send>),
 }
 
-impl AsyncThreadError {
+impl ProvingThreadAsyncError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
     }
@@ -42,8 +42,8 @@ impl AsyncThreadError {
     }
 }
 
-impl<T> From<mpsc::error::SendError<T>> for AsyncThreadError {
+impl<T> From<mpsc::error::SendError<T>> for ProvingThreadAsyncError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        AsyncThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        ProvingThreadAsyncError::channel_error(anyhow::anyhow!("prover channel error: {value}"))
     }
 }

@@ -24,7 +24,7 @@ use randomx::Dataset;
 use randomx_rust_wrapper as randomx;
 use randomx_rust_wrapper::RandomXFlags;
 
-use super::errors::AsyncThreadError;
+use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;
 use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
@@ -52,7 +52,7 @@ impl ProvingThreadAsync {
 }
 
 impl ProvingThreadFacade for ProvingThreadAsync {
-    type Error = AsyncThreadError;
+    type Error = ProvingThreadAsyncError;
 
     async fn create_cache(
         &mut self,
@@ -66,10 +66,10 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
         match self.from_sync.recv().await {
             Some(SyncToAsyncMessage::CacheCreated(params)) => Ok(params.cache),
-            Some(message) => Err(AsyncThreadError::channel_error(format!(
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
                 "expected the CacheCreated event, but {message:?} received"
             ))),
-            None => Err(AsyncThreadError::channel_error(
+            None => Err(ProvingThreadAsyncError::channel_error(
                 "sync to async channel is closed unexpectedly".to_string(),
             )),
         }
@@ -82,10 +82,10 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
         match self.from_sync.recv().await {
             Some(SyncToAsyncMessage::DatasetAllocated(params)) => Ok(params.dataset),
-            Some(message) => Err(AsyncThreadError::channel_error(format!(
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
                 "expected the DatasetAllocated event, but {message:?} received"
             ))),
-            None => Err(AsyncThreadError::channel_error(
+            None => Err(ProvingThreadAsyncError::channel_error(
                 "sync to async channel is closed unexpectedly".to_string(),
             )),
         }
@@ -104,10 +104,10 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
         match self.from_sync.recv().await {
             Some(SyncToAsyncMessage::DatasetInitialized) => Ok(()),
-            Some(message) => Err(AsyncThreadError::channel_error(format!(
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
                 "expected the DatasetInitialized event, but {message:?} received"
             ))),
-            None => Err(AsyncThreadError::channel_error(
+            None => Err(ProvingThreadAsyncError::channel_error(
                 "sync to async channel is closed unexpectedly".to_string(),
             )),
         }
@@ -136,10 +136,10 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
         match self.from_sync.recv().await {
             Some(SyncToAsyncMessage::Paused) => Ok(()),
-            Some(message) => Err(AsyncThreadError::channel_error(format!(
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
                 "expected the Paused event, but {message:?} received"
             ))),
-            None => Err(AsyncThreadError::channel_error(
+            None => Err(ProvingThreadAsyncError::channel_error(
                 "sync to async channel is closed unexpectedly".to_string(),
             )),
         }
@@ -148,6 +148,6 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     async fn stop(self) -> Result<(), Self::Error> {
         let message = AsyncToSyncMessage::Stop;
         self.to_sync.send(message).await?;
-        self.sync_thread.join().map_err(Into::into)
+        Ok(self.sync_thread.join()?)
     }
 }

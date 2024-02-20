@@ -21,6 +21,6 @@ pub(crate) mod sync;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use async_::AsyncThreadError as ProvingThreadError;
 pub(crate) use async_::ProvingThreadAsync;
+pub(crate) use async_::ProvingThreadAsyncError as ProvingThreadError;
 pub(crate) use facade::ProvingThreadFacade;

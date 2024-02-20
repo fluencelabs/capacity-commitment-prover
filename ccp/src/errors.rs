@@ -18,7 +18,7 @@ use thiserror::Error as ThisError;
 use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
-use crate::utility_thread::UTError;
+use crate::utility_thread::UtilityThreadError;
 
 #[derive(ThisError, Debug)]
 pub enum CCProverError {
@@ -32,7 +32,7 @@ pub enum CCProverError {
     JoinError(#[from] JoinError),
 
     #[error(transparent)]
-    UTError(#[from] UTError),
+    UtilityThreadError(#[from] UtilityThreadError),
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),

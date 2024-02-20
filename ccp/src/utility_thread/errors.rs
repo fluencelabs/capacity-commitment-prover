@@ -19,7 +19,7 @@ use tokio::task::JoinError;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
-pub enum UTError {
+pub enum UtilityThreadError {
     #[error(transparent)]
     JoinFailed(#[from] JoinError),
 

@@ -193,11 +193,11 @@ impl RoadmapAlignable for CCProver {
 }
 
 impl CCProver {
-    pub(self) fn cu_creation<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn cu_creation(
+        &mut self,
         state: actions_state::CreateCUProverState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
 
@@ -210,10 +210,10 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn cu_removal<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn cu_removal(
+        &mut self,
         state: actions_state::RemoveCUProverState,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
@@ -222,11 +222,11 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn new_cc_job<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn new_cc_job(
+        &mut self,
         state: actions_state::NewCCJobState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.new_epoch(epoch, state.new_cu_id).await?;
@@ -235,11 +235,11 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn new_cc_job_repin<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn new_cc_job_repin(
+        &mut self,
         state: actions_state::NewCCJobWithRepiningState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.pin(state.new_core_id).await?;

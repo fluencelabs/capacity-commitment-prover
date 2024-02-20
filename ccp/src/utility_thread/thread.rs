@@ -14,12 +14,9 @@
  * limitations under the License.
  */
 
-use futures::FutureExt;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-use crate::utility_thread::proof_storage::ProofStorage;
-use crate::utility_thread::UTError;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
@@ -28,6 +25,8 @@ use cpu_utils::LogicalCoreId;
 
 use super::message::*;
 use super::UTResult;
+use crate::utility_thread::proof_storage::ProofStorage;
+use crate::utility_thread::UtilityThreadError;
 
 type ThreadShutdownInlet = oneshot::Sender<()>;
 type ThreadShutdownOutlet = oneshot::Receiver<()>;
@@ -44,11 +43,13 @@ impl UtilityThread {
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
+        let new_proof_handler = NewProofHandler::new(proof_storage);
+
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
             from_utility,
             shutdown_out,
-            proof_storage,
+            new_proof_handler,
         ));
 
         Self {
@@ -61,7 +62,7 @@ impl UtilityThread {
     pub(crate) async fn stop(self) -> UTResult<()> {
         self.shutdown_in
             .send(())
-            .map_err(|_| UTError::ShutdownError)?;
+            .map_err(|_| UtilityThreadError::ShutdownError)?;
         self.handle.await?
     }
 
@@ -69,48 +70,80 @@ impl UtilityThread {
         self.to_utility.clone()
     }
 
-    fn utility_closure(
+    async fn utility_closure(
         core_id: LogicalCoreId,
         mut to_utility: ToUtilityOutlet,
         mut shutdown_out: ThreadShutdownOutlet,
-        proof_storage: ProofStorage,
-    ) -> futures::future::BoxFuture<'static, UTResult<()>> {
-        async move {
-            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-                log::error!("utility_thread: failed to pin to {core_id} core");
-            }
+        mut new_proof_handler: NewProofHandler,
+    ) -> UTResult<()> {
+        if !cpu_utils::pinning::pin_current_thread_to(core_id) {
+            log::error!("utility_thread: failed to pin to {core_id} core");
+        }
 
-            let mut proof_idx = ProofIdx::zero();
-            let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
+        loop {
+            tokio::select! {
+                Some(message) = to_utility.recv() => {
+                    match message {
+                        ToUtilityMessage::ProofFound(proof) => new_proof_handler.handle_found_proof(proof).await?,
+                        ToUtilityMessage::ErrorHappened { thread_location, error} => {
+                            log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
+                        }
+                    }},
+                _ = &mut shutdown_out => {
+                    log::info!("utility_thread: utility thread was shutdown");
 
-            loop {
-                tokio::select! {
-                    Some(message) = to_utility.recv() => {
-                        match message {
-                            ToUtilityMessage::ProofFound(proof) => {
-                                log::debug!("utility_thread: new proof_received {proof:?}");
-
-                                if proof.epoch.global_nonce != last_seen_global_nonce {
-                                    last_seen_global_nonce = proof.epoch.global_nonce;
-                                    proof_idx = ProofIdx::zero();
-                                }
-                                let cc_proof_id = CCProofId::new(proof.epoch.global_nonce, proof.epoch.difficulty, proof_idx);
-                                let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id, proof.result_hash);
-                                proof_storage.store_new_proof(cc_proof).await.map_err(UTError::IOError)?;
-                                proof_idx.increment();
-                            },
-                            ToUtilityMessage::ErrorHappened { thread_location, error} => {
-                                log::error!("utility_thread: thread at {thread_location} encountered a error {error}");
-
-                            }
-                        }},
-                    _ = &mut shutdown_out => {
-                        log::info!("utility_thread: utility thread was shutdown");
-
-                        return Ok(())
-                    }
+                    return Ok(())
                 }
             }
-        }.boxed()
+        }
+    }
+}
+
+struct NewProofHandler {
+    proof_idx: ProofIdx,
+    last_seen_global_nonce: GlobalNonce,
+    proof_storage: ProofStorage,
+}
+
+impl NewProofHandler {
+    pub(self) fn new(proof_storage: ProofStorage) -> Self {
+        Self {
+            proof_idx: ProofIdx::zero(),
+            last_seen_global_nonce: GlobalNonce::new([0u8; 32]),
+            proof_storage,
+        }
+    }
+
+    async fn handle_found_proof(&mut self, proof: RawProof) -> UTResult<()> {
+        log::debug!("utility_thread: new proof_received {proof:?}");
+
+        self.maybe_new_epoch(&proof);
+
+        let cc_proof_id = CCProofId::new(
+            proof.epoch.global_nonce,
+            proof.epoch.difficulty,
+            self.proof_idx,
+        );
+        let cc_proof = CCProof::new(
+            cc_proof_id,
+            proof.local_nonce,
+            proof.cu_id,
+            proof.result_hash,
+        );
+        self.proof_storage.store_new_proof(cc_proof).await?;
+        self.proof_idx.increment();
+
+        Ok(())
+    }
+
+    fn maybe_new_epoch(&mut self, proof: &RawProof) {
+        if self.is_new_epoch(proof) {
+            self.last_seen_global_nonce = proof.epoch.global_nonce;
+            self.proof_idx = ProofIdx::zero();
+        }
+    }
+
+    fn is_new_epoch(&self, proof: &RawProof) -> bool {
+        self.last_seen_global_nonce != proof.epoch.global_nonce
     }
 }
