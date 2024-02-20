@@ -164,7 +164,7 @@ impl CCProver {
                             last_seen_global_nonce = proof.epoch.global_nonce;
                             proof_idx = ProofIdx::zero();
                         }
-                        let cc_proof_id = CCProofId::new(proof.epoch, proof_idx);
+                        let cc_proof_id = CCProofId::new(proof.epoch.global_nonce, proof.epoch.difficulty, proof_idx);
                         let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id, proof.result_hash);
                         proof_storage.store_new_proof(cc_proof).await?;
                         proof_idx.increment();
