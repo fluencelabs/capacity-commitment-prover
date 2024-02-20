@@ -26,9 +26,8 @@ pub struct ProofStorage {
     proof_directory: PathBuf,
 }
 
+/// Intended to store proofs in storage.
 impl ProofStorage {
-    /// Creates a proof storage worker, it exclusively owns the provided proof directory,
-    /// e.g. it can remove it and them creates again to flush its content.
     pub fn new(proof_directory: PathBuf) -> Self {
         Self { proof_directory }
     }
