@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use hex::FromHex;
+use hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 
 pub type CUIDInner = [u8; 32];
@@ -41,5 +41,15 @@ impl FromHex for CUID {
 
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
         CUIDInner::from_hex(hex).map(Self)
+    }
+}
+
+impl ToHex for CUID {
+    fn encode_hex<T: std::iter::FromIterator<char>>(&self) -> T {
+        ToHex::encode_hex(&self.0)
+    }
+
+    fn encode_hex_upper<T: std::iter::FromIterator<char>>(&self) -> T {
+        ToHex::encode_hex_upper(&self.0)
     }
 }

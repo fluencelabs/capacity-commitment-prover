@@ -22,10 +22,13 @@ mod local_nonce;
 
 use std::collections::HashMap;
 
+pub use cuid::CUIDInner;
 pub use cuid::CUID;
 pub use difficulty::Difficulty;
+pub use difficulty::DifficultyInner;
 pub use epoch_parameters::EpochParameters;
 pub use global_nonce::GlobalNonce;
+pub use global_nonce::GlobalNonceInner;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
 pub use randomx_rust_wrapper::ResultHash;

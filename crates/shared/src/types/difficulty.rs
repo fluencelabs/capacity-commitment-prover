@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use hex::FromHex;
+use hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 
 use crate::RANDOMX_RESULT_SIZE;
@@ -55,5 +55,15 @@ impl PartialEq<Difficulty> for DifficultyInner {
 impl PartialOrd<Difficulty> for DifficultyInner {
     fn partial_cmp(&self, other: &Difficulty) -> Option<std::cmp::Ordering> {
         self.partial_cmp(&other.0)
+    }
+}
+
+impl ToHex for Difficulty {
+    fn encode_hex<T: std::iter::FromIterator<char>>(&self) -> T {
+        ToHex::encode_hex(&self.0)
+    }
+
+    fn encode_hex_upper<T: std::iter::FromIterator<char>>(&self) -> T {
+        ToHex::encode_hex_upper(&self.0)
     }
 }
