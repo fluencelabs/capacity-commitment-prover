@@ -101,7 +101,7 @@ impl ProvingThreadSync {
                         }
                     }
                     ThreadState::NewMessage { message } => {
-                        Self::handle_message_from_async(message, &to_async, &to_utility)?
+                        Self::handle_message(message, &to_async, &to_utility)?
                     }
                     ThreadState::Stop => {
                         return Ok(());
@@ -119,7 +119,7 @@ impl ProvingThreadSync {
         })
     }
 
-    fn handle_message_from_async(
+    fn handle_message(
         message: AsyncToSyncMessage,
         to_async: &SyncToAsyncInlet,
         to_utility: &ToUtilityInlet,

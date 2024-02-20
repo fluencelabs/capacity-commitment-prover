@@ -28,7 +28,8 @@ use super::CUProver;
 use super::CUProverConfig;
 use crate::cu::status::CUStatus;
 use crate::cu::status::ToCUStatus;
-use crate::cu::RawProof;
+use crate::utility_thread::message::RawProof;
+use crate::utility_thread::message::ToUtilityMessage;
 
 fn batch_proof_verification(
     epoch: EpochParameters,
@@ -143,7 +144,7 @@ async fn cu_prover_can_be_paused() {
         let mut proofs_before_pause = Vec::new();
         let mut proofs_after_pause = Vec::new();
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
             if !*is_thread_paused_locked.borrow() {
                 proofs_before_pause.push(proof);
@@ -200,7 +201,7 @@ async fn cu_prover_produces_correct_proofs() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             proofs.push(proof)
         }
         proofs
@@ -240,7 +241,7 @@ async fn cu_prover_works_with_odd_threads_number() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             proofs.push(proof);
         }
 
@@ -286,7 +287,7 @@ async fn cu_prover_changes_epoch_correctly() {
 
         let mut proofs: HashMap<EpochParameters, Vec<_>> = HashMap::new();
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             match proofs.entry(proof.epoch) {
                 Entry::Vacant(entry) => {
                     entry.insert(vec![proof]);
