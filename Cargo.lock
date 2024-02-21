@@ -319,7 +319,7 @@ dependencies = [
  "cpu-utils",
  "hex",
  "rand 0.8.5",
- "randomx-rust-wrapper",
+ "randomx-types",
  "serde",
 ]
 
@@ -1501,15 +1501,22 @@ dependencies = [
 [[package]]
 name = "randomx-rust-wrapper"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "633da5ca6de8f9e85b98373c9c446bf457cc8d9ae83df1d3209e93502a3935b7"
 dependencies = [
  "bitflags 2.4.2",
  "cmake",
  "hex",
  "libc",
+ "randomx-types",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "randomx-types"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
 ]
 
 [[package]]
