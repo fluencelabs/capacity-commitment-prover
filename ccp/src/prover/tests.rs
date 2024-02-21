@@ -7,8 +7,11 @@ use ccp_shared::{
     types::{CUAllocation, EpochParameters, CUID},
 };
 use ccp_test_utils::test_values::generate_epoch_params;
+use maplit::hashmap;
 use randomx_rust_wrapper::RandomXFlags;
 use test_log::test;
+
+const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 
 fn get_prover(
     dir_to_store_proofs: impl Into<PathBuf>,
@@ -33,7 +36,7 @@ fn get_epoch_params() -> EpochParameters {
 }
 
 fn get_cu_allocation() -> CUAllocation {
-    maplit::hashmap! {
+    hashmap! {
         1.into() => CUID::new([
             33, 247, 206, 99, 242, 79, 217, 190, 58, 45, 87, 221, 151, 162, 217, 11, 43, 151, 160,
             77, 199, 173, 183, 140, 130, 71, 222, 113, 189, 117, 174, 63,
@@ -57,7 +60,7 @@ async fn prover_on_active_commitment() {
         .on_active_commitment(epoch_params.clone(), cu_alloc.clone())
         .await
         .unwrap();
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs = prover
         .get_proofs_after("0".parse().unwrap())
@@ -117,7 +120,7 @@ async fn prover_on_active_no_active_commitment() {
         .await
         .unwrap();
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
         .get_proofs_after("0".parse().unwrap())
@@ -148,7 +151,7 @@ async fn prover_on_active_reduce_on_active_commitment() {
         .await
         .unwrap();
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     cu_allocation.remove(&2.into()).unwrap();
     prover
@@ -171,7 +174,7 @@ async fn prover_on_active_reduce_on_empty_active_commitment() {
         .await
         .unwrap();
 
-    tokio::time::sleep(Duration::from_secs(10)).await;
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
         .get_proofs_after("0".parse().unwrap())
@@ -249,6 +252,47 @@ async fn prover_on_active_reschedule_on_active_commitment() {
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
         .unwrap();
+
+    prover.stop().await.unwrap();
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
+async fn prover_on_active_extend_on_active_commitment_performance() {
+    let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let cu_allocation_large = get_cu_allocation();
+    let cu_allocation_small = hashmap! {
+        1.into() => cu_allocation_large.get(&1.into()).cloned().unwrap(),
+    };
+
+    prover
+        .on_active_commitment(get_epoch_params(), cu_allocation_small)
+        .await
+        .unwrap();
+
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    let proofs_before = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(!proofs_before.is_empty());
+
+    prover
+        .on_active_commitment(get_epoch_params(), cu_allocation_large)
+        .await
+        .unwrap();
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    let proofs_after = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(2 * proofs_before.len() < proofs_after.len());
 
     prover.stop().await.unwrap();
 }
