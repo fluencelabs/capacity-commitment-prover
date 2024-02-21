@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use crate::CCProver;
 use ccp_config::CCPConfig;
@@ -51,10 +51,26 @@ async fn prover_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let cu_alloc = get_cu_allocation();
+    let epoch_params = get_epoch_params();
     prover
-        .on_active_commitment(get_epoch_params(), get_cu_allocation())
+        .on_active_commitment(epoch_params.clone(), cu_alloc.clone())
         .await
         .unwrap();
+    tokio::time::sleep(Duration::from_secs(10)).await;
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+
+    assert!(proofs.len() > 3);
+    for proof in proofs {
+        assert!(cu_alloc.values().find(|p| *p == &proof.cu_id).is_none());
+        assert_eq!(proof.id.global_nonce, epoch_params.global_nonce);
+        assert_eq!(proof.id.difficulty, epoch_params.difficulty);
+    }
+
     prover.stop().await.unwrap();
 }
 
@@ -65,6 +81,13 @@ async fn prover_on_no_active_commitment() {
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
     prover.on_no_active_commitment().await.unwrap();
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(proofs.is_empty());
+
     prover.stop().await.unwrap();
 }
 
@@ -78,6 +101,13 @@ async fn prover_on_active_no_active_commitment() {
         .await
         .unwrap();
     prover.on_no_active_commitment().await.unwrap();
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(proofs.is_empty());
+
     prover.stop().await.unwrap();
 }
 
