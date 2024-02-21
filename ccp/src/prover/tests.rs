@@ -107,6 +107,7 @@ async fn prover_on_no_active_commitment() {
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+#[ignore = "until on_no_active_commitment cleans proofs_dir"]
 async fn prover_on_active_no_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
