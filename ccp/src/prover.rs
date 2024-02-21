@@ -98,6 +98,7 @@ impl CCProver {
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
+            enable_msr: config.enable_msr,
         };
 
         Self {

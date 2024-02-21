@@ -18,6 +18,7 @@ cpu-utils = { path = "./crates/cpu-utils", version = "0.1.0" }
 ccp-config = { path = "./crates/config", version = "0.1.0" }
 ccp-randomx = "0.1.0"
 ccp-randomx-types = "0.1.0"
+ccp-msr = { path = "./crates/msr", version = "0.1.0" }
 ccp-rpc-client = { version = "0.1.0", path = "./crates/rpc-client" }
 ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }

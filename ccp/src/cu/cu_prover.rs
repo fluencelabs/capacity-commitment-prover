@@ -49,6 +49,8 @@ pub struct CUProverConfig {
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
     pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
+    /// Control to enable MSR-based performance optimization.
+    pub enable_msr: bool,
 }
 
 impl CUProver {
@@ -60,7 +62,7 @@ impl CUProver {
         let topology = CPUTopology::new()?;
         let mut threads =
             ThreadAllocator::new(config.thread_allocation_policy, core_id, &topology)?
-                .allocate(to_utility)?;
+                .allocate(to_utility, config.enable_msr)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
