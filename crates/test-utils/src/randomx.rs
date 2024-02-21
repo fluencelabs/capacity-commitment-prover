@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-use randomx_rust_wrapper::result_hash::ResultHash;
 use randomx_rust_wrapper::Cache;
 use randomx_rust_wrapper::RandomXFlags;
 use randomx_rust_wrapper::RandomXVM;
+use randomx_rust_wrapper::ResultHash;
 
 pub fn run_light_randomx(
     global_nonce: &[u8],
