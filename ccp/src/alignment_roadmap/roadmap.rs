@@ -35,7 +35,7 @@ pub(crate) struct CCProverAlignmentRoadmap {
 }
 
 impl CCProverAlignmentRoadmap {
-    pub(crate) fn create_roadmap<T: ToCUStatus>(
+    pub(crate) fn make_roadmap<T: ToCUStatus>(
         new_allocation: CUAllocation,
         new_epoch: EpochParameters,
         current_allocation: &HashMap<PhysicalCoreId, T>,
