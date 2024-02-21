@@ -275,7 +275,7 @@ async fn proving_thread_works() {
     let proof = match message {
         ToUtilityMessage::ProofFound(proof) => proof,
         ToUtilityMessage::ErrorHappened { .. } => {
-            unreachable!()
+            panic!()
         }
     };
 
