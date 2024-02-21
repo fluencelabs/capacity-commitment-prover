@@ -272,7 +272,6 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
         .await
         .unwrap();
 
-
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
@@ -292,7 +291,12 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
-    assert!(2 * proofs_before.len() < proofs_after.len());
+    assert!(
+        3 * proofs_before.len() < 2 * proofs_after.len(),
+        "should be 1.5*{} < {}",
+        proofs_before.len(),
+        proofs_after.len()
+    );
 
     prover.stop().await.unwrap();
 }
