@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+use crate::msr_mode::MsrMode;
 use crate::MsrItem;
-use crate::MsrMode;
 
 use once_cell::sync::Lazy;
 
@@ -39,22 +39,22 @@ static CCP_CPU_MSR_PRESETS: Lazy<Vec<CCPCpuPreset>> = Lazy::new(|| {
     vec![
         CCPCpuPreset::new(vec![]),
         CCPCpuPreset::new(vec![
-            MsrItem::new(0xC0011020, 0),
-            MsrItem::with_mask(0xC0011021, 0x40, !0x20),
-            MsrItem::new(0xC0011022, 0x1510000),
-            MsrItem::new(0xC001102b, 0x2000cc16),
+            MsrItem::new(0xc0011020, 0),
+            MsrItem::with_mask(0xc0011021, 0x40, !0x20),
+            MsrItem::new(0xc0011022, 0x1510000),
+            MsrItem::new(0xc001102b, 0x2000cc16),
         ]),
         CCPCpuPreset::new(vec![
-            MsrItem::new(0xC0011020, 0x0004480000000000),
-            MsrItem::with_mask(0xC0011021, 0x001c000200000040, !0x20),
-            MsrItem::new(0xC0011022, 0xc000000401570000),
-            MsrItem::new(0xC001102b, 0x2000cc10),
+            MsrItem::new(0xc0011020, 0x0004480000000000),
+            MsrItem::with_mask(0xc0011021, 0x001c000200000040, !0x20),
+            MsrItem::new(0xc0011022, 0xc000000401570000),
+            MsrItem::new(0xc001102b, 0x2000cc10),
         ]),
         CCPCpuPreset::new(vec![
-            MsrItem::new(0xC0011020, 0x0004400000000000),
-            MsrItem::with_mask(0xC0011021, 0x0004000000000040, !0x20),
-            MsrItem::new(0xC0011022, 0x8680000401570000),
-            MsrItem::new(0xC001102b, 0x2040cc10),
+            MsrItem::new(0xc0011020, 0x0004400000000000),
+            MsrItem::with_mask(0xc0011021, 0x0004000000000040, !0x20),
+            MsrItem::new(0xc0011022, 0x8680000401570000),
+            MsrItem::new(0xc001102b, 0x2040cc10),
         ]),
         CCPCpuPreset::new(vec![MsrItem::new(0x1a4, 0xf)]),
         CCPCpuPreset::new(vec![]),

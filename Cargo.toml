@@ -22,6 +22,7 @@ ccp-rpc-server = { version = "0.1.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.1.0" }
 ccp-test-utils = { path = "./crates/test-utils", version = "0.1.0" }
 ccp-utils = { path = "./crates/utils", version = "0.1.0" }
+ccp-msr = { path = "./crates/msr", version = "0.1.0" }
 
 randomx-rust-wrapper = "0.4"
 

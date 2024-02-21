@@ -17,7 +17,11 @@
 use raw_cpuid::CpuId;
 use raw_cpuid::CpuIdReaderNative;
 
-#[derive(Debug)]
+use once_cell::sync::Lazy;
+
+pub static MSR_MODE: Lazy<MsrMode> = Lazy::new(|| detect_msr_mode());
+
+#[derive(Copy, Clone, Debug)]
 pub enum MsrMode {
     MsrModNone,
     MsrModRyzen17h,

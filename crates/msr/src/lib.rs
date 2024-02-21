@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-mod ccp_cpu_preset;
-mod ccp_msr;
+
+mod cpu_preset;
+mod msr;
 mod msr_item;
 mod msr_mode;
 
-pub use ccp_cpu_preset::get_cpu_preset;
-pub use ccp_msr::CCPMsr;
-pub use ccp_msr::CCPMsrLinux; // WIP
+pub use msr::MSRError;
+pub use msr::Msr;
+pub use msr::MsrLinux;
 pub use msr_item::MsrItem;
-pub use msr_mode::detect_msr_mode;
-
-pub use msr_mode::MsrMode;

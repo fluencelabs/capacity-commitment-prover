@@ -16,6 +16,7 @@
 
 use std::any::Any;
 
+use ccp_msr::MSRError;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
@@ -39,6 +40,9 @@ pub enum ProvingThreadError {
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadError(Box<dyn Any + Send>),
+
+    #[error("error setting MSR register preset")]
+    MsrError,
 }
 
 impl ProvingThreadError {
@@ -48,6 +52,10 @@ impl ProvingThreadError {
 
     pub fn join_error(error: Box<dyn Any + Send>) -> Self {
         Self::JoinThreadError(error)
+    }
+
+    pub fn msr_error(_error: MSRError) -> Self {
+        Self::MsrError
     }
 }
 

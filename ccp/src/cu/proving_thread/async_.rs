@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use ccp_msr::Msr;
+use ccp_msr::MsrLinux;
 use ccp_shared::types::EpochParameters;
 use randomx::cache::CacheHandle;
 use randomx::dataset::DatasetHandle;
@@ -36,6 +38,7 @@ pub(crate) struct ProvingThreadAsync {
     inlet: AsyncToSyncInlet,
     outlet: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
+    msr: MsrLinux,
 }
 
 impl ProvingThreadAsync {
@@ -47,11 +50,14 @@ impl ProvingThreadAsync {
         let (sta_inlet, sta_outlet) = mpsc::channel::<SyncToAsyncMessage>(1);
         let sync_thread =
             ProvingThreadSync::spawn(core_id, ats_outlet, sta_inlet, proof_receiver_inlet);
+        let mut msr = MsrLinux::new(core_id);
+        let _ = msr.write_preset(true);
 
         Self {
             inlet: ats_inlet,
             outlet: sta_outlet,
             sync_thread,
+            msr,
         }
     }
 }
@@ -130,7 +136,14 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         self.inlet.send(message).await.map_err(Into::into)
     }
 
-    async fn pin(&self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+    async fn pin(&mut self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+        let a = self.msr.clone();
+        a.restore().map_err(ProvingThreadError::msr_error)?;
+
+        self.msr = MsrLinux::new(core_id);
+        self.msr
+            .write_preset(true)
+            .map_err(ProvingThreadError::msr_error)?;
         let message = AsyncToSyncMessage::PinThread(PinThread { core_id });
         self.inlet.send(message).await.map_err(Into::into)
     }
@@ -154,6 +167,7 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         let message = AsyncToSyncMessage::Stop;
         self.inlet.send(message).await?;
         self.sync_thread.join()?;
+        self.msr.restore().map_err(ProvingThreadError::msr_error)?;
 
         Ok(())
     }
