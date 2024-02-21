@@ -84,13 +84,17 @@ async fn idle_cu_prover_can_be_stopped() {
         },
     };
 
-    let (inlet, _) = mpsc::channel(1);
+    let (inlet, mut outlet) = mpsc::channel(1);
+    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
     let prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Idle);
 
     let result = prover.stop().await;
+    assert!(result.is_ok());
+
+    let result = handle.await;
     assert!(result.is_ok());
 }
 
