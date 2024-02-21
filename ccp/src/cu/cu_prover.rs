@@ -151,22 +151,16 @@ impl CUProver {
 
         let threads_number = self.threads.len() as u64;
         let dataset_size = dataset.items_count();
-        let thread_workload_size = dataset_size / threads_number;
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
-            let workload_size = if thread_id as u64 == threads_number - 1 {
-                thread_workload_size + (dataset_size % threads_number)
-            } else {
-                thread_workload_size
-            };
+            let thread_id = thread_id as u64;
+
+            let start_item = (dataset_size * thread_id) / threads_number;
+            let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
+            let items_count = next_start_item - start_item;
 
             thread
-                .initialize_dataset(
-                    cache.clone(),
-                    dataset.clone(),
-                    thread_id as u64 * thread_workload_size,
-                    workload_size,
-                )
+                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
                 .boxed()
         };
 
