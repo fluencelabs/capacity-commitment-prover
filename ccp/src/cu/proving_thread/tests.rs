@@ -20,6 +20,7 @@ use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::*;
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
+use ccp_utils::run_utils::run_unordered;
 use cpu_utils::LogicalCoreId;
 use randomx_rust_wrapper::dataset::DatasetHandle;
 use randomx_rust_wrapper::RandomXFlags;
@@ -125,7 +126,11 @@ async fn dataset_creation_works() {
 }
 
 #[tokio::test]
-async fn dataset_creation_works_with_two_threads() {
+async fn dataset_creation_works_with_three_threads() {
+    use futures::FutureExt;
+
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let global_nonce = test::generate_global_nonce(3);
     let local_nonce = test::generate_local_nonce(3);
     let cu_id = test::generate_cu_id(3);
@@ -133,36 +138,46 @@ async fn dataset_creation_works_with_two_threads() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, _outlet) = mpsc::channel(1);
-    let mut thread_1 = ProvingThreadAsync::new(2.into(), inlet.clone());
-    let mut thread_2 = ProvingThreadAsync::new(2.into(), inlet);
+    let threads_count = 3u32;
+
+    let mut threads = (0..threads_count)
+        .map(|thread_id| ProvingThreadAsync::new((2 + thread_id).into(), inlet.clone()))
+        .collect::<Vec<_>>();
+
+    let thread_1 = &mut threads[0];
     let actual_dataset = thread_1.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread_1
         .create_cache(global_nonce, cu_id, flags)
         .await
         .unwrap();
 
-    let items_count = actual_dataset.items_count();
-    thread_1
-        .initialize_dataset(
-            actual_cache.handle(),
-            actual_dataset.handle(),
-            0,
-            items_count / 2,
-        )
-        .await
-        .unwrap();
-    thread_2
-        .initialize_dataset(
-            actual_cache.handle(),
-            actual_dataset.handle(),
-            items_count / 2,
-            items_count / 2,
-        )
-        .await
-        .unwrap();
+    let dataset_size = actual_dataset.items_count();
 
-    thread_1.stop().await.unwrap();
-    thread_2.stop().await.unwrap();
+    let closure = |thread_id: usize, mut thread: ProvingThreadAsync| {
+        let thread_id = thread_id as u64;
+        let threads_count = threads_count as u64;
+
+        let start_item = (dataset_size * thread_id) / threads_count;
+        let next_start_item = (dataset_size * (thread_id + 1)) / threads_count;
+        let items_count = next_start_item - start_item;
+
+        let cache = actual_cache.handle();
+        let dataset = actual_dataset.handle();
+
+        async move {
+            thread
+                .initialize_dataset(cache, dataset, start_item, items_count)
+                .await
+                .unwrap();
+
+            Ok::<_, ()>(thread)
+        }
+        .boxed()
+    };
+    let threads = run_unordered(threads.into_iter(), closure).await.unwrap();
+
+    let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
+    run_unordered(threads.into_iter(), closure).await.unwrap();
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
