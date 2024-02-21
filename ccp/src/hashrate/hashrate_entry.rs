@@ -14,29 +14,32 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+use std::time::Duration;
+use std::time::Instant;
 
-mod alignment_roadmap;
-mod cu;
-mod errors;
-mod hashrate;
-mod proof_storage;
-pub mod prover;
-pub mod status;
-pub(crate) mod utility_thread;
+use cpu_utils::LogicalCoreId;
 
-pub use errors::CCProverError;
-pub use prover::CCProver;
-pub use prover::CCResult;
+pub(crate) enum HashrateCUEntry {
+    CacheCreation {
+        core_id: LogicalCoreId,
+        time: Duration
+    },
 
-pub(crate) use ccp_shared::types::*;
+    DatasetAllocation {
+        core_id: LogicalCoreId,
+        time: Instant,
+    },
+
+    DatasetInitialization {
+        core_id: LogicalCoreId,
+        time: Instant,
+        item_start: u64,
+        items_count: u64,
+    },
+
+    HashesChecked {
+        core_id: LogicalCoreId,
+        hashes_count: usize,
+        duration: Duration,
+    }
+}
