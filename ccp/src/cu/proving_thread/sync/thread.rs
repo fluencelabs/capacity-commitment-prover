@@ -70,7 +70,7 @@ impl ProvingThreadSync {
         let to_utility_outer = to_utility.clone();
 
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
-            if cpu_utils::pinning::pin_current_thread_to(core_id) {
+            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
                 let error = ProvingThreadSyncError::ThreadPinFailed { core_id };
                 to_utility.blocking_send(ToUtilityMessage::error_happened(core_id, error))?;
             }
@@ -164,7 +164,7 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::PinThread(params) => {
-                if cpu_utils::pinning::pin_current_thread_to(params.core_id) {
+                if !cpu_utils::pinning::pin_current_thread_to(params.core_id) {
                     let error = ProvingThreadSyncError::ThreadPinFailed {
                         core_id: params.core_id,
                     };
