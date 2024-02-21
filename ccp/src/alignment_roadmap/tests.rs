@@ -61,7 +61,7 @@ fn alignment_works_if_prover_idle() {
     let current_allocation: HashMap<_, DumpProvider> = HashMap::new();
     let current_status = CCStatus::Idle;
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation,
         new_epoch,
         &current_allocation,
@@ -98,7 +98,7 @@ fn applying_same_roadmap_idempotent() {
     current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -127,7 +127,7 @@ fn add_new_peer() {
     current_allocation.insert(allocation_1.0.into(), DumpProvider::running(allocation_1.1));
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -166,7 +166,7 @@ fn remove_peer() {
     let allocation_3 = (3, test::generate_cu_id(3));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -206,7 +206,7 @@ fn new_epoch() {
     };
 
     let new_epoch = test::generate_epoch_params(2, 1);
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         new_epoch,
         &current_allocation,
@@ -247,7 +247,7 @@ fn same_epoch_new_jobs() {
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -289,7 +289,7 @@ fn repinning_works() {
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -333,7 +333,7 @@ fn create_more_then_remove() {
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
@@ -394,7 +394,7 @@ fn remove_more_then_create() {
     current_allocation.insert(allocation_2.0.into(), DumpProvider::running(allocation_2.1));
     current_allocation.insert(allocation_3.0.into(), DumpProvider::running(allocation_3.1));
 
-    let actual_roadmap = CCProverAlignmentRoadmap::make_roadmap(
+    let actual_roadmap = CCProverAlignmentRoadmap::make(
         new_allocation.clone(),
         epoch,
         &current_allocation,
