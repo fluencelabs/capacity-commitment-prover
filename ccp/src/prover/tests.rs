@@ -29,7 +29,7 @@ fn get_prover(
 }
 
 fn get_epoch_params() -> EpochParameters {
-    generate_epoch_params(1, 25)
+    generate_epoch_params(1, 50)
 }
 
 fn get_cu_allocation() -> CUAllocation {
@@ -64,11 +64,26 @@ async fn prover_on_active_commitment() {
         .await
         .expect("reading proofs");
 
-    assert!(proofs.len() > 3);
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        proofs.len() > 3,
+        "{:?}",
+        proofs,
+    );
+
     for proof in proofs {
-        assert!(cu_alloc.values().find(|p| *p == &proof.cu_id).is_none());
-        assert_eq!(proof.id.global_nonce, epoch_params.global_nonce);
-        assert_eq!(proof.id.difficulty, epoch_params.difficulty);
+        assert!(
+            cu_alloc.values().find(|p| *p == &proof.cu_id).is_some(),
+            "{:?}",
+            proof
+        );
+        assert_eq!(
+            proof.id.global_nonce, epoch_params.global_nonce,
+            "{:?}",
+            proof
+        );
+        assert_eq!(proof.id.difficulty, epoch_params.difficulty, "{:?}", proof);
     }
 
     prover.stop().await.unwrap();
@@ -100,13 +115,22 @@ async fn prover_on_active_no_active_commitment() {
         .on_active_commitment(get_epoch_params(), get_cu_allocation())
         .await
         .unwrap();
-    prover.on_no_active_commitment().await.unwrap();
 
-    let proofs = prover
+    tokio::time::sleep(Duration::from_secs(10)).await;
+
+    let proofs_before = prover
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
-    assert!(proofs.is_empty());
+    assert!(!proofs_before.is_empty());
+
+    prover.on_no_active_commitment().await.unwrap();
+
+    let proofs_after = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(proofs_after.is_empty());
 
     prover.stop().await.unwrap();
 }
@@ -123,11 +147,49 @@ async fn prover_on_active_reduce_on_active_commitment() {
         .await
         .unwrap();
 
+    tokio::time::sleep(Duration::from_secs(10)).await;
+
     cu_allocation.remove(&2.into()).unwrap();
     prover
         .on_active_commitment(get_epoch_params(), cu_allocation)
         .await
         .unwrap();
+
+    prover.stop().await.unwrap();
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_on_active_reduce_on_empty_active_commitment() {
+    let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let mut cu_allocation = get_cu_allocation();
+    prover
+        .on_active_commitment(get_epoch_params(), cu_allocation.clone())
+        .await
+        .unwrap();
+
+    tokio::time::sleep(Duration::from_secs(10)).await;
+
+    let proofs_before = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(!proofs_before.is_empty());
+
+    cu_allocation.clear();
+
+    prover
+        .on_active_commitment(get_epoch_params(), cu_allocation)
+        .await
+        .unwrap();
+
+    let proofs_after = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+    assert!(proofs_after.is_empty());
 
     prover.stop().await.unwrap();
 }
@@ -152,6 +214,7 @@ async fn prover_on_active_extend_on_active_commitment() {
             102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
         ]),
     );
+
     prover
         .on_active_commitment(get_epoch_params(), cu_allocation)
         .await
