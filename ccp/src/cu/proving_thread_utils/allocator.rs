@@ -15,7 +15,6 @@
  */
 
 use nonempty::NonEmpty;
-use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::LogicalCoreId;
@@ -25,8 +24,8 @@ use cpu_utils::CPUTopology;
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::ProvingThreadAsync;
 use crate::cu::CUResult;
-use crate::cu::RawProof;
 use crate::cu::ThreadAllocationError;
+use crate::utility_thread::message::ToUtilityInlet;
 
 type ThreadAllocationStrategy = NonEmpty<LogicalCoreId>;
 
@@ -49,14 +48,12 @@ impl ThreadAllocator {
 
     pub(crate) fn allocate(
         &self,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        to_utility: ToUtilityInlet,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
-            .map(|logical_core| {
-                ProvingThreadAsync::new(*logical_core, proof_receiver_inlet.clone())
-            })
+            .map(|logical_core| ProvingThreadAsync::new(*logical_core, to_utility.clone()))
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();
 

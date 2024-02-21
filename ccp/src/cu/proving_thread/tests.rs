@@ -27,14 +27,16 @@ use randomx_rust_wrapper::RandomXVM;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;
-use crate::cu::RawProof;
+use crate::utility_thread::message::RawProof;
+use crate::utility_thread::message::ToUtilityMessage;
+use crate::utility_thread::message::ToUtilityOutlet;
 
 #[allow(dead_code)]
 async fn create_thread_init_dataset(
     core_id: LogicalCoreId,
     epoch: EpochParameters,
     cu_id: CUID,
-) -> (ProvingThreadAsync, DatasetHandle, mpsc::Receiver<RawProof>) {
+) -> (ProvingThreadAsync, DatasetHandle, ToUtilityOutlet) {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, outlet) = mpsc::channel(1);
@@ -191,7 +193,7 @@ async fn cc_job_stopable() {
         let flags = RandomXFlags::recommended();
         let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             let expected_result_hash = run_light_randomx(
                 global_nonce_cu.as_slice(),
                 proof.local_nonce.as_ref(),
@@ -228,7 +230,7 @@ async fn cc_job_pausable() {
         let mut proofs_before_pause = Vec::new();
         let mut proofs_after_pause = Vec::new();
 
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
             if !*is_thread_paused_locked.borrow() {
                 proofs_before_pause.push(proof);
@@ -269,7 +271,13 @@ async fn proving_thread_works() {
         .await
         .unwrap();
 
-    let proof = outlet.recv().await.unwrap();
+    let message = outlet.recv().await.unwrap();
+    let proof = match message {
+        ToUtilityMessage::ProofFound(proof) => proof,
+        ToUtilityMessage::ErrorHappened { .. } => {
+            panic!()
+        }
+    };
 
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
@@ -313,7 +321,7 @@ async fn proving_therad_produces_repeatable_hashes() {
 
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
-        while let Some(proof) = outlet.recv().await {
+        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
             proofs.push(proof)
         }
 

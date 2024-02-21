@@ -15,56 +15,35 @@
  */
 
 use std::any::Any;
-
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use cpu_utils::CPUTopologyError;
-use cpu_utils::LogicalCoreId;
-use randomx_rust_wrapper::errors::RandomXError;
+use crate::cu::proving_thread::sync::ProvingThreadSyncFacadeError;
 
 #[derive(ThisError, Debug)]
-pub enum ProvingThreadError {
-    #[error(transparent)]
-    RandomXError(#[from] RandomXError),
-
+pub enum ProvingThreadAsyncError {
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
 
     #[error(transparent)]
-    CPUTopology(#[from] CPUTopologyError),
-
-    #[error("thread pinning to logical core {core_id} failed")]
-    ThreadPinFailed { core_id: LogicalCoreId },
+    SyncThreadError(#[from] ProvingThreadSyncFacadeError),
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
-    JoinThreadError(Box<dyn Any + Send>),
+    JoinThreadFailed(Box<dyn Any + Send>),
 }
 
-impl ProvingThreadError {
+impl ProvingThreadAsyncError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
     }
 
     pub fn join_error(error: Box<dyn Any + Send>) -> Self {
-        Self::JoinThreadError(error)
+        Self::JoinThreadFailed(error)
     }
 }
 
-impl<T> From<mpsc::error::SendError<T>> for ProvingThreadError {
+impl<T> From<mpsc::error::SendError<T>> for ProvingThreadAsyncError {
     fn from(value: mpsc::error::SendError<T>) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl<T> From<mpsc::error::TrySendError<T>> for ProvingThreadError {
-    fn from(value: mpsc::error::TrySendError<T>) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
-    }
-}
-
-impl From<mpsc::error::TryRecvError> for ProvingThreadError {
-    fn from(value: mpsc::error::TryRecvError) -> Self {
-        ProvingThreadError::ChannelError(anyhow::anyhow!("prover channel error: {value}"))
+        ProvingThreadAsyncError::channel_error(anyhow::anyhow!("prover channel error: {value}"))
     }
 }

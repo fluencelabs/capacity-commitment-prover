@@ -20,14 +20,10 @@ mod tests;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
-use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
@@ -36,11 +32,11 @@ use crate::alignment_roadmap::*;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
-use crate::cu::RawProof;
 use crate::errors::CCProverError;
-use crate::proof_storage_worker::ProofStorageWorker;
+use crate::proof_storage::ProofStorageDrainer;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
+use crate::utility_thread::UtilityThread;
 use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
@@ -49,9 +45,8 @@ pub struct CCProver {
     cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
-    proof_receiver_inlet: mpsc::Sender<RawProof>,
-    utility_thread_shutdown: oneshot::Sender<()>,
-    proof_storage: Arc<ProofStorageWorker>,
+    utility_thread: UtilityThread,
+    proof_drainer: ProofStorageDrainer,
 }
 
 impl NoxCCPApi for CCProver {
@@ -83,7 +78,7 @@ impl NoxCCPApi for CCProver {
     }
 
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.proof_storage
+        self.proof_drainer
             .get_proofs_after(proof_idx)
             .await
             .map_err(Into::into)
@@ -98,18 +93,8 @@ impl ToCCStatus for CCProver {
 
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
-        let (proof_receiver_inlet, proof_receiver_outlet) = mpsc::channel(100);
-        let (shutdown_inlet, shutdown_outlet) = oneshot::channel();
-
-        let proof_storage = ProofStorageWorker::new(config.dir_to_store_proofs.clone());
-        let proof_storage = Arc::new(proof_storage);
-        Self::spawn_utility_thread(
-            proof_storage.clone(),
-            proof_receiver_outlet,
-            shutdown_outlet,
-            utility_core_id,
-        );
-
+        let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
+        let utility_thread = UtilityThread::spawn(utility_core_id, config.dir_to_store_proofs);
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
@@ -119,9 +104,8 @@ impl CCProver {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
-            proof_receiver_inlet,
-            utility_thread_shutdown: shutdown_inlet,
-            proof_storage,
+            utility_thread,
+            proof_drainer: proof_cleaner,
         }
     }
 
@@ -141,45 +125,7 @@ impl CCProver {
         // stop all active provers
         self.on_no_active_commitment().await?;
         // stop background thread
-        self.utility_thread_shutdown
-            .send(())
-            .map_err(|_| CCProverError::UtilityThreadShutdownFailed)
-    }
-
-    fn spawn_utility_thread(
-        proof_storage: Arc<ProofStorageWorker>,
-        mut proof_receiver_outlet: mpsc::Receiver<RawProof>,
-        mut shutdown_outlet: oneshot::Receiver<()>,
-        utility_core_id: LogicalCoreId,
-    ) {
-        tokio::spawn(async move {
-            cpu_utils::pinning::pin_current_thread_to(utility_core_id);
-
-            let mut proof_idx = ProofIdx::zero();
-            let mut last_seen_global_nonce = GlobalNonce::new([0u8; 32]);
-
-            loop {
-                tokio::select! {
-                    Some(proof) = proof_receiver_outlet.recv() => {
-                        log::debug!("cc_prover: new proof_received {proof:?}");
-
-                        if proof.epoch.global_nonce != last_seen_global_nonce {
-                            last_seen_global_nonce = proof.epoch.global_nonce;
-                            proof_idx = ProofIdx::zero();
-                        }
-                        let cc_proof_id = CCProofId::new(proof.epoch.global_nonce, proof.epoch.difficulty, proof_idx);
-                        let cc_proof = CCProof::new(cc_proof_id, proof.local_nonce, proof.cu_id, proof.result_hash);
-                        proof_storage.store_new_proof(cc_proof).await?;
-                        proof_idx.increment();
-                    },
-                    _ = &mut shutdown_outlet => {
-                        log::info!("cc_prover:: utility thread was shutdown");
-
-                        return Ok::<_, std::io::Error>(())
-                    }
-                }
-            }
-        });
+        self.utility_thread.stop().await.map_err(Into::into)
     }
 }
 
@@ -206,7 +152,7 @@ impl RoadmapAlignable for CCProver {
             CUProverPreAction::NoAction => {}
             CUProverPreAction::CleanupProofCache => {
                 self.pause().await?;
-                self.proof_storage.remove_proofs().await?;
+                self.proof_drainer.remove_proofs().await?;
             }
         }
 
@@ -250,17 +196,16 @@ impl RoadmapAlignable for CCProver {
 }
 
 impl CCProver {
-    pub(self) fn cu_creation<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn cu_creation(
+        &mut self,
         state: actions_state::CreateCUProverState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
-        let proof_receiver_inlet = self.proof_receiver_inlet.clone();
+        let to_utility = self.utility_thread.get_to_utility_channel();
 
         async move {
-            let mut prover =
-                CUProver::create(prover_config, proof_receiver_inlet, state.new_core_id).await?;
+            let mut prover = CUProver::create(prover_config, to_utility, state.new_core_id).await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))
@@ -268,10 +213,10 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn cu_removal<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn cu_removal(
+        &mut self,
         state: actions_state::RemoveCUProverState,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.stop().await?;
@@ -280,11 +225,11 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn new_cc_job<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn new_cc_job(
+        &mut self,
         state: actions_state::NewCCJobState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.new_epoch(epoch, state.new_cu_id).await?;
@@ -293,11 +238,11 @@ impl CCProver {
         .boxed()
     }
 
-    pub(self) fn new_cc_job_repin<'prover, 'futures: 'prover>(
-        &'prover mut self,
+    pub(self) fn new_cc_job_repin(
+        &mut self,
         state: actions_state::NewCCJobWithRepiningState,
         epoch: EpochParameters,
-    ) -> future::BoxFuture<'futures, CUResult<AlignmentPostAction>> {
+    ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
             prover.pin(state.new_core_id).await?;

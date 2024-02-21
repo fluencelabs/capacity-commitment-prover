@@ -17,28 +17,20 @@
 use std::path::PathBuf;
 use tokio::fs::DirEntry;
 
-use ccp_shared::proof::{CCProof, ProofIdx};
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 
-const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde deserializer shouldn't fail";
 
 #[derive(Debug)]
-pub struct ProofStorageWorker {
+pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
 }
 
-impl ProofStorageWorker {
-    /// Creates a proof storage worker, it exclusively owns the provided proof directory,
-    /// e.g. it can remove it and them creates again to flush its content.
+impl ProofStorageDrainer {
     pub fn new(proof_directory: PathBuf) -> Self {
         Self { proof_directory }
-    }
-
-    pub async fn store_new_proof(&self, proof: CCProof) -> tokio::io::Result<()> {
-        let proof_as_string = serde_json::to_string(&proof).expect(EXPECT_DEFAULT_SERIALIZER);
-        let proof_path = self.proof_directory.join(proof.id.idx.to_string());
-        tokio::fs::write(proof_path, proof_as_string).await
     }
 
     /// Removes all proofs in the proof directory, it's intended for cleanup storage

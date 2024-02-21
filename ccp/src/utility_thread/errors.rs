@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-pub(crate) mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
-#[cfg(test)]
-mod tests;
+use tokio::task::JoinError;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
+use thiserror::Error as ThisError;
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+#[derive(ThisError, Debug)]
+pub enum UtilityThreadError {
+    #[error(transparent)]
+    JoinFailed(#[from] JoinError),
+
+    #[error(transparent)]
+    IOError(#[from] tokio::io::Error),
+
+    #[error("error occurred while trying to shutdown the utility thread")]
+    ShutdownError,
+}

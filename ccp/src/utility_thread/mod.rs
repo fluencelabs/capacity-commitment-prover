@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
 mod errors;
-pub(crate) mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
-#[cfg(test)]
-mod tests;
+mod proof_storage;
+mod thread;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
+pub use errors::UtilityThreadError;
+pub(crate) use thread::*;
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub(crate) mod message {
+    pub(crate) use crate::cu::proving_thread::sync::to_utility_message::*;
+}
+
+pub(crate) type UTResult<T> = Result<T, errors::UtilityThreadError>;

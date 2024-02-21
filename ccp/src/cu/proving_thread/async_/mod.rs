@@ -14,17 +14,8 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
 mod errors;
-pub(crate) mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
-#[cfg(test)]
-mod tests;
+mod thread;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
-
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub(crate) use errors::ProvingThreadAsyncError;
+pub(crate) use thread::ProvingThreadAsync;

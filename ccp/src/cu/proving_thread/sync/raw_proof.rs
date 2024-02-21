@@ -14,17 +14,28 @@
  * limitations under the License.
  */
 
-pub mod cu_prover;
-mod errors;
-pub(crate) mod proving_thread;
-mod proving_thread_utils;
-pub(crate) mod status;
-#[cfg(test)]
-mod tests;
+use ccp_shared::types::*;
 
-pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) struct RawProof {
+    pub(crate) epoch: EpochParameters,
+    pub(crate) local_nonce: LocalNonce,
+    pub(crate) cu_id: CUID,
+    pub(crate) result_hash: ResultHash,
+}
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+impl RawProof {
+    pub(crate) fn new(
+        epoch: EpochParameters,
+        local_nonce: LocalNonce,
+        cu_id: CUID,
+        result_hash: ResultHash,
+    ) -> Self {
+        Self {
+            epoch,
+            local_nonce,
+            cu_id,
+            result_hash,
+        }
+    }
+}

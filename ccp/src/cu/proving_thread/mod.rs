@@ -15,18 +15,12 @@
  */
 
 mod async_;
-mod errors;
 mod facade;
-mod local_nonce;
 mod messages;
-mod state;
-mod sync;
+pub(crate) mod sync;
 #[cfg(test)]
 mod tests;
 
 pub(crate) use async_::ProvingThreadAsync;
-pub(crate) use errors::ProvingThreadError;
+pub(crate) use async_::ProvingThreadAsyncError as ProvingThreadError;
 pub(crate) use facade::ProvingThreadFacade;
-pub(crate) use messages::RawProof;
-
-pub(crate) type PTResult<T> = Result<T, errors::ProvingThreadError>;

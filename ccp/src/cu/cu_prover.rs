@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-use tokio::sync::mpsc;
-
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
@@ -28,11 +26,11 @@ use randomx_rust_wrapper as randomx;
 
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
-use super::proving_thread::RawProof;
 use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
+use crate::utility_thread::message::ToUtilityInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
@@ -41,7 +39,7 @@ pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
-    topology: CPUTopology,
+    cpu_topology: CPUTopology,
     dataset: Dataset,
     status: CUStatus,
 }
@@ -57,13 +55,13 @@ pub struct CUProverConfig {
 impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
-        proof_receiver_inlet: mpsc::Sender<RawProof>,
+        to_utility: ToUtilityInlet,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads =
             ThreadAllocator::new(config.thread_allocation_policy, core_id, &topology)?
-                .allocate(proof_receiver_inlet)?;
+                .allocate(to_utility)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -72,7 +70,7 @@ impl CUProver {
             threads,
             pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
-            topology,
+            cpu_topology: topology,
             dataset,
             status: CUStatus::Idle,
         };
@@ -106,7 +104,7 @@ impl CUProver {
 
         use futures::FutureExt;
 
-        let logical_cores = self.topology.logical_cores_for_physical(core_id)?;
+        let logical_cores = self.cpu_topology.logical_cores_for_physical(core_id)?;
         let distributor = RoundRobinDistributor {};
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {

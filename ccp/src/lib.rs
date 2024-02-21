@@ -29,9 +29,10 @@
 mod alignment_roadmap;
 mod cu;
 mod errors;
-mod proof_storage_worker;
+mod proof_storage;
 pub mod prover;
 pub mod status;
+pub(crate) mod utility_thread;
 
 pub use errors::CCProverError;
 pub use prover::CCProver;
