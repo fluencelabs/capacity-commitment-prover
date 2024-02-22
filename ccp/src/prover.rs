@@ -60,7 +60,7 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let roadmap = CCProverAlignmentRoadmap::create_roadmap(
+        let roadmap = CCProverAlignmentRoadmap::make(
             new_allocation.clone(),
             new_epoch,
             &self.cu_provers,
