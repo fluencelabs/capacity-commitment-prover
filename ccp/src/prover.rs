@@ -138,6 +138,15 @@ impl CCProver {
         self.utility_thread.stop().await.map_err(Into::into)
     }
 
+    pub async fn try_loading_state(&mut self) -> CCResult<()> {
+        if let Some(old_state) = self.state_storage.try_to_load_data().await {
+            log::info!("loaded previous state; executing on_active_commitment");
+            self.on_active_commitment(old_state.epoch_params, old_state.cu_allocation)
+                .await?;
+        }
+        Ok(())
+    }
+
     async fn save_state(
         &self,
         epoch_state: EpochParameters,

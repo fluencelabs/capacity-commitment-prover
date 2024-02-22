@@ -115,6 +115,7 @@ async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Resu
     // Build a prover
     let prover = build_prover(prover_args);
     tracing::info!("created prover");
+    prover.try_loading_old_state();
 
     // Launch RPC API
     let rpc_server = CCPRcpHttpServer::new(Arc::new(Mutex::new(prover)));
