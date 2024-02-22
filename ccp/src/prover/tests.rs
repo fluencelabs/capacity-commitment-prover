@@ -357,12 +357,22 @@ async fn prover_on_active_change_epoch() {
         .await
         .unwrap();
 
+    let state = load_state(state_dir.path());
+    let expected_state = Some(CCPState {
+        epoch_params: epoch_params_second,
+        cu_allocation: cu_allocation.clone(),
+    });
+
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
+
+    prover.stop().await.unwrap();
+
+    assert_eq!(state, expected_state);
 
     for proof in proofs_after {
         assert!(
@@ -384,6 +394,4 @@ async fn prover_on_active_change_epoch() {
             proof
         );
     }
-
-    prover.stop().await.unwrap();
 }
