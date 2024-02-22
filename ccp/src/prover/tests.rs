@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{state_storage::CCPState, CCProver};
 use ccp_config::CCPConfig;
@@ -45,6 +45,11 @@ fn get_cu_allocation() -> CUAllocation {
     }
 }
 
+fn load_state(state_dir: &Path) -> CCPState {
+    let state_data = std::fs::read(state_dir.join("state.json")).unwrap();
+    serde_json::from_slice(&state_data).unwrap()
+}
+
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
@@ -58,15 +63,14 @@ async fn prover_on_active_commitment() {
         .await
         .unwrap();
 
-    let state_data = std::fs::read(state_dir.path().join("state.json")).unwrap();
-    let state: CCPState = serde_json::from_slice(&state_data).unwrap();
-
+    let state = load_state(state_dir.path());
     let expected_state = CCPState { epoch_params, cu_allocation };
+
+    prover.stop().await.unwrap();
 
     assert_eq!(state, expected_state);
     assert!(!state_dir.path().join("state.json.draft").exists());
 
-    prover.stop().await.unwrap();
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -84,12 +88,22 @@ async fn prover_on_active_no_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+
     prover
-        .on_active_commitment(get_epoch_params(), get_cu_allocation())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
     prover.on_no_active_commitment().await.unwrap();
+
+    // state is cleared on no_active_commitment
+    let state = load_state(state_dir.path());
+    let expected_state = CCPState { epoch_params, cu_allocation: <_>::default() };
+
     prover.stop().await.unwrap();
+
+    assert_eq!(state, expected_state);
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -99,14 +113,15 @@ async fn prover_on_active_reduce_on_active_commitment() {
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
     let mut cu_allocation = get_cu_allocation();
+    let epoch_params = get_epoch_params();
     prover
-        .on_active_commitment(get_epoch_params(), cu_allocation.clone())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
 
     cu_allocation.remove(&2.into()).unwrap();
     prover
-        .on_active_commitment(get_epoch_params(), cu_allocation)
+        .on_active_commitment(epoch_params, cu_allocation)
         .await
         .unwrap();
 
