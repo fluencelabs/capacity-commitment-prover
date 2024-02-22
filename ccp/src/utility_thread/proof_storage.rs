@@ -49,7 +49,7 @@ impl ProofStorage {
 }
 
 // This is a non-sync function to avoid possible tokio peculiarities.
-fn save_reliably(path: &Path, contents: impl AsRef<[u8]>) -> std::io::Result<()> {
+pub(crate) fn save_reliably(path: &Path, contents: impl AsRef<[u8]>) -> std::io::Result<()> {
     // We might use random name here.  But if the dir is lock'd, it is not necessary.
     let extension = draft_extension(path);
     let mut draft_path = path.to_owned();

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::CCProver;
+use crate::{state_storage::CCPState, CCProver};
 use ccp_config::CCPConfig;
 use ccp_shared::{
     nox_ccp_api::NoxCCPApi,
@@ -51,10 +51,21 @@ async fn prover_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
     prover
-        .on_active_commitment(get_epoch_params(), get_cu_allocation())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
+
+    let state_data = std::fs::read(proofs_dir.path().join("state.json")).unwrap();
+    let state: CCPState = serde_json::from_slice(&state_data).unwrap();
+
+    let expected_state = CCPState { epoch_params, cu_allocation };
+
+    assert_eq!(state, expected_state);
+    assert!(!state_dir.path().join("state.json.draft").exists());
+
     prover.stop().await.unwrap();
 }
 

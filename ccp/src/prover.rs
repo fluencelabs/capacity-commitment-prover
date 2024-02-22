@@ -34,6 +34,8 @@ use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::state_storage::CCPState;
+use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
@@ -47,6 +49,7 @@ pub struct CCProver {
     status: CCStatus,
     utility_thread: UtilityThread,
     proof_drainer: ProofStorageDrainer,
+    state_storage: StateStorage,
 }
 
 impl NoxCCPApi for CCProver {
@@ -58,13 +61,16 @@ impl NoxCCPApi for CCProver {
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
         let roadmap = CCProverAlignmentRoadmap::create_roadmap(
-            new_allocation,
+            new_allocation.clone(),
             new_epoch,
             &self.cu_provers,
             self.status,
         );
         self.status = CCStatus::Running { epoch: new_epoch };
-        self.align_with(roadmap).await
+        self.align_with(roadmap).await?;
+        // Save data only if align_with is successful; otherwise invalid commitment will be stored
+        // and used on restart to fail again.
+        self.save_state(new_epoch, new_allocation).await
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
@@ -99,6 +105,7 @@ impl CCProver {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
         };
+        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
 
         Self {
             cu_provers: HashMap::new(),
@@ -106,6 +113,7 @@ impl CCProver {
             status: CCStatus::Idle,
             utility_thread,
             proof_drainer: proof_cleaner,
+            state_storage,
         }
     }
 
@@ -126,6 +134,18 @@ impl CCProver {
         self.on_no_active_commitment().await?;
         // stop background thread
         self.utility_thread.stop().await.map_err(Into::into)
+    }
+
+    async fn save_state(
+        &self,
+        epoch_state: EpochParameters,
+        cu_allocation: CUAllocation,
+    ) -> CCResult<()> {
+        let state = CCPState {
+            epoch_params: epoch_state,
+            cu_allocation,
+        };
+        Ok(self.state_storage.save_state(&state).await?)
     }
 }
 
