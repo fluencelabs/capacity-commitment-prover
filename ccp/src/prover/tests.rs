@@ -58,7 +58,7 @@ async fn prover_on_active_commitment() {
         .await
         .unwrap();
 
-    let state_data = std::fs::read(proofs_dir.path().join("state.json")).unwrap();
+    let state_data = std::fs::read(state_dir.path().join("state.json")).unwrap();
     let state: CCPState = serde_json::from_slice(&state_data).unwrap();
 
     let expected_state = CCPState { epoch_params, cu_allocation };

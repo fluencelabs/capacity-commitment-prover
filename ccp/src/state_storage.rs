@@ -42,10 +42,11 @@ impl StateStorage {
     }
 
     pub(crate) async fn save_state(&self, state: &CCPState) -> tokio::io::Result<()> {
-        log::info!("Saving state to {:?}", self.state_dir);
 
         let data = serde_json::to_vec(state).expect("TODO");
         let path = self.state_dir.join(&STATE_FILE);
+
+        log::info!("Saving state to {:?}", path);
 
         tokio::task::spawn_blocking(move || save_reliably(&path, &data))
             .await
