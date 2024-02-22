@@ -292,6 +292,9 @@ async fn proving_thread_works() {
         ToUtilityMessage::ErrorHappened { .. } => {
             panic!()
         }
+        ToUtilityMessage::Hashrate(_) => {
+            panic!()
+        }
     };
 
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });

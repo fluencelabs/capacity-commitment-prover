@@ -25,6 +25,7 @@ use cpu_utils::LogicalCoreId;
 
 use super::message::*;
 use super::UTResult;
+use crate::hashrate::HashrateCollector;
 use crate::utility_thread::proof_storage::ProofStorage;
 use crate::utility_thread::UtilityThreadError;
 
@@ -44,12 +45,14 @@ impl UtilityThread {
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let new_proof_handler = NewProofHandler::new(proof_storage);
+        let hashrate = HashrateCollector::new();
 
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
             from_utility,
             shutdown_out,
             new_proof_handler,
+            hashrate,
         ));
 
         Self {
@@ -75,6 +78,7 @@ impl UtilityThread {
         mut to_utility: ToUtilityOutlet,
         mut shutdown_out: ThreadShutdownOutlet,
         mut new_proof_handler: NewProofHandler,
+        mut hashrate: HashrateCollector,
     ) -> UTResult<()> {
         if !cpu_utils::pinning::pin_current_thread_to(core_id) {
             log::error!("utility_thread: failed to pin to {core_id} core");
@@ -87,6 +91,10 @@ impl UtilityThread {
                         ToUtilityMessage::ProofFound(proof) => new_proof_handler.handle_found_proof(proof).await?,
                         ToUtilityMessage::ErrorHappened { thread_location, error} => {
                             log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
+                        }
+                        ToUtilityMessage::Hashrate(entry) => {
+                            log::info!("utility_thread: new hashrate message {entry}");
+                            hashrate.count_entry(entry);
                         }
                     }},
                 _ = &mut shutdown_out => {

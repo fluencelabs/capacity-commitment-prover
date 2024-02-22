@@ -19,6 +19,7 @@ use tokio::sync::mpsc;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
+pub(crate) use crate::hashrate::HashrateCUEntry;
 
 pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
 pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
@@ -29,6 +30,7 @@ pub(crate) enum ToUtilityMessage {
         thread_location: LogicalCoreId,
         error: ProvingThreadSyncError,
     },
+    Hashrate(HashrateCUEntry),
 }
 
 impl ToUtilityMessage {
@@ -44,5 +46,9 @@ impl ToUtilityMessage {
             thread_location,
             error,
         }
+    }
+
+    pub(crate) fn hashrate(entry: HashrateCUEntry) -> Self {
+        Self::Hashrate(entry)
     }
 }

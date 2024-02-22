@@ -15,6 +15,7 @@
  */
 
 use std::thread;
+use std::time::Instant;
 
 use cpu_utils::LogicalCoreId;
 use randomx::Cache;
@@ -31,6 +32,7 @@ use super::STFResult;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::errors::ProvingThreadSyncFacadeError;
+use crate::hashrate::HashrateCUEntry;
 
 const HASHES_PER_ROUND: usize = 1024;
 
@@ -101,7 +103,7 @@ impl ProvingThreadSync {
                         }
                     }
                     ThreadState::NewMessage { message } => {
-                        Self::handle_message(message, &to_async, &to_utility)?
+                        Self::handle_message(core_id, message, &to_async, &to_utility)?
                     }
                     ThreadState::Stop => {
                         return Ok(());
@@ -120,6 +122,7 @@ impl ProvingThreadSync {
     }
 
     fn handle_message(
+        core_id: LogicalCoreId,
         message: AsyncToSyncMessage,
         to_async: &SyncToAsyncInlet,
         to_utility: &ToUtilityInlet,
@@ -128,38 +131,71 @@ impl ProvingThreadSync {
 
         match message {
             AsyncToSyncMessage::CreateCache(params) => {
+                let start = Instant::now();
+
                 let global_nonce_cu =
                     ccp_utils::hash::compute_global_nonce_cu(&params.global_nonce, &params.cu_id);
                 let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
+                let duration = start.elapsed();
 
                 let to_async_message = CacheCreated::new(cache);
                 let to_async_message = SyncToAsyncMessage::CacheCreated(to_async_message);
                 to_async.blocking_send(to_async_message)?;
 
+                let to_utility_message = HashrateCUEntry::cache_creation(core_id, duration);
+                let to_utility_message = ToUtilityMessage::hashrate(to_utility_message);
+                to_utility.blocking_send(to_utility_message)?;
+
                 Ok(ThreadState::WaitForMessage)
             }
 
             AsyncToSyncMessage::AllocateDataset(params) => {
+                let start = Instant::now();
                 let dataset = Dataset::allocate(params.flags.contains(RandomXFlags::LARGE_PAGES))?;
+                let duration = start.elapsed();
 
                 let to_async_message = DatasetAllocated::new(dataset);
                 let to_async_message = SyncToAsyncMessage::DatasetAllocated(to_async_message);
                 to_async.blocking_send(to_async_message)?;
 
+                let to_utility_message = HashrateCUEntry::dataset_allocation(core_id, duration);
+                let to_utility_message = ToUtilityMessage::hashrate(to_utility_message);
+                to_utility.blocking_send(to_utility_message)?;
+
                 Ok(ThreadState::WaitForMessage)
             }
 
             AsyncToSyncMessage::InitializeDataset(mut params) => {
+                let start = Instant::now();
                 params
                     .dataset
                     .initialize(&params.cache, params.start_item, params.items_count);
+                let duration = start.elapsed();
+
                 to_async.blocking_send(SyncToAsyncMessage::DatasetInitialized)?;
+
+                let to_utility_message = HashrateCUEntry::dataset_initialization(
+                    core_id,
+                    duration,
+                    params.start_item,
+                    params.items_count,
+                );
+                let to_utility_message = ToUtilityMessage::hashrate(to_utility_message);
+                to_utility.blocking_send(to_utility_message)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
 
             AsyncToSyncMessage::NewCCJob(cc_job) => {
+                let start = Instant::now();
                 let parameters = RandomXJob::from_cc_job(cc_job, HASHES_PER_ROUND)?;
+                let duration = start.elapsed();
+
+                let to_utility_message =
+                    HashrateCUEntry::hashes_checked(core_id, HASHES_PER_ROUND, duration);
+                let to_utility_message = ToUtilityMessage::hashrate(to_utility_message);
+                to_utility.blocking_send(to_utility_message)?;
+
                 Ok(ThreadState::CCJob { job: parameters })
             }
 

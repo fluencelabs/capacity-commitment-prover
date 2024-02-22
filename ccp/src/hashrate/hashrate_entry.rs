@@ -15,25 +15,25 @@
  */
 
 use std::time::Duration;
-use std::time::Instant;
 
 use cpu_utils::LogicalCoreId;
 
+#[derive(Debug)]
 pub(crate) enum HashrateCUEntry {
     CacheCreation {
         core_id: LogicalCoreId,
-        time: Duration
+        duration: Duration,
     },
 
     DatasetAllocation {
         core_id: LogicalCoreId,
-        time: Instant,
+        duration: Duration,
     },
 
     DatasetInitialization {
         core_id: LogicalCoreId,
-        time: Instant,
-        item_start: u64,
+        duration: Duration,
+        start_item: u64,
         items_count: u64,
     },
 
@@ -41,5 +41,52 @@ pub(crate) enum HashrateCUEntry {
         core_id: LogicalCoreId,
         hashes_count: usize,
         duration: Duration,
+    },
+}
+
+impl HashrateCUEntry {
+    pub(crate) fn cache_creation(core_id: LogicalCoreId, duration: Duration) -> Self {
+        Self::CacheCreation { core_id, duration }
+    }
+
+    pub(crate) fn dataset_allocation(core_id: LogicalCoreId, duration: Duration) -> Self {
+        Self::DatasetAllocation { core_id, duration }
+    }
+
+    pub(crate) fn dataset_initialization(
+        core_id: LogicalCoreId,
+        duration: Duration,
+        start_item: u64,
+        items_count: u64,
+    ) -> Self {
+        Self::DatasetInitialization {
+            core_id,
+            duration,
+            start_item,
+            items_count,
+        }
+    }
+
+    pub(crate) fn hashes_checked(
+        core_id: LogicalCoreId,
+        hashes_count: usize,
+        duration: Duration,
+    ) -> Self {
+        Self::HashesChecked {
+            core_id,
+            hashes_count,
+            duration,
+        }
+    }
+}
+
+impl std::fmt::Display for HashrateCUEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CacheCreation {core_id, duration} => write!(f, "logical core id {core_id}: spent {duration:?} for cache creation"),
+            Self::DatasetAllocation {core_id, duration} => write!(f, "logical core id {core_id}: spent {duration:?} for dataset allocation"),
+            Self::DatasetInitialization {core_id, duration, start_item, items_count} => write!(f, "logical core id {core_id}: spent {duration:?} for dataset init in ({start_item}, {items_count})"),
+            Self::HashesChecked {core_id, duration, hashes_count} => write!(f, "logical core id {core_id}: spent {duration:?} to check {hashes_count} hashes"),
+        }
     }
 }
