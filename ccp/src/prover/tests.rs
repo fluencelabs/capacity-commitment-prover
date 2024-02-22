@@ -45,7 +45,7 @@ fn get_cu_allocation() -> CUAllocation {
     }
 }
 
-fn load_state(state_dir: &Path) -> CCPState {
+fn load_state(state_dir: &Path) -> Option<CCPState> {
     let state_data = std::fs::read(state_dir.join("state.json")).unwrap();
     serde_json::from_slice(&state_data).unwrap()
 }
@@ -64,7 +64,7 @@ async fn prover_on_active_commitment() {
         .unwrap();
 
     let state = load_state(state_dir.path());
-    let expected_state = CCPState { epoch_params, cu_allocation };
+    let expected_state = Some(CCPState{epoch_params,cu_allocation});
 
     prover.stop().await.unwrap();
 
@@ -99,7 +99,7 @@ async fn prover_on_active_no_active_commitment() {
 
     // state is cleared on no_active_commitment
     let state = load_state(state_dir.path());
-    let expected_state = CCPState { epoch_params, cu_allocation: <_>::default() };
+    let expected_state = None;
 
     prover.stop().await.unwrap();
 
