@@ -41,9 +41,8 @@ impl StateStorage {
         Self { state_dir }
     }
 
-    pub(crate) async fn save_state(&self, state: &CCPState) -> tokio::io::Result<()> {
-
-        let data = serde_json::to_vec(state).expect("TODO");
+    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
+        let data = serde_json::to_vec(&state).expect("TODO");
         let path = self.state_dir.join(&STATE_FILE);
 
         log::info!("Saving state to {:?}", path);

@@ -80,6 +80,8 @@ impl NoxCCPApi for CCProver {
         run_unordered(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
 
+        self.save_no_state().await?;
+
         Ok(())
     }
 
@@ -145,7 +147,11 @@ impl CCProver {
             epoch_params: epoch_state,
             cu_allocation,
         };
-        Ok(self.state_storage.save_state(&state).await?)
+        Ok(self.state_storage.save_state(Some(&state)).await?)
+    }
+
+    async fn save_no_state(&self) -> CCResult<()> {
+        Ok(self.state_storage.save_state(None).await?)
     }
 }
 
