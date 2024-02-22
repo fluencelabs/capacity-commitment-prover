@@ -7,5 +7,5 @@ edition = "2021"
 publish = true
 
 [dependencies]
-randomx-rust-wrapper = { workspace = true }
+ccp-randomx = { workspace = true }
 serde = { workspace = true }

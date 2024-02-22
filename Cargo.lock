@@ -232,6 +232,7 @@ dependencies = [
  "anyhow",
  "byteorder",
  "ccp-config",
+ "ccp-randomx",
  "ccp-shared",
  "ccp-test-utils",
  "ccp-utils",
@@ -243,7 +244,6 @@ dependencies = [
  "maplit",
  "nonempty",
  "rand 0.8.5",
- "randomx-rust-wrapper",
  "serde",
  "serde_json",
  "tempdir",
@@ -266,7 +266,7 @@ dependencies = [
 name = "ccp-config"
 version = "0.1.0"
 dependencies = [
- "randomx-rust-wrapper",
+ "ccp-randomx",
  "serde",
 ]
 
@@ -277,15 +277,40 @@ dependencies = [
  "affinity",
  "capacity-commitment-prover",
  "ccp-config",
+ "ccp-randomx",
  "ccp-rpc-server",
  "ccp-shared",
  "clap",
  "eyre",
- "randomx-rust-wrapper",
  "tokio",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "ccp-randomx"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b376f17b1922a35dd9bd1cddf480347eabd78b740b787c738dcc546e1a5ac39c"
+dependencies = [
+ "bitflags 2.4.2",
+ "ccp-randomx-types",
+ "cmake",
+ "hex",
+ "libc",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "ccp-randomx-types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3769b7222a8e4cf35252235fe7d7be66328b5440687275ee592dbdb04b7efd7"
+dependencies = [
+ "hex",
+ "serde",
 ]
 
 [[package]]
@@ -316,10 +341,10 @@ dependencies = [
 name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
+ "ccp-randomx-types",
  "cpu-utils",
  "hex",
  "rand 0.8.5",
- "randomx-rust-wrapper",
  "serde",
 ]
 
@@ -327,8 +352,8 @@ dependencies = [
 name = "ccp-test-utils"
 version = "0.1.0"
 dependencies = [
+ "ccp-randomx",
  "ccp-shared",
- "randomx-rust-wrapper",
 ]
 
 [[package]]
@@ -1496,20 +1521,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
 dependencies = [
  "getrandom",
-]
-
-[[package]]
-name = "randomx-rust-wrapper"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "633da5ca6de8f9e85b98373c9c446bf457cc8d9ae83df1d3209e93502a3935b7"
-dependencies = [
- "bitflags 2.4.2",
- "cmake",
- "hex",
- "libc",
- "serde",
- "thiserror",
 ]
 
 [[package]]

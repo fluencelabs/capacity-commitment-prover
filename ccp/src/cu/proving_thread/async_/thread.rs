@@ -16,13 +16,12 @@
 
 use tokio::sync::mpsc;
 
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
-use randomx::cache::CacheHandle;
-use randomx::dataset::DatasetHandle;
-use randomx::Cache;
-use randomx::Dataset;
-use randomx_rust_wrapper as randomx;
-use randomx_rust_wrapper::RandomXFlags;
 
 use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
-use randomx_rust_wrapper::cache::CacheHandle;
-use randomx_rust_wrapper::dataset::DatasetHandle;
-use randomx_rust_wrapper::Cache;
-use randomx_rust_wrapper::Dataset;
-use randomx_rust_wrapper::RandomXFlags;
 
 use crate::LogicalCoreId;
 

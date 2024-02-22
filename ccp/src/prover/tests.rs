@@ -2,12 +2,12 @@ use std::path::PathBuf;
 
 use crate::CCProver;
 use ccp_config::CCPConfig;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::{
     nox_ccp_api::NoxCCPApi,
     types::{CUAllocation, EpochParameters, CUID},
 };
 use ccp_test_utils::test_values::generate_epoch_params;
-use randomx_rust_wrapper::RandomXFlags;
 use test_log::test;
 
 fn get_prover(
