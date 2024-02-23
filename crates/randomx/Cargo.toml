@@ -1,0 +1,27 @@
+[package]
+name = "ccp-randomx"
+version = "0.1.0"
+description = "RandomX Rust wrapper intended for the Fluence Capacity Commitment protocol"
+authors = ["Fluence Labs"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/fluencelabs/randomx-rust-wrapper"
+publish = true
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+bitflags = { workspace = true }
+hex = { workspace = true }
+libc = { workspace = true }
+thiserror = { workspace = true }
+
+serde = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }
+
+[build-dependencies]
+cmake = { workspace = true }
