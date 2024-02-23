@@ -36,6 +36,7 @@ pub struct CCPConfig {
     pub randomx_flags: RandomXFlags,
     pub dir_to_store_proofs: PathBuf,
     pub dir_to_store_persistent_state: PathBuf,
+    pub enable_msr: bool,
 }
 
 #[derive(Clone, Debug)]

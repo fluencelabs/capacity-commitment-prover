@@ -19,6 +19,7 @@ fn get_prover(
 ) -> CCProver {
     let dir_to_store_proofs = dir_to_store_proofs.into();
     let dir_to_store_persistent_state = dir_to_store_persistent_state.into();
+    let enable_msr = false;
     let config = CCPConfig {
         thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 1.try_into().unwrap(),
@@ -26,6 +27,7 @@ fn get_prover(
         randomx_flags: RandomXFlags::recommended_full_mem(),
         dir_to_store_proofs,
         dir_to_store_persistent_state,
+        enable_msr,
     };
 
     CCProver::new(0.into(), config)

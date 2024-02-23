@@ -82,6 +82,7 @@ async fn idle_cu_prover_can_be_stopped() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -107,6 +108,7 @@ async fn cu_prover_can_be_stopped() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -135,6 +137,7 @@ async fn cu_prover_can_be_paused() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -194,6 +197,7 @@ async fn cu_prover_produces_correct_proofs() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -234,6 +238,7 @@ async fn cu_prover_works_with_odd_threads_number() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(5).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -271,6 +276,7 @@ async fn cu_prover_changes_epoch_correctly() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);

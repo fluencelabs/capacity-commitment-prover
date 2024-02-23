@@ -49,11 +49,14 @@ impl ThreadAllocator {
     pub(crate) fn allocate(
         &self,
         to_utility: ToUtilityInlet,
+        enable_msr: bool,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
-            .map(|logical_core| ProvingThreadAsync::new(*logical_core, to_utility.clone()))
+            .map(|logical_core| {
+                ProvingThreadAsync::new(*logical_core, to_utility.clone(), enable_msr)
+            })
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();
 
