@@ -19,6 +19,7 @@ use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
 use crate::cu::proving_thread::sync::ProvingThreadSyncFacadeError;
+use ccp_msr::MSRError;
 
 #[derive(ThisError, Debug)]
 pub enum ProvingThreadAsyncError {
@@ -30,6 +31,9 @@ pub enum ProvingThreadAsyncError {
 
     #[error("error happened while waiting the sync part to complete {0:?}")]
     JoinThreadFailed(Box<dyn Any + Send>),
+
+    #[error(transparent)]
+    MsrError(#[from] MSRError),
 }
 
 impl ProvingThreadAsyncError {

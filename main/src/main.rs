@@ -30,6 +30,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use clap::ArgAction;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::Mutex;
@@ -65,6 +66,9 @@ struct ProverArgs {
 
     #[arg(long)]
     dir_to_store_persistent_state: PathBuf,
+
+    #[arg(long, action = ArgAction::SetTrue)]
+    enable_msr: bool,
 }
 
 fn main() -> eyre::Result<()> {
@@ -141,6 +145,7 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
         randomx_flags,
         dir_to_store_proofs: prover_args.dir_to_store_proofs,
         dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,
+        enable_msr: prover_args.enable_msr,
     };
 
     CCProver::new(prover_args.utility_core_id.into(), config)

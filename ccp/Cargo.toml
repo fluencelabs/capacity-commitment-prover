@@ -13,6 +13,7 @@ doctest = false
 [dependencies]
 ccp-config = { workspace = true }
 ccp-randomx = { workspace = true }
+ccp-msr = { workspace = true }
 ccp-shared = { workspace = true }
 ccp-test-utils = { workspace = true }
 ccp-utils = { workspace = true }
