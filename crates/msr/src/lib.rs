@@ -21,6 +21,6 @@ mod msr_item;
 mod msr_mode;
 
 pub use errors::MSRError;
-pub use msr::MSRLinux;
+pub use msr::MSRImpl;
 pub use msr::MSR;
 pub use msr_item::MSRItem;

@@ -15,6 +15,7 @@
  */
 
 use raw_cpuid::CpuId;
+#[cfg(target_os = "linux")]
 use raw_cpuid::CpuIdReaderNative;
 
 use once_cell::sync::Lazy;
@@ -35,12 +36,14 @@ pub fn detect_msr_mode() -> MSRMode {
 
     let cpuid = CpuId::new();
     match cpuid.get_vendor_info() {
+        #[cfg(target_os = "linux")]
         Some(vendor_info) if vendor_info.as_str() == "AuthenticAMD" => detect_amd_msr_mode(&cpuid),
+        #[cfg(target_os = "linux")]
         Some(vendor_info) if vendor_info.as_str() == "GenuineIntel" => MSRModIntel,
         _ => MSRModNone,
     }
 }
-
+#[cfg(target_os = "linux")]
 fn detect_amd_msr_mode(cpuid: &CpuId<CpuIdReaderNative>) -> MSRMode {
     use MSRMode::*;
 

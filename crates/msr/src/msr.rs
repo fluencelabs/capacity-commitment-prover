@@ -23,6 +23,7 @@ use crate::cpu_preset::get_cpu_preset;
 use crate::msr_item::MSRItem;
 use crate::msr_mode::MSR_MODE;
 use crate::MSRError;
+#[cfg(target_os = "linux")]
 use cpu_utils::LogicalCoreId;
 
 enum MSRFileOpMode {
@@ -47,13 +48,14 @@ fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
 }
 
 #[derive(Debug)]
-pub struct MSRLinux {
+pub struct MSRImpl {
     is_enabled: bool,
     stored_state: Vec<MSRItem>,
     core_id: LogicalCoreId,
 }
 
-impl MSRLinux {
+#[cfg(target_os = "linux")]
+impl MSRImpl {
     pub fn new(is_enabled: bool, core_id: LogicalCoreId) -> Self {
         Self {
             is_enabled,
@@ -109,7 +111,7 @@ impl MSRLinux {
     }
 }
 
-impl MSR for MSRLinux {
+impl MSR for MSRImpl {
     fn write_preset(&mut self, store_state: bool) -> MSRResult<()> {
         if !self.is_enabled {
             tracing::debug!("MSR is disabled.");
@@ -163,6 +165,32 @@ impl MSR for MSRLinux {
         for item in self.stored_state.iter().filter(|item| item.is_valid()) {
             self.write(*item, self.core_id)?;
         }
+        Ok(())
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl MSR {
+    fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
+        Self {
+            is_enabled: false,
+            stored_state: vec![],
+            core_id,
+        }
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl MSR for MSRImpl {
+    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn restore(self) -> MSRResult<()> {
         Ok(())
     }
 }
