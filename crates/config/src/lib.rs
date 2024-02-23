@@ -28,7 +28,7 @@
 
 use std::path::PathBuf;
 
-use randomx_rust_wrapper::RandomXFlags;
+use ccp_randomx::RandomXFlags;
 
 #[derive(Clone, Debug)]
 pub struct CCPConfig {

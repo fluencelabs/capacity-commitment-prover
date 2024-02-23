@@ -15,14 +15,13 @@
  */
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
 use cpu_utils::CPUTopology;
-use randomx::cache::CacheHandle;
-use randomx::dataset::DatasetHandle;
-use randomx::Dataset;
-use randomx::RandomXFlags;
-use randomx_rust_wrapper as randomx;
 
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadFacade;
@@ -46,7 +45,7 @@ pub struct CUProver {
 
 #[derive(Clone, Debug)]
 pub struct CUProverConfig {
-    pub randomx_flags: randomx::RandomXFlags,
+    pub randomx_flags: RandomXFlags,
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
     pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,

@@ -2,13 +2,13 @@ use std::{path::PathBuf, time::Duration};
 
 use crate::CCProver;
 use ccp_config::CCPConfig;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::{
     nox_ccp_api::NoxCCPApi,
     types::{CUAllocation, EpochParameters, CUID},
 };
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
-use randomx_rust_wrapper::RandomXFlags;
 use test_log::test;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
@@ -340,7 +340,10 @@ async fn prover_on_active_change_epoch() {
 
     for proof in proofs_after {
         assert!(
-            cu_allocation.values().find(|p| *p == &proof.cu_id).is_some(),
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
             "{:?}",
             proof
         );
@@ -349,7 +352,11 @@ async fn prover_on_active_change_epoch() {
             "{:?}",
             proof
         );
-        assert_eq!(proof.id.difficulty, epoch_params_second.difficulty, "{:?}", proof);
+        assert_eq!(
+            proof.id.difficulty, epoch_params_second.difficulty,
+            "{:?}",
+            proof
+        );
     }
 
     prover.stop().await.unwrap();

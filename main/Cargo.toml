@@ -6,9 +6,9 @@ edition = "2021"
 [dependencies]
 capacity-commitment-prover = { workspace = true }
 ccp-config = { workspace = true }
-ccp-shared = { workspace = true }
+ccp-randomx = { workspace = true }
 ccp-rpc-server = { workspace = true }
-randomx-rust-wrapper = { workspace = true }
+ccp-shared = { workspace = true }
 
 clap = { version = "4.5.0", features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread"] }

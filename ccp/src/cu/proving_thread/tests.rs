@@ -16,15 +16,15 @@
 
 use tokio::sync::mpsc;
 
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::RandomXFlags;
+use ccp_randomx::RandomXVM;
 use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::*;
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
 use ccp_utils::run_utils::run_unordered;
 use cpu_utils::LogicalCoreId;
-use randomx_rust_wrapper::dataset::DatasetHandle;
-use randomx_rust_wrapper::RandomXFlags;
-use randomx_rust_wrapper::RandomXVM;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;
@@ -311,7 +311,7 @@ async fn proving_thread_works() {
 }
 
 fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: Difficulty) {
-    use randomx_rust_wrapper::cache::Cache;
+    use ccp_randomx::cache::Cache;
 
     let flags = RandomXFlags::recommended();
 

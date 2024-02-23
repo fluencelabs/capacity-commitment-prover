@@ -31,8 +31,8 @@ pub use global_nonce::GlobalNonce;
 pub use global_nonce::GlobalNonceInner;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
-pub use randomx_rust_wrapper::ResultHash;
 
+pub use ccp_randomx_types::ResultHash;
 pub use cpu_utils::LogicalCoreId;
 pub use cpu_utils::PhysicalCoreId;
 pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;

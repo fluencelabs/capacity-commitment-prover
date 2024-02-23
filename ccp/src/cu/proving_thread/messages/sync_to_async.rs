@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-use randomx_rust_wrapper::Cache;
-use randomx_rust_wrapper::Dataset;
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
 
 #[derive(Debug)]
 pub(crate) struct CacheCreated {

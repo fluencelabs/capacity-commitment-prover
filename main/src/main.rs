@@ -37,8 +37,8 @@ use tokio::sync::Mutex;
 use capacity_commitment_prover::CCProver;
 use ccp_config::CCPConfig;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_randomx::RandomXFlags;
 use ccp_rpc_server::CCPRcpHttpServer;
-use randomx_rust_wrapper::RandomXFlags;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]

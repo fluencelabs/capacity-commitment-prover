@@ -18,11 +18,11 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
-use randomx_rust_wrapper::RandomXFlags;
 
 use super::CUProver;
 use super::CUProverConfig;
@@ -36,8 +36,8 @@ fn batch_proof_verification(
     cu_id: CUID,
     proofs: impl Iterator<Item = RawProof>,
 ) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
+    use ccp_randomx::Cache;
+    use ccp_randomx::RandomXVM;
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
@@ -55,8 +55,8 @@ fn batch_proof_verification(
 }
 
 fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
+    use ccp_randomx::Cache;
+    use ccp_randomx::RandomXVM;
 
     let flags = RandomXFlags::recommended();
 

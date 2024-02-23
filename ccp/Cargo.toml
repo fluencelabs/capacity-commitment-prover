@@ -13,11 +13,10 @@ doctest = false
 [dependencies]
 cpu-utils = { workspace = true }
 ccp-config = { workspace = true }
+ccp-randomx = { workspace = true }
 ccp-shared = { workspace = true }
 ccp-test-utils = { workspace = true }
 ccp-utils = { workspace = true }
-
-randomx-rust-wrapper = { workspace = true }
 
 tokio = { workspace = true }
 tokio-stream = {workspace = true}
