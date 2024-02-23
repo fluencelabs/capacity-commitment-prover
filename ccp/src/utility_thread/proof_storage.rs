@@ -77,7 +77,7 @@ pub(crate) fn save_reliably(path: &Path, contents: impl AsRef<[u8]>) -> std::io:
 
 fn draft_extension(path: &Path) -> OsString {
     let mut extension = path.extension().unwrap_or_default().to_owned();
-    let os_string = OsString::try_from(".draft").unwrap();
-    extension.extend([os_string].into_iter());
+    let os_string = OsString::from(".draft");
+    extension.push(os_string);
     extension
 }

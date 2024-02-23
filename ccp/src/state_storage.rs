@@ -43,7 +43,7 @@ impl StateStorage {
 
     pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
         let data = serde_json::to_vec(&state).expect("TODO");
-        let path = self.state_dir.join(&STATE_FILE);
+        let path = self.state_dir.join(STATE_FILE);
 
         log::info!("Saving state to {:?}", path);
 
@@ -54,7 +54,7 @@ impl StateStorage {
 
     pub(crate) async fn try_to_load_data(&self) -> Option<CCPState> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
-        let path = self.state_dir.join(&STATE_FILE);
+        let path = self.state_dir.join(STATE_FILE);
 
         if !path.exists() {
             return None;
