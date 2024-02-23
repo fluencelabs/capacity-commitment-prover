@@ -395,3 +395,57 @@ async fn prover_on_active_change_epoch() {
         );
     }
 }
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_restore_from_state_with_no_proofs() {
+    let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+
+    let state_path = state_dir.path().join("state.json");
+    let initial_state = Some(CCPState {
+        epoch_params,
+        cu_allocation: cu_allocation.clone(),
+    });
+    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap()).await.unwrap();
+
+    let prover = get_prover(proofs_dir.path(), state_dir.path());
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    let state = load_state(state_dir.path());
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        proofs.len() > 3,
+        "{:?}",
+        proofs,
+    );
+
+    for proof in proofs {
+        assert!(
+            cu_allocation.values().find(|p| *p == &proof.cu_id).is_some(),
+            "{:?}",
+            proof
+        );
+        assert_eq!(
+            proof.id.global_nonce, epoch_params.global_nonce,
+            "{:?}",
+            proof
+        );
+        assert_eq!(proof.id.difficulty, epoch_params.difficulty, "{:?}", proof);
+    }
+
+    prover.stop().await.unwrap();
+
+    assert_eq!(state, initial_state);
+    assert!(!state_dir.path().join("state.json.draft").exists());
+}
