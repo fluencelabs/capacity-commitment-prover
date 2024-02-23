@@ -37,7 +37,6 @@ use crate::proof_storage::ProofStorageDrainer;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
-use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
 

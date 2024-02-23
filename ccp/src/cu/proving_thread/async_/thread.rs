@@ -16,8 +16,8 @@
 
 use tokio::sync::mpsc;
 
-use ccp_msr::Msr;
-use ccp_msr::MsrLinux;
+use ccp_msr::MSRLinux;
+use ccp_msr::MSR;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Cache;
@@ -36,7 +36,7 @@ pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
-    msr: MsrLinux,
+    msr: MSRLinux,
 }
 
 impl ProvingThreadAsync {
@@ -48,7 +48,7 @@ impl ProvingThreadAsync {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
         let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
-        let mut msr = MsrLinux::new(enable_msr, core_id);
+        let mut msr = MSRLinux::new(enable_msr, core_id);
         let _ = msr.write_preset(true);
 
         Self {

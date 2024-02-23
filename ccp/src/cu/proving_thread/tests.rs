@@ -24,7 +24,6 @@ use ccp_shared::types::*;
 use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
 use ccp_utils::run_utils::run_unordered;
-use cpu_utils::LogicalCoreId;
 
 use super::ProvingThreadAsync;
 use super::ProvingThreadFacade;

@@ -21,8 +21,6 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 
-use crate::LogicalCoreId;
-
 pub trait ProvingThreadFacade {
     type Error;
 

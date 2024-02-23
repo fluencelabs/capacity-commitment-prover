@@ -49,3 +49,6 @@ sha3 = "0.10"
 thiserror = "1.0"
 tracing = "0.1.40"
 test-log = "0.2.14"
+nix = { version = "0.27.1" , features = ["uio"] }
+once_cell = "1.19.0"
+raw-cpuid = "11.0.1"

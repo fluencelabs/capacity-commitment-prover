@@ -15,12 +15,12 @@
  */
 
 mod cpu_preset;
+mod errors;
 mod msr;
-mod msr_error;
 mod msr_item;
 mod msr_mode;
 
-pub use msr_error::MSRError;
-pub use msr::Msr;
-pub use msr::MsrLinux;
-pub use msr_item::MsrItem;
+pub use errors::MSRError;
+pub use msr::MSRLinux;
+pub use msr::MSR;
+pub use msr_item::MSRItem;

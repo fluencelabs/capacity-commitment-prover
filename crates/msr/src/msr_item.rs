@@ -15,33 +15,37 @@
  */
 
 #[derive(Clone, Copy, Debug)]
-pub struct MsrItem {
-    reg: u32,
+pub struct MSRItem {
+    register_id: u32,
     value: u64,
     mask: u64,
 }
 
-impl MsrItem {
+impl MSRItem {
     pub const NO_MASK: u64 = u64::MAX;
 
-    pub fn new(reg: u32, value: u64) -> Self {
+    pub fn new(register_id: u32, value: u64) -> Self {
         Self {
-            reg,
+            register_id,
             value,
             mask: Self::NO_MASK,
         }
     }
 
-    pub fn with_mask(reg: u32, value: u64, mask: u64) -> Self {
-        Self { reg, value, mask }
+    pub fn with_mask(register_id: u32, value: u64, mask: u64) -> Self {
+        Self {
+            register_id,
+            value,
+            mask,
+        }
     }
 
     pub fn is_valid(&self) -> bool {
-        self.reg > 0
+        self.register_id > 0
     }
 
-    pub fn reg(&self) -> u32 {
-        self.reg
+    pub fn register_id(&self) -> u32 {
+        self.register_id
     }
 
     pub fn value(&self) -> u64 {
@@ -57,7 +61,7 @@ impl MsrItem {
     }
 }
 
-impl Default for MsrItem {
+impl Default for MSRItem {
     fn default() -> Self {
         Self::new(0, 0)
     }

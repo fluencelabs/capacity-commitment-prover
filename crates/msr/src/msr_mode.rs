@@ -19,43 +19,43 @@ use raw_cpuid::CpuIdReaderNative;
 
 use once_cell::sync::Lazy;
 
-pub static MSR_MODE: Lazy<MsrMode> = Lazy::new(detect_msr_mode);
+pub static MSR_MODE: Lazy<MSRMode> = Lazy::new(detect_msr_mode);
 
 #[derive(Copy, Clone, Debug)]
-pub enum MsrMode {
-    MsrModNone,
-    MsrModRyzen17h,
-    MsrModRyzen19h,
-    MsrModRyzen19hZen4,
-    MsrModIntel,
+pub enum MSRMode {
+    MSRModNone,
+    MSRModRyzen17h,
+    MSRModRyzen19h,
+    MSRModRyzen19hZen4,
+    MSRModIntel,
 }
 
-pub fn detect_msr_mode() -> MsrMode {
-    use MsrMode::*;
+pub fn detect_msr_mode() -> MSRMode {
+    use MSRMode::*;
 
     let cpuid = CpuId::new();
     match cpuid.get_vendor_info() {
         Some(vendor_info) if vendor_info.as_str() == "AuthenticAMD" => detect_amd_msr_mode(&cpuid),
-        Some(vendor_info) if vendor_info.as_str() == "GenuineIntel" => MsrModIntel,
-        _ => MsrModNone,
+        Some(vendor_info) if vendor_info.as_str() == "GenuineIntel" => MSRModIntel,
+        _ => MSRModNone,
     }
 }
 
-fn detect_amd_msr_mode(cpuid: &CpuId<CpuIdReaderNative>) -> MsrMode {
-    use MsrMode::*;
+fn detect_amd_msr_mode(cpuid: &CpuId<CpuIdReaderNative>) -> MSRMode {
+    use MSRMode::*;
 
     let (family_id, model_id) = if let Some(cpu_info) = cpuid.get_feature_info() {
         (cpu_info.family_id(), cpu_info.model_id())
     } else {
-        return MsrModNone;
+        return MSRModNone;
     };
 
     match family_id {
-        0x17 => MsrMode::MsrModRyzen17h,
+        0x17 => MSRMode::MSRModRyzen17h,
         0x19 => match model_id {
-            0x61 => MsrMode::MsrModRyzen19hZen4,
-            _ => MsrMode::MsrModRyzen19h,
+            0x61 => MSRMode::MSRModRyzen19hZen4,
+            _ => MSRMode::MSRModRyzen19h,
         },
-        _ => MsrMode::MsrModNone,
+        _ => MSRMode::MSRModNone,
     }
 }
