@@ -55,6 +55,7 @@ pub enum MSRError {
     },
 }
 
+#[cfg(target_os = "linux")]
 impl MSRError {
     pub(crate) fn open_for_read(core_id: LogicalCoreId, io_error: std::io::Error) -> Self {
         Self::OpenForRead { core_id, io_error }

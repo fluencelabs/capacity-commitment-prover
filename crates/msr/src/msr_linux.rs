@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-use nix::sys::uio::pread;
-use nix::sys::uio::pwrite;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io;
 
 use crate::cpu_preset::get_cpu_preset;
@@ -31,15 +29,8 @@ enum MSRFileOpMode {
     MSRWrite,
 }
 
-type MSRResult<T> = Result<T, MSRError>;
-
-pub trait MSR {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()>;
-    fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
-    fn restore(self) -> MSRResult<()>;
-}
-
 fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
+    use std::fs::OpenOptions;
     let path = format!("/dev/cpu/{}/msr", core_id);
     match mode {
         MSRFileOpMode::MSRRead => OpenOptions::new().read(true).open(path),
@@ -48,13 +39,8 @@ fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
 }
 
 #[derive(Debug)]
-pub struct MSRImpl {
-    is_enabled: bool,
-    stored_state: Vec<MSRItem>,
-    core_id: LogicalCoreId,
-}
+pub struct MSRImpl {}
 
-#[cfg(target_os = "linux")]
 impl MSRImpl {
     pub fn new(is_enabled: bool, core_id: LogicalCoreId) -> Self {
         Self {
@@ -65,6 +51,8 @@ impl MSRImpl {
     }
 
     fn rdmsr(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<u64> {
+        use nix::sys::uio::pread;
+
         let file = msr_open(core_id, MSRFileOpMode::MSRRead)
             .map_err(|error| MSRError::open_for_read(core_id, error))?;
         let mut value = [0u8; 8];
@@ -78,6 +66,8 @@ impl MSRImpl {
     }
 
     fn wrmsr(&self, register_id: u32, value: u64, core_id: LogicalCoreId) -> MSRResult<()> {
+        use nix::sys::uio::pwrite;
+
         let file = msr_open(core_id, MSRFileOpMode::MSRWrite)
             .map_err(|error| MSRError::open_for_write(core_id, error))?;
         let value_as_bytes = value.to_le_bytes();
@@ -165,32 +155,6 @@ impl MSR for MSRImpl {
         for item in self.stored_state.iter().filter(|item| item.is_valid()) {
             self.write(*item, self.core_id)?;
         }
-        Ok(())
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-impl MSR {
-    fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
-        Self {
-            is_enabled: false,
-            stored_state: vec![],
-            core_id,
-        }
-    }
-}
-
-#[cfg(not(target_os = "linux"))]
-impl MSR for MSRImpl {
-    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
-        Ok(())
-    }
-
-    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
-        Ok(())
-    }
-
-    fn restore(self) -> MSRResult<()> {
         Ok(())
     }
 }
