@@ -13,6 +13,8 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+ccp-shared = { workspace = true }
+
 bitflags = { workspace = true }
 hex = { workspace = true }
 libc = { workspace = true }
