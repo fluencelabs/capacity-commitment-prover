@@ -41,7 +41,11 @@ fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
 }
 
 #[derive(Debug)]
-pub struct MSRImpl {}
+pub struct MSRImpl {
+    is_enabled: bool,
+    stored_state: Vec<MSRItem>,
+    core_id: LogicalCoreId,
+}
 
 impl MSRImpl {
     pub fn new(is_enabled: bool, core_id: LogicalCoreId) -> Self {
