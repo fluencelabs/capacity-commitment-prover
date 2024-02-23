@@ -21,6 +21,8 @@ use crate::cpu_preset::get_cpu_preset;
 use crate::msr_item::MSRItem;
 use crate::msr_mode::MSR_MODE;
 use crate::MSRError;
+use crate::MSRResult;
+use crate::MSR;
 
 use cpu_utils::LogicalCoreId;
 
