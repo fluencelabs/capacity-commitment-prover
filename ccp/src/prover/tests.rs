@@ -90,7 +90,10 @@ async fn prover_on_active_commitment() {
 
     for proof in proofs {
         assert!(
-            cu_allocation.values().find(|p| *p == &proof.cu_id).is_some(),
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
             "{:?}",
             proof
         );
@@ -409,9 +412,12 @@ async fn prover_restore_from_state_with_no_proofs() {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
     });
-    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap()).await.unwrap();
+    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
+        .await
+        .unwrap();
 
-    let prover = get_prover(proofs_dir.path(), state_dir.path());
+    let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    prover.try_loading_state().await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -432,7 +438,10 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     for proof in proofs {
         assert!(
-            cu_allocation.values().find(|p| *p == &proof.cu_id).is_some(),
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
             "{:?}",
             proof
         );

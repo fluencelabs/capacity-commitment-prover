@@ -52,9 +52,28 @@ impl StateStorage {
             .unwrap()
     }
 
-    #[allow(dead_code)]
     pub(crate) async fn try_to_load_data(&self) -> Option<CCPState> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
-        todo!()
+        let path = self.state_dir.join(&STATE_FILE);
+
+        if !path.exists() {
+            return None;
+        }
+
+        let state_data = match tokio::fs::read(&path).await {
+            Ok(state_data) => state_data,
+            Err(e) => {
+                log::warn!("failed to read state data at {path:?}, ignoring: {e}");
+                return None;
+            }
+        };
+
+        match serde_json::from_slice(&state_data) {
+            Ok(data) => data,
+            Err(e) => {
+                log::warn!("failed to parse state data from {path:?}, ignoring: {e}");
+                None
+            }
+        }
     }
 }

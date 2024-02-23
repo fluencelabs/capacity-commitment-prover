@@ -19,8 +19,8 @@ mod proof_storage;
 mod thread;
 
 pub use errors::UtilityThreadError;
-pub(crate) use thread::*;
 pub(crate) use proof_storage::save_reliably;
+pub(crate) use thread::*;
 
 pub(crate) mod message {
     pub(crate) use crate::cu::proving_thread::sync::to_utility_message::*;
