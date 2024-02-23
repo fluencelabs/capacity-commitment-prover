@@ -11,7 +11,6 @@ doctest = false
 
 [dependencies]
 cpu-utils = { workspace = true }
-ccp-randomx-types = { workspace = true }
 
 rand = { workspace = true }
 hex = { workspace = true }

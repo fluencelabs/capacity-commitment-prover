@@ -1,0 +1,4 @@
+[submodule "randomx"]
+	path = crates/randomx
+	url = https://github.com/fluencelabs/RandomX
+	branch = fluence

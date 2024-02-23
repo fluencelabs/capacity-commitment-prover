@@ -288,26 +288,14 @@ dependencies = [
 [[package]]
 name = "ccp-randomx"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b376f17b1922a35dd9bd1cddf480347eabd78b740b787c738dcc546e1a5ac39c"
 dependencies = [
  "bitflags 2.4.2",
- "ccp-randomx-types",
  "cmake",
  "hex",
  "libc",
+ "rand 0.8.5",
  "serde",
  "thiserror",
-]
-
-[[package]]
-name = "ccp-randomx-types"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3769b7222a8e4cf35252235fe7d7be66328b5440687275ee592dbdb04b7efd7"
-dependencies = [
- "hex",
- "serde",
 ]
 
 [[package]]
@@ -338,7 +326,6 @@ dependencies = [
 name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
- "ccp-randomx-types",
  "cpu-utils",
  "hex",
  "rand 0.8.5",
