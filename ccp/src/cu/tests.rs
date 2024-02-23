@@ -197,28 +197,21 @@ async fn cu_prover_produces_correct_proofs() {
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    println!("1");
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
-    println!("2");
 
     let epoch_1 = test::generate_epoch_params(1, 0x80);
     let cu_id_1 = test::generate_cu_id(1);
-    println!("3");
 
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
-        println!("inside closure");
 
         while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            println!("5");
             proofs.push(proof)
         }
         proofs
     });
 
-    println!("6");
     prover.new_epoch(epoch_1, cu_id_1).await.unwrap();
-    println!("7");
     std::thread::sleep(std::time::Duration::from_secs(10));
 
     let epoch_2 = test::generate_epoch_params(2, 0xFF);

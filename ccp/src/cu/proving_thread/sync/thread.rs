@@ -81,12 +81,10 @@ impl ProvingThreadSync {
 
                 thread_state = match thread_state {
                     ThreadState::WaitForMessage => {
-                        println!("before reading message");
                         // block on the channel till it returns a new message
                         let message = from_async.blocking_recv().ok_or(
                             ProvingThreadSyncError::channel_error(CHANNEL_DROPPED_MESSAGE),
                         )?;
-                        println!("after reading message: {message:?}");
 
                         ThreadState::NewMessage { message }
                     }
