@@ -30,7 +30,7 @@ pub(crate) struct StateStorage {
     // TODO file lock
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub(crate) struct CCPState {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,
@@ -52,27 +52,22 @@ impl StateStorage {
             .unwrap()
     }
 
-    pub(crate) async fn try_to_load_data(&self) -> Option<CCPState> {
+    // TODO should it return error on IO problems?
+    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<Option<CCPState>> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);
 
         if !path.exists() {
-            return None;
+            return Ok(None);
         }
 
-        let state_data = match tokio::fs::read(&path).await {
-            Ok(state_data) => state_data,
-            Err(e) => {
-                log::warn!("failed to read state data at {path:?}, ignoring: {e}");
-                return None;
-            }
-        };
+        let state_data = tokio::fs::read(&path).await?;
 
         match serde_json::from_slice(&state_data) {
-            Ok(data) => data,
+            Ok(data) => Ok(data),
             Err(e) => {
                 log::warn!("failed to parse state data from {path:?}, ignoring: {e}");
-                None
+                Ok(None)
             }
         }
     }

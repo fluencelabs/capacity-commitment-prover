@@ -113,14 +113,8 @@ fn main() -> eyre::Result<()> {
 
 async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Result<()> {
     // Build a prover
-    let mut prover = build_prover(prover_args);
+    let prover = build_prover(prover_args).await?;
     tracing::info!("created prover");
-    prover
-        .try_loading_state()
-        .await
-        // e doesn't implemenet Sync, and cannot be converted to anyhow::Error or eyre::Error.
-        // As it will be reported to a user immediately, convert the error to string.
-        .map_err(|e| eyre::eyre!(e.to_string()))?;
 
     // Launch RPC API
     let rpc_server = CCPRcpHttpServer::new(Arc::new(Mutex::new(prover)));
@@ -136,7 +130,7 @@ async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Resu
     Ok(())
 }
 
-fn build_prover(prover_args: ProverArgs) -> CCProver {
+async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
     // TODO an option?
     let randomx_flags = RandomXFlags::recommended_full_mem();
 
@@ -149,7 +143,11 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
         dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,
     };
 
-    CCProver::new(prover_args.utility_core_id.into(), config)
+    CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
+        .await
+        // e doesn't implemenet Sync, and cannot be converted to anyhow::Error or eyre::Error.
+        // As it will be reported to a user immediately, convert the error to string.
+        .map_err(|e| eyre::eyre!(e.to_string()))
 }
 
 // Preliminary check that is useful on early diagnostics.

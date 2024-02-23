@@ -102,7 +102,12 @@ impl ToCCStatus for CCProver {
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
-        let utility_thread = UtilityThread::spawn(utility_core_id, config.dir_to_store_proofs);
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            ProofIdx::zero(),
+            config.dir_to_store_proofs,
+            None,
+        );
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
@@ -138,13 +143,50 @@ impl CCProver {
         self.utility_thread.stop().await.map_err(Into::into)
     }
 
-    pub async fn try_loading_state(&mut self) -> CCResult<()> {
-        if let Some(old_state) = self.state_storage.try_to_load_data().await {
-            log::info!("loaded previous state; executing on_active_commitment");
-            self.on_active_commitment(old_state.epoch_params, old_state.cu_allocation)
+    pub async fn from_saved_state(
+        utility_core_id: LogicalCoreId,
+        config: CCPConfig,
+    ) -> CCResult<Self> {
+        let mut proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
+        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
+
+        let prev_state = state_storage.try_to_load_data().await?;
+
+        let start_proof_idx = proof_cleaner
+            .validate_proofs(prev_state.as_ref().map(|state| &state.epoch_params))
+            .await?;
+        log::info!("continuing from proof index {start_proof_idx}");
+
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: config.randomx_flags,
+            thread_allocation_policy: config.thread_allocation_policy,
+        };
+
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            start_proof_idx,
+            config.dir_to_store_proofs,
+            prev_state
+                .as_ref()
+                .map(|state| state.epoch_params.global_nonce),
+        );
+
+        let mut self_ = Self {
+            cu_provers: HashMap::new(),
+            cu_prover_config,
+            status: CCStatus::Idle,
+            utility_thread,
+            proof_drainer: proof_cleaner,
+            state_storage,
+        };
+
+        if let Some(prev_state) = prev_state {
+            self_
+                .on_active_commitment(prev_state.epoch_params, prev_state.cu_allocation)
                 .await?;
         }
-        Ok(())
+
+        Ok(self_)
     }
 
     async fn save_state(
