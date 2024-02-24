@@ -340,8 +340,8 @@ dependencies = [
 name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
- "cpu-utils",
  "hex",
+ "newtype_derive",
  "rand 0.8.5",
  "serde",
 ]
@@ -477,9 +477,9 @@ dependencies = [
 name = "cpu-utils"
 version = "0.1.0"
 dependencies = [
+ "ccp-shared",
  "core_affinity",
  "hwlocality",
- "newtype_derive",
  "nonempty",
  "serde",
  "thiserror",

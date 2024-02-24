@@ -1,3 +1,9 @@
+[workspace.package]
+authors = ["Fluence Labs"]
+edition = "2021"
+repository = "https://github.com/fluencelabs/capacity-commitment-prover"
+license = "Apache-2.0"
+
 [workspace]
 resolver = "2"
 members = [
