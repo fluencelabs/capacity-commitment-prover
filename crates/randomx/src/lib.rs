@@ -26,26 +26,35 @@
     unreachable_patterns
 )]
 
-use std::path::PathBuf;
+pub mod bindings;
+pub mod cache;
+pub mod dataset;
+pub mod errors;
+pub mod flags;
+pub mod result_hash;
+#[cfg(test)]
+mod tests;
+pub mod vm;
 
-use ccp_randomx::RandomXFlags;
+pub type RResult<T> = Result<T, errors::RandomXError>;
 
-#[derive(Clone, Debug)]
-pub struct CCPConfig {
-    pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
-    pub randomx_flags: RandomXFlags,
-    pub dir_to_store_proofs: PathBuf,
-    pub dir_to_store_persistent_state: PathBuf,
-    pub enable_msr: bool,
+pub use cache::Cache;
+pub use dataset::Dataset;
+pub use errors::RandomXError;
+pub use errors::VmCreationError;
+pub use flags::RandomXFlags;
+pub use result_hash::ResultHash;
+pub use vm::RandomXVM;
+
+macro_rules! try_alloc {
+    ($alloc:expr, $error:expr) => {{
+        let result = unsafe { $alloc };
+        if result.is_null() {
+            return Err($error)?;
+        }
+
+        result
+    }};
 }
 
-#[derive(Clone, Debug)]
-pub enum ThreadsPerCoreAllocationPolicy {
-    /// CCP will try to run the optimal amount of threads per core,
-    /// trying to utilize all benefits of HT and SMT.
-    Optimal,
-    /// CCP will try run the exact amount
-    Exact {
-        threads_per_physical_core: std::num::NonZeroUsize,
-    },
-}
+pub(crate) use try_alloc;

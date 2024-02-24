@@ -16,11 +16,10 @@
 
 use std::thread;
 
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use cpu_utils::LogicalCoreId;
-use randomx::Cache;
-use randomx::Dataset;
-use randomx_rust_wrapper as randomx;
-use randomx_rust_wrapper::RandomXFlags;
 
 use super::errors::ProvingThreadSyncError;
 use super::state::RandomXJob;

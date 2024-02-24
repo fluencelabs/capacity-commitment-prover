@@ -14,27 +14,32 @@
  * limitations under the License.
  */
 
-use ccp_randomx::Cache;
-use ccp_randomx::Dataset;
+use cpu_utils::LogicalCoreId;
+
+use crate::MSRResult;
+use crate::MSR;
 
 #[derive(Debug)]
-pub(crate) struct CacheCreated {
-    pub(crate) cache: Cache,
-}
+pub struct MSRImpl {}
 
-#[derive(Debug)]
-pub(crate) struct DatasetAllocated {
-    pub(crate) dataset: Dataset,
-}
-
-impl CacheCreated {
-    pub(crate) fn new(cache: Cache) -> Self {
-        Self { cache }
+#[cfg(not(target_os = "linux"))]
+impl MSRImpl {
+    pub fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
+        Self {}
     }
 }
 
-impl DatasetAllocated {
-    pub(crate) fn new(dataset: Dataset) -> Self {
-        Self { dataset }
+#[cfg(not(target_os = "linux"))]
+impl MSR for MSRImpl {
+    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn restore(self) -> MSRResult<()> {
+        Ok(())
     }
 }

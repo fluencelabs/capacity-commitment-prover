@@ -19,8 +19,8 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
+use ccp_randomx::errors::RandomXError;
 use cpu_utils::LogicalCoreId;
-use randomx_rust_wrapper::errors::RandomXError;
 
 /// Errors arisen inside sync thread,
 /// they are intended to be passed into the utility thread.

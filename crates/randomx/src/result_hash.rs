@@ -14,27 +14,21 @@
  * limitations under the License.
  */
 
-use ccp_randomx::Cache;
-use ccp_randomx::Dataset;
+pub use ccp_shared::types::ResultHash;
+pub use ccp_shared::types::RANDOMX_RESULT_SIZE;
 
-#[derive(Debug)]
-pub(crate) struct CacheCreated {
-    pub(crate) cache: Cache,
+pub(crate) trait ToRawMut {
+    fn empty() -> Self;
+
+    fn as_raw_mut(&mut self) -> *mut std::ffi::c_void;
 }
 
-#[derive(Debug)]
-pub(crate) struct DatasetAllocated {
-    pub(crate) dataset: Dataset,
-}
-
-impl CacheCreated {
-    pub(crate) fn new(cache: Cache) -> Self {
-        Self { cache }
+impl ToRawMut for ResultHash {
+    fn empty() -> Self {
+        ResultHash::from_slice([0u8; RANDOMX_RESULT_SIZE])
     }
-}
 
-impl DatasetAllocated {
-    pub(crate) fn new(dataset: Dataset) -> Self {
-        Self { dataset }
+    fn as_raw_mut(&mut self) -> *mut std::ffi::c_void {
+        self.as_mut().as_mut_ptr() as *mut std::ffi::c_void
     }
 }

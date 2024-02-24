@@ -18,11 +18,11 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
-use randomx_rust_wrapper::RandomXFlags;
 
 use super::CUProver;
 use super::CUProverConfig;
@@ -36,8 +36,8 @@ fn batch_proof_verification(
     cu_id: CUID,
     proofs: impl Iterator<Item = RawProof>,
 ) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
+    use ccp_randomx::Cache;
+    use ccp_randomx::RandomXVM;
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
@@ -55,8 +55,8 @@ fn batch_proof_verification(
 }
 
 fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> bool {
-    use randomx_rust_wrapper::Cache;
-    use randomx_rust_wrapper::RandomXVM;
+    use ccp_randomx::Cache;
+    use ccp_randomx::RandomXVM;
 
     let flags = RandomXFlags::recommended();
 
@@ -82,6 +82,7 @@ async fn idle_cu_prover_can_be_stopped() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -107,6 +108,7 @@ async fn cu_prover_can_be_stopped() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -135,6 +137,7 @@ async fn cu_prover_can_be_paused() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -194,6 +197,7 @@ async fn cu_prover_produces_correct_proofs() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -234,6 +238,7 @@ async fn cu_prover_works_with_odd_threads_number() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(5).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);
@@ -271,6 +276,7 @@ async fn cu_prover_changes_epoch_correctly() {
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
         },
+        enable_msr: false,
     };
 
     let (inlet, mut outlet) = mpsc::channel(1);

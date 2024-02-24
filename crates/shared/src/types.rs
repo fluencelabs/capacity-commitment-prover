@@ -19,6 +19,7 @@ mod difficulty;
 mod epoch_parameters;
 mod global_nonce;
 mod local_nonce;
+mod result_hash;
 
 use std::collections::HashMap;
 
@@ -31,7 +32,9 @@ pub use global_nonce::GlobalNonce;
 pub use global_nonce::GlobalNonceInner;
 pub use local_nonce::LocalNonce;
 pub use local_nonce::LocalNonceInner;
-pub use randomx_rust_wrapper::ResultHash;
+pub use result_hash::ResultHash;
+pub use result_hash::ResultHashInner;
+pub use result_hash::RANDOMX_RESULT_SIZE;
 
 pub use cpu_utils::LogicalCoreId;
 pub use cpu_utils::PhysicalCoreId;

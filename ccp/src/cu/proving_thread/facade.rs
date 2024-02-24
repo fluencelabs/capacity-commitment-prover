@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
-use randomx_rust_wrapper::cache::CacheHandle;
-use randomx_rust_wrapper::dataset::DatasetHandle;
-use randomx_rust_wrapper::Cache;
-use randomx_rust_wrapper::Dataset;
-use randomx_rust_wrapper::RandomXFlags;
-
-use crate::LogicalCoreId;
 
 pub trait ProvingThreadFacade {
     type Error;
@@ -51,7 +49,7 @@ pub trait ProvingThreadFacade {
         cu_id: CUID,
     ) -> Result<(), Self::Error>;
 
-    async fn pin(&self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
+    async fn pin(&mut self, logical_core_id: LogicalCoreId) -> Result<(), Self::Error>;
 
     /// Pauses proving thread till the next message.
     async fn pause(&mut self) -> Result<(), Self::Error>;
