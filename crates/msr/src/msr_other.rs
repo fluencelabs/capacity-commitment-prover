@@ -14,32 +14,32 @@
  * limitations under the License.
  */
 
-#[cfg(target_os = "linux")]
-mod cpu_preset;
-mod errors;
-mod msr_item;
-#[cfg(target_os = "linux")]
-mod msr_linux;
-#[cfg(target_os = "linux")]
-mod msr_mode;
-
-#[cfg(target_os = "linux")]
-pub use msr_linux::MSRImpl;
-
-#[cfg(not(target_os = "linux"))]
-mod msr_other;
-#[cfg(not(target_os = "linux"))]
-pub use msr_other::MSRImpl;
-
 use cpu_utils::LogicalCoreId;
 
-pub use errors::MSRError;
-pub use msr_item::MSRItem;
+use crate::MSRResult;
+use crate::MSR;
 
-pub type MSRResult<T> = Result<T, MSRError>;
+#[derive(Debug)]
+pub struct MSRImpl {}
 
-pub trait MSR {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()>;
-    fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
-    fn restore(self) -> MSRResult<()>;
+#[cfg(not(target_os = "linux"))]
+impl MSRImpl {
+    pub fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
+        Self {}
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+impl MSR for MSRImpl {
+    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
+        Ok(())
+    }
+
+    fn restore(self) -> MSRResult<()> {
+        Ok(())
+    }
 }

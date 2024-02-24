@@ -14,15 +14,16 @@
  * limitations under the License.
  */
 
-use nix::sys::uio::pread;
-use nix::sys::uio::pwrite;
-use std::fs::{File, OpenOptions};
+use std::fs::File;
 use std::io;
 
 use crate::cpu_preset::get_cpu_preset;
 use crate::msr_item::MSRItem;
 use crate::msr_mode::MSR_MODE;
 use crate::MSRError;
+use crate::MSRResult;
+use crate::MSR;
+
 use cpu_utils::LogicalCoreId;
 
 enum MSRFileOpMode {
@@ -30,15 +31,8 @@ enum MSRFileOpMode {
     MSRWrite,
 }
 
-type MSRResult<T> = Result<T, MSRError>;
-
-pub trait MSR {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()>;
-    fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
-    fn restore(self) -> MSRResult<()>;
-}
-
 fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
+    use std::fs::OpenOptions;
     let path = format!("/dev/cpu/{}/msr", core_id);
     match mode {
         MSRFileOpMode::MSRRead => OpenOptions::new().read(true).open(path),
@@ -47,13 +41,13 @@ fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
 }
 
 #[derive(Debug)]
-pub struct MSRLinux {
+pub struct MSRImpl {
     is_enabled: bool,
     stored_state: Vec<MSRItem>,
     core_id: LogicalCoreId,
 }
 
-impl MSRLinux {
+impl MSRImpl {
     pub fn new(is_enabled: bool, core_id: LogicalCoreId) -> Self {
         Self {
             is_enabled,
@@ -63,6 +57,8 @@ impl MSRLinux {
     }
 
     fn rdmsr(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<u64> {
+        use nix::sys::uio::pread;
+
         let file = msr_open(core_id, MSRFileOpMode::MSRRead)
             .map_err(|error| MSRError::open_for_read(core_id, error))?;
         let mut value = [0u8; 8];
@@ -76,6 +72,8 @@ impl MSRLinux {
     }
 
     fn wrmsr(&self, register_id: u32, value: u64, core_id: LogicalCoreId) -> MSRResult<()> {
+        use nix::sys::uio::pwrite;
+
         let file = msr_open(core_id, MSRFileOpMode::MSRWrite)
             .map_err(|error| MSRError::open_for_write(core_id, error))?;
         let value_as_bytes = value.to_le_bytes();
@@ -109,7 +107,7 @@ impl MSRLinux {
     }
 }
 
-impl MSR for MSRLinux {
+impl MSR for MSRImpl {
     fn write_preset(&mut self, store_state: bool) -> MSRResult<()> {
         if !self.is_enabled {
             tracing::debug!("MSR is disabled.");
