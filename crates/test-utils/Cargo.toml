@@ -11,5 +11,4 @@ path = "src/lib.rs"
 
 [dependencies]
 ccp-shared = { workspace = true }
-
-randomx-rust-wrapper = {workspace = true}
+ccp-randomx = { workspace = true }

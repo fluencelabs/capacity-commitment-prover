@@ -17,10 +17,9 @@
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::ResultHash;
 use ccp_shared::types::LocalNonce;
-use randomx::dataset::DatasetHandle;
-use randomx::ResultHash;
-use randomx_rust_wrapper as randomx;
 
 use super::local_nonce::NonceIterable;
 use super::raw_proof::RawProof;
@@ -41,7 +40,7 @@ pub(crate) enum ThreadState {
 
 #[derive(Debug)]
 pub(crate) struct RandomXJob {
-    vm: randomx::RandomXVM<DatasetHandle>,
+    vm: ccp_randomx::RandomXVM<DatasetHandle>,
     local_nonce: LocalNonce,
     epoch: EpochParameters,
     cu_id: CUID,
@@ -57,7 +56,7 @@ impl RandomXJob {
             cu_id,
         } = cc_job;
 
-        let vm = randomx::RandomXVM::fast(dataset, flags)?;
+        let vm = ccp_randomx::RandomXVM::fast(dataset, flags)?;
         let local_nonce = LocalNonce::random();
 
         let params = Self {

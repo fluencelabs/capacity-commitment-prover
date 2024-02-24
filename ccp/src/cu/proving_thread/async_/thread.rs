@@ -16,13 +16,14 @@
 
 use tokio::sync::mpsc;
 
+use ccp_msr::MSRImpl;
+use ccp_msr::MSR;
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
+use ccp_randomx::Cache;
+use ccp_randomx::Dataset;
+use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
-use randomx::cache::CacheHandle;
-use randomx::dataset::DatasetHandle;
-use randomx::Cache;
-use randomx::Dataset;
-use randomx_rust_wrapper as randomx;
-use randomx_rust_wrapper::RandomXFlags;
 
 use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;
@@ -35,18 +36,26 @@ pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
+    msr: MSRImpl,
 }
 
 impl ProvingThreadAsync {
-    pub(crate) fn new(core_id: LogicalCoreId, to_utility: ToUtilityInlet) -> Self {
+    pub(crate) fn new(
+        core_id: LogicalCoreId,
+        to_utility: ToUtilityInlet,
+        enable_msr: bool,
+    ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
         let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
+        let mut msr = MSRImpl::new(enable_msr, core_id);
+        let _ = msr.write_preset(true);
 
         Self {
             to_sync,
             from_sync,
             sync_thread,
+            msr,
         }
     }
 }
@@ -125,7 +134,9 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         self.to_sync.send(message).await.map_err(Into::into)
     }
 
-    async fn pin(&self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+    async fn pin(&mut self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
+        self.msr.repin(core_id)?;
+
         let message = AsyncToSyncMessage::PinThread(PinThread { core_id });
         self.to_sync.send(message).await.map_err(Into::into)
     }
@@ -146,6 +157,7 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     }
 
     async fn stop(self) -> Result<(), Self::Error> {
+        self.msr.restore()?;
         let message = AsyncToSyncMessage::Stop;
         self.to_sync.send(message).await?;
         Ok(self.sync_thread.join()?)

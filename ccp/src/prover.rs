@@ -37,7 +37,6 @@ use crate::proof_storage::ProofStorageDrainer;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
-use crate::LogicalCoreId;
 
 pub type CCResult<T> = Result<T, CCProverError>;
 
@@ -57,7 +56,7 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let roadmap = CCProverAlignmentRoadmap::create_roadmap(
+        let roadmap = CCProverAlignmentRoadmap::make(
             new_allocation,
             new_epoch,
             &self.cu_provers,
@@ -98,6 +97,7 @@ impl CCProver {
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
+            enable_msr: config.enable_msr,
         };
 
         Self {

@@ -26,13 +26,35 @@
     unreachable_patterns
 )]
 
-mod cpu_topology;
-mod errors;
-pub mod pinning;
+pub mod bindings;
+pub mod cache;
+pub mod dataset;
+pub mod errors;
+pub mod flags;
+pub mod result_hash;
+#[cfg(test)]
+mod tests;
+pub mod vm;
 
-pub type CTResult<T> = Result<T, CPUTopologyError>;
+pub type RResult<T> = Result<T, errors::RandomXError>;
 
-pub use ccp_shared::types::LogicalCoreId;
-pub use ccp_shared::types::PhysicalCoreId;
-pub use cpu_topology::CPUTopology;
-pub use errors::CPUTopologyError;
+pub use cache::Cache;
+pub use dataset::Dataset;
+pub use errors::RandomXError;
+pub use errors::VmCreationError;
+pub use flags::RandomXFlags;
+pub use result_hash::ResultHash;
+pub use vm::RandomXVM;
+
+macro_rules! try_alloc {
+    ($alloc:expr, $error:expr) => {{
+        let result = unsafe { $alloc };
+        if result.is_null() {
+            return Err($error)?;
+        }
+
+        result
+    }};
+}
+
+pub(crate) use try_alloc;
