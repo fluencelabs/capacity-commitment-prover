@@ -60,14 +60,8 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let roadmap = CCProverAlignmentRoadmap::make(
-            new_allocation.clone(),
-            new_epoch,
-            &self.cu_provers,
-            self.status,
-        );
-        self.status = CCStatus::Running { epoch: new_epoch };
-        self.align_with(roadmap).await?;
+        self.apply_commitment_parameters(new_epoch, &new_allocation)
+            .await?;
         // Save data only if align_with is successful; otherwise invalid commitment will be stored
         // and used on restart to fail again.
         self.save_state(new_epoch, new_allocation).await
@@ -182,7 +176,7 @@ impl CCProver {
 
         if let Some(prev_state) = prev_state {
             self_
-                .on_active_commitment(prev_state.epoch_params, prev_state.cu_allocation)
+                .apply_commitment_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
                 .await?;
         }
 
@@ -203,6 +197,21 @@ impl CCProver {
 
     async fn save_no_state(&self) -> CCResult<()> {
         Ok(self.state_storage.save_state(None).await?)
+    }
+
+    async fn apply_commitment_parameters(
+        &mut self,
+        new_epoch: EpochParameters,
+        new_allocation: &HashMap<PhysicalCoreId, CUID>,
+    ) -> Result<(), <CCProver as NoxCCPApi>::Error> {
+        let roadmap = CCProverAlignmentRoadmap::make(
+            new_allocation.clone(),
+            new_epoch,
+            &self.cu_provers,
+            self.status,
+        );
+        self.status = CCStatus::Running { epoch: new_epoch };
+        self.align_with(roadmap).await
     }
 }
 
