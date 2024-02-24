@@ -29,11 +29,10 @@
 mod cpu_topology;
 mod errors;
 pub mod pinning;
-mod types;
 
 pub type CTResult<T> = Result<T, CPUTopologyError>;
 
+pub use ccp_shared::types::LogicalCoreId;
+pub use ccp_shared::types::PhysicalCoreId;
 pub use cpu_topology::CPUTopology;
 pub use errors::CPUTopologyError;
-pub use types::LogicalCoreId;
-pub use types::PhysicalCoreId;
