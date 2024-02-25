@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::time;
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
@@ -26,11 +28,14 @@ use cpu_utils::LogicalCoreId;
 use super::message::*;
 use super::UTResult;
 use crate::hashrate::HashrateCollector;
+use crate::hashrate::HashrateSaver;
 use crate::utility_thread::proof_storage::ProofStorage;
 use crate::utility_thread::UtilityThreadError;
 
 type ThreadShutdownInlet = oneshot::Sender<()>;
 type ThreadShutdownOutlet = oneshot::Receiver<()>;
+
+const HASHRATE_UPDATE_INTERVAL: u64 = 60;
 
 pub(crate) struct UtilityThread {
     to_utility: ToUtilityInlet,
@@ -39,20 +44,26 @@ pub(crate) struct UtilityThread {
 }
 
 impl UtilityThread {
-    pub(crate) fn spawn(core_id: LogicalCoreId, proof_storage_dir: std::path::PathBuf) -> Self {
+    pub(crate) fn spawn(
+        core_id: LogicalCoreId,
+        proof_storage_dir: std::path::PathBuf,
+        hashrate_dir: std::path::PathBuf,
+    ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(100);
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let new_proof_handler = NewProofHandler::new(proof_storage);
-        let hashrate = HashrateCollector::new();
+        let hashrate_collector = HashrateCollector::new();
+        let hashrate_saver = HashrateSaver::from_directory(hashrate_dir);
 
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
             from_utility,
             shutdown_out,
             new_proof_handler,
-            hashrate,
+            hashrate_collector,
+            hashrate_saver,
         ));
 
         Self {
@@ -78,11 +89,14 @@ impl UtilityThread {
         mut to_utility: ToUtilityOutlet,
         mut shutdown_out: ThreadShutdownOutlet,
         mut new_proof_handler: NewProofHandler,
-        mut hashrate: HashrateCollector,
+        mut hashrate_collector: HashrateCollector,
+        hashrate_saver: HashrateSaver,
     ) -> UTResult<()> {
         if !cpu_utils::pinning::pin_current_thread_to(core_id) {
             log::error!("utility_thread: failed to pin to {core_id} core");
         }
+
+        let mut hashrate_ticker = time::interval(Duration::from_secs(HASHRATE_UPDATE_INTERVAL));
 
         loop {
             tokio::select! {
@@ -94,9 +108,15 @@ impl UtilityThread {
                         }
                         ToUtilityMessage::Hashrate(entry) => {
                             log::info!("utility_thread: new hashrate message {entry}");
-                            hashrate.count_entry(entry);
+                            if let Some(prev_epoch_hashrate) = hashrate_collector.count_entry(entry) {
+                                hashrate_saver.save_hashrate_previous(prev_epoch_hashrate)?;
+                            }
                         }
                     }},
+                _ = hashrate_ticker.tick() => {
+                    let hashrate = hashrate_collector.collect();
+                    hashrate_saver.save_hashrate_current(hashrate)?;
+                }
                 _ = &mut shutdown_out => {
                     log::info!("utility_thread: utility thread was shutdown");
 

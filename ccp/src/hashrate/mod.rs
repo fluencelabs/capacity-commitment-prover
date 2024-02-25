@@ -15,7 +15,9 @@
  */
 
 mod hashrate_collector;
-mod hashrate_entry;
+mod hashrate_record;
+mod hashrate_saver;
 
 pub(crate) use hashrate_collector::HashrateCollector;
-pub(crate) use hashrate_entry::HashrateCUEntry;
+pub(crate) use hashrate_record::HashrateCURecord;
+pub(crate) use hashrate_saver::HashrateSaver;

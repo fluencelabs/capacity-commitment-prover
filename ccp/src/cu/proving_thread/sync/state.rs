@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
+use ccp_shared::types::{EpochParameters, LogicalCoreId};
+use tokio::time::Instant;
 
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::ResultHash;
@@ -26,8 +27,8 @@ use super::raw_proof::RawProof;
 use super::STResult;
 use crate::cu::proving_thread::messages::AsyncToSyncMessage;
 use crate::cu::proving_thread::messages::NewCCJob;
-use crate::utility_thread::message::ToUtilityInlet;
-use crate::utility_thread::message::ToUtilityMessage;
+use crate::cu::proving_thread::sync::channels_facade::ToUtility;
+use crate::hashrate::HashrateCURecord;
 
 /// The state machine of the sync part of proving thread, it
 #[derive(Debug)]
@@ -69,9 +70,14 @@ impl RandomXJob {
         Ok(params)
     }
 
-    pub(crate) fn cc_prove(&mut self, to_utility: &ToUtilityInlet) -> STResult<()> {
+    pub(crate) fn cc_prove(
+        &mut self,
+        core_id: LogicalCoreId,
+        to_utility: &ToUtility,
+    ) -> STResult<()> {
         use ccp_shared::meet_difficulty::MeetDifficulty;
 
+        let start = Instant::now();
         self.hash_first();
 
         for hash_id in 0..self.hashes_per_round {
@@ -85,12 +91,21 @@ impl RandomXJob {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", self.local_nonce);
 
                 let proof = self.create_golden_proof(result_hash);
-                let message = ToUtilityMessage::proof_found(proof);
-                to_utility.blocking_send(message)?;
+                to_utility.send_proof(proof)?;
             }
         }
 
+        let duration = start.elapsed();
+
+        let message =
+            HashrateCURecord::hashes_checked(self.epoch, core_id, duration, self.hashes_per_round);
+        to_utility.send_hashrate(message)?;
+
         Ok(())
+    }
+
+    pub(crate) fn epoch(&self) -> EpochParameters {
+        self.epoch
     }
 
     fn is_last_iteration(&self, hash_id: usize) -> bool {

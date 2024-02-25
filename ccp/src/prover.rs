@@ -93,7 +93,11 @@ impl ToCCStatus for CCProver {
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
-        let utility_thread = UtilityThread::spawn(utility_core_id, config.dir_to_store_proofs);
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            config.dir_to_store_proofs,
+            config.dir_to_store_persistent_state,
+        );
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,

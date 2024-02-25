@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+mod channels_facade;
 mod errors;
 mod local_nonce;
 mod raw_proof;

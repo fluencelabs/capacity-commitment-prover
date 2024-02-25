@@ -50,6 +50,10 @@ impl ProvingThreadSyncError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
     }
+
+    pub fn pinning_failed(core_id: LogicalCoreId) -> Self {
+        Self::ThreadPinFailed { core_id }
+    }
 }
 
 impl ProvingThreadSyncFacadeError {

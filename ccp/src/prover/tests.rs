@@ -142,13 +142,9 @@ async fn prover_on_active_no_active_commitment() {
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
-<<<<<<< HEAD
-async fn prover_on_active_reduce_on_active_commitment__() {
+async fn prover_on_active_reduce_allocation_on_active_commitment() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-=======
-async fn prover_on_active_reduce_allocation_on_active_commitment() {
->>>>>>> main
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
