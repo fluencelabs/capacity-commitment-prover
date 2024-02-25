@@ -75,18 +75,22 @@ fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> boo
     true
 }
 
-#[tokio::test]
-async fn idle_cu_prover_can_be_stopped() {
-    let config = CUProverConfig {
+fn create_config(cores_count: usize) -> CUProverConfig {
+    CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
+            threads_per_physical_core: std::num::NonZeroUsize::new(cores_count).unwrap(),
         },
         enable_msr: false,
-    };
+    }
+}
 
+#[tokio::test]
+async fn idle_cu_prover_can_be_stopped() {
     let (inlet, mut outlet) = mpsc::channel(1);
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+
+    let config = create_config(1);
     let prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
     let actual_status = prover.status();
@@ -103,21 +107,13 @@ async fn idle_cu_prover_can_be_stopped() {
 async fn cu_prover_can_be_stopped() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
-        },
-        enable_msr: false,
-    };
-
+    let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
-    let cu_id = test::generate_cu_id(1);
-
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     let epoch = test::generate_epoch_params(1, 0xFF);
+    let cu_id = test::generate_cu_id(1);
     prover.new_epoch(epoch, cu_id).await.unwrap();
 
     let actual_status = prover.status();
@@ -132,17 +128,9 @@ async fn cu_prover_can_be_stopped() {
 async fn cu_prover_can_be_paused() {
     use std::sync;
 
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(1).unwrap(),
-        },
-        enable_msr: false,
-    };
-
+    let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
-    let cu_id = test::generate_cu_id(1);
 
     let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
 
@@ -164,12 +152,13 @@ async fn cu_prover_can_be_paused() {
     });
 
     let epoch = test::generate_epoch_params(1, 0xFF);
+    let cu_id = test::generate_cu_id(1);
     prover.new_epoch(epoch, cu_id).await.unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     prover.pause().await.unwrap();
 
     let status = prover.status();
@@ -180,7 +169,7 @@ async fn cu_prover_can_be_paused() {
         *is_thread_paused_locked.borrow_mut() = true;
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     prover.stop().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
@@ -192,14 +181,7 @@ async fn cu_prover_can_be_paused() {
 async fn cu_prover_produces_correct_proofs() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
-        },
-        enable_msr: false,
-    };
-
+    let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
@@ -209,20 +191,23 @@ async fn cu_prover_produces_correct_proofs() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            proofs.push(proof)
+        while let Some(message) = outlet.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                _ => {}
+            }
         }
         proofs
     });
 
     prover.new_epoch(epoch_1, cu_id_1).await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let epoch_2 = test::generate_epoch_params(2, 0xFF);
     let cu_id_2 = test::generate_cu_id(2);
 
     prover.new_epoch(epoch_2, cu_id_2).await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let result = prover.stop().await;
     let proofs = handle.await.unwrap();
@@ -233,14 +218,7 @@ async fn cu_prover_produces_correct_proofs() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_works_with_odd_threads_number() {
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(5).unwrap(),
-        },
-        enable_msr: false,
-    };
-
+    let config = create_config(5);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
@@ -250,8 +228,11 @@ async fn cu_prover_works_with_odd_threads_number() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            proofs.push(proof);
+        while let Some(message) = outlet.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                _ => {}
+            }
         }
 
         proofs
@@ -259,7 +240,7 @@ async fn cu_prover_works_with_odd_threads_number() {
 
     prover.new_epoch(epoch, cu_id).await.unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     let result = prover.stop().await;
     let proofs = handle.await.unwrap();
 
@@ -271,14 +252,7 @@ async fn cu_prover_works_with_odd_threads_number() {
 async fn cu_prover_changes_epoch_correctly() {
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let config = CUProverConfig {
-        randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: std::num::NonZeroUsize::new(2).unwrap(),
-        },
-        enable_msr: false,
-    };
-
+    let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
 
@@ -297,12 +271,15 @@ async fn cu_prover_changes_epoch_correctly() {
 
         let mut proofs: HashMap<EpochParameters, Vec<_>> = HashMap::new();
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            match proofs.entry(proof.epoch) {
-                Entry::Vacant(entry) => {
-                    entry.insert(vec![proof]);
-                }
-                Entry::Occupied(mut entry) => entry.get_mut().push(proof),
+        while let Some(message) = outlet.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => match proofs.entry(proof.epoch) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(vec![proof]);
+                    }
+                    Entry::Occupied(mut entry) => entry.get_mut().push(proof),
+                },
+                _ => {}
             }
         }
 
@@ -314,7 +291,7 @@ async fn cu_prover_changes_epoch_correctly() {
             .new_epoch(params[param_id].0, params[param_id].1)
             .await
             .unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
 
     let result = prover.stop().await;
