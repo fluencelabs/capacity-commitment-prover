@@ -46,12 +46,15 @@ impl ThreadInitIngredients {
 
         let mut thread = ProvingThreadAsync::new(core_id, inlet, false);
         let dataset = thread.allocate_dataset(flags).await.unwrap();
-        let cache = thread
-            .create_cache(epoch.global_nonce, cu_id, flags)
-            .await
-            .unwrap();
+        let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
-            .initialize_dataset(cache.handle(), dataset.handle(), 0, dataset.items_count())
+            .initialize_dataset(
+                epoch,
+                cache.handle(),
+                dataset.handle(),
+                0,
+                dataset.items_count(),
+            )
             .await
             .unwrap();
 
@@ -65,7 +68,7 @@ impl ThreadInitIngredients {
 
 #[tokio::test]
 async fn cache_creation_works() {
-    let global_nonce = test::generate_global_nonce(1);
+    let epoch = test::generate_epoch_params(1, 0xFF);
     let local_nonce = test::generate_local_nonce(1);
     let cu_id = test::generate_cu_id(1);
 
@@ -73,16 +76,13 @@ async fn cache_creation_works() {
 
     let (inlet, _outlet) = mpsc::channel(1);
     let mut thread = ProvingThreadAsync::new(2.into(), inlet, false);
-    let actual_cache = thread
-        .create_cache(global_nonce, cu_id, flags)
-        .await
-        .unwrap();
+    let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop().await.unwrap();
 
     let actual_vm = RandomXVM::light(actual_cache.handle(), flags).unwrap();
     let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
-    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
     let expected_result_hash =
         run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
@@ -91,7 +91,7 @@ async fn cache_creation_works() {
 
 #[tokio::test]
 async fn dataset_creation_works() {
-    let global_nonce = test::generate_global_nonce(2);
+    let epoch = test::generate_epoch_params(2, 0xFF);
     let local_nonce = test::generate_local_nonce(2);
     let cu_id = test::generate_cu_id(2);
 
@@ -100,12 +100,10 @@ async fn dataset_creation_works() {
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut thread = ProvingThreadAsync::new(2.into(), inlet, false);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
-    let actual_cache = thread
-        .create_cache(global_nonce, cu_id, flags)
-        .await
-        .unwrap();
+    let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread
         .initialize_dataset(
+            epoch,
             actual_cache.handle(),
             actual_dataset.handle(),
             0,
@@ -124,7 +122,7 @@ async fn dataset_creation_works() {
     let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let flags = RandomXFlags::recommended();
-    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
     let expected_result_hash =
         run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
@@ -137,7 +135,7 @@ async fn dataset_creation_works_with_three_threads() {
 
     let _ = env_logger::builder().is_test(true).try_init();
 
-    let global_nonce = test::generate_global_nonce(3);
+    let epoch = test::generate_epoch_params(3, 0xFF);
     let local_nonce = test::generate_local_nonce(3);
     let cu_id = test::generate_cu_id(3);
 
@@ -152,10 +150,7 @@ async fn dataset_creation_works_with_three_threads() {
 
     let thread_1 = &mut threads[0];
     let actual_dataset = thread_1.allocate_dataset(flags).await.unwrap();
-    let actual_cache = thread_1
-        .create_cache(global_nonce, cu_id, flags)
-        .await
-        .unwrap();
+    let actual_cache = thread_1.create_cache(epoch, cu_id, flags).await.unwrap();
 
     let dataset_size = actual_dataset.items_count();
 
@@ -172,7 +167,7 @@ async fn dataset_creation_works_with_three_threads() {
 
         async move {
             thread
-                .initialize_dataset(cache, dataset, start_item, items_count)
+                .initialize_dataset(epoch, cache, dataset, start_item, items_count)
                 .await
                 .unwrap();
 
@@ -190,7 +185,7 @@ async fn dataset_creation_works_with_three_threads() {
     let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
 
     let flags = RandomXFlags::recommended();
-    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&global_nonce, &cu_id);
+    let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
     let expected_result_hash =
         run_light_randomx(global_nonce_cu.as_slice(), local_nonce.as_ref(), flags);
 
@@ -206,7 +201,7 @@ async fn cc_job_stopable() {
     let flags = RandomXFlags::recommended_full_mem();
     ingredients
         .thread
-        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
+        .run_cc_job(epoch, ingredients.dataset, flags, cu_id)
         .await
         .unwrap();
 
@@ -244,7 +239,7 @@ async fn cc_job_pausable() {
     let flags = RandomXFlags::recommended_full_mem();
     ingredients
         .thread
-        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
+        .run_cc_job(epoch, ingredients.dataset, flags, cu_id)
         .await
         .unwrap();
 
@@ -299,7 +294,7 @@ async fn proving_thread_works() {
     let flags = RandomXFlags::recommended_full_mem();
     ingredients
         .thread
-        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
+        .run_cc_job(epoch, ingredients.dataset, flags, cu_id)
         .await
         .unwrap();
 
@@ -368,7 +363,7 @@ async fn proving_therad_produces_repeatable_hashes() {
     let flags = RandomXFlags::recommended_full_mem();
     ingredients
         .thread
-        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
+        .run_cc_job(epoch, ingredients.dataset, flags, cu_id)
         .await
         .unwrap();
 
