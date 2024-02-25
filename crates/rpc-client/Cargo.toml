@@ -2,16 +2,22 @@
 name = "ccp-rpc-client"
 description = "CCP RPC client"
 version = "0.1.0"
-authors = ["Fluence Labs"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = true
 
-[dependencies]
-ccp-shared = { workspace = true }
-hex = "0.4.3"
+[lib]
+path = "src/lib.rs"
+doctest = false
 
-jsonrpsee = { workspace = true }
-serde = { workspace = true }
+[dependencies]
+ccp-shared.workspace = true
+
+hex.workspace = true
+jsonrpsee.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.113"
+serde_json.workspace = true

@@ -1,14 +1,22 @@
 [package]
 name = "ccp-msr"
 description = "A library for reading and writing MSR register_idisters on x86_64 CPUs"
-authors = ["Fluence Labs"]
 version = "0.1.0"
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = true
+
+[lib]
+path = "src/lib.rs"
+doctest = false
 
 [dependencies]
-cpu-utils = { workspace = true }
-thiserror = { workspace = true }
-nix = { workspace = true }
-once_cell = { workspace = true }
-raw-cpuid = { workspace = true }
+cpu-utils.workspace = true
+
+thiserror.workspace = true
+nix.workspace = true
+once_cell.workspace = true
+raw-cpuid.workspace = true
 tracing.workspace = true

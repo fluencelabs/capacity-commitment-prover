@@ -1,9 +1,11 @@
 [package]
 name = "capacity-commitment-prover"
-description = ""
+description = "The core project of the capacity commitment prover for the Fluence protocol"
 version = "0.1.0"
-authors = ["Fluence Labs"]
-edition = "2021"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = true
 
 [lib]
@@ -11,31 +13,31 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-ccp-config = { workspace = true }
-ccp-randomx = { workspace = true }
-ccp-msr = { workspace = true }
-ccp-shared = { workspace = true }
-ccp-test-utils = { workspace = true }
-ccp-utils = { workspace = true }
-cpu-utils = { workspace = true }
+ccp-config.workspace = true
+ccp-randomx.workspace = true
+ccp-msr.workspace = true
+ccp-shared.workspace = true
+ccp-test-utils.workspace = true
+ccp-utils.workspace = true
+cpu-utils.workspace = true
 
-tokio = { workspace = true }
-tokio-stream = {workspace = true}
-futures = { workspace = true }
+tokio.workspace = true
+tokio-stream.workspace = true
+futures.workspace = true
 
-anyhow = { workspace = true }
-byteorder = { workspace = true }
-chrono = { workspace = true }
-env_logger = { workspace = true }
-rand = { workspace = true }
-log = {workspace = true}
-nonempty = {workspace = true}
-serde = { workspace = true }
-serde_json = { workspace = true }
-thiserror = { workspace = true }
+anyhow.workspace = true
+byteorder.workspace = true
+chrono.workspace = true
+env_logger.workspace = true
+rand.workspace = true
+log.workspace = true
+nonempty.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
-maplit = "1.0.2"
-tempdir = "0.3.7"
-tokio = { workspace = true, features = ["rt-multi-thread"] }
-test-log = { workspace = true }
+maplit.workspace = true
+tempdir.workspace = true
+tokio.workspace = true
+test-log.workspace = true
