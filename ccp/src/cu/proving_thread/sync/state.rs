@@ -91,7 +91,7 @@ impl RandomXJob {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", self.local_nonce);
 
                 let proof = self.create_golden_proof(result_hash);
-                to_utility.send_proof(proof)?;
+                to_utility.send_proof(core_id, proof)?;
             }
         }
 

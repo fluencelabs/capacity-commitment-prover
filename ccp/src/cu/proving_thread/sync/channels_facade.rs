@@ -76,8 +76,8 @@ impl ToUtility {
         Self { to_utility }
     }
 
-    pub(crate) fn send_proof(&self, proof: RawProof) -> STResult<()> {
-        let message = ToUtilityMessage::proof_found(proof);
+    pub(crate) fn send_proof(&self, core_id: LogicalCoreId, proof: RawProof) -> STResult<()> {
+        let message = ToUtilityMessage::proof_found(core_id, proof);
         self.to_utility.blocking_send(message).map_err(Into::into)
     }
 

@@ -102,7 +102,10 @@ impl UtilityThread {
             tokio::select! {
                 Some(message) = to_utility.recv() => {
                     match message {
-                        ToUtilityMessage::ProofFound(proof) => new_proof_handler.handle_found_proof(proof).await?,
+                        ToUtilityMessage::ProofFound { core_id, proof} => {
+                            new_proof_handler.handle_found_proof(proof).await?;
+                            hashrate_collector.proof_found(core_id);
+                        }
                         ToUtilityMessage::ErrorHappened { thread_location, error} => {
                             log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
                         }

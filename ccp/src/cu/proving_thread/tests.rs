@@ -211,7 +211,7 @@ async fn cc_job_stopable() {
 
         while let Some(message) = ingredients.to_utility.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => {
+                ToUtilityMessage::ProofFound { proof, .. } => {
                     let expected_result_hash = run_light_randomx(
                         global_nonce_cu.as_slice(),
                         proof.local_nonce.as_ref(),
@@ -252,7 +252,7 @@ async fn cc_job_pausable() {
 
         while let Some(message) = ingredients.to_utility.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => {
+                ToUtilityMessage::ProofFound { proof, .. } => {
                     let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
                     if !*is_thread_paused_locked.borrow() {
                         proofs_before_pause.push(proof);
@@ -302,7 +302,7 @@ async fn proving_thread_works() {
         let mut proofs = Vec::new();
         while let Some(message) = ingredients.to_utility.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -352,7 +352,7 @@ async fn proving_therad_produces_repeatable_hashes() {
         let mut proofs = Vec::new();
         while let Some(message) = ingredients.to_utility.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }

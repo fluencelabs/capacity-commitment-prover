@@ -25,7 +25,10 @@ pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
 pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
 
 pub(crate) enum ToUtilityMessage {
-    ProofFound(RawProof),
+    ProofFound {
+        core_id: LogicalCoreId,
+        proof: RawProof,
+    },
     ErrorHappened {
         thread_location: LogicalCoreId,
         error: ProvingThreadSyncError,
@@ -34,8 +37,8 @@ pub(crate) enum ToUtilityMessage {
 }
 
 impl ToUtilityMessage {
-    pub(crate) fn proof_found(proof: RawProof) -> Self {
-        Self::ProofFound(proof)
+    pub(crate) fn proof_found(core_id: LogicalCoreId, proof: RawProof) -> Self {
+        Self::ProofFound { core_id, proof }
     }
 
     pub(crate) fn error_happened(

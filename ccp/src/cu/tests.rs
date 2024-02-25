@@ -143,7 +143,7 @@ async fn cu_prover_can_be_paused() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => {
+                ToUtilityMessage::ProofFound { proof, .. } => {
                     let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
                     if !*is_thread_paused_locked.borrow() {
                         proofs_before_pause.push(proof);
@@ -200,7 +200,7 @@ async fn cu_prover_produces_correct_proofs() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -237,7 +237,7 @@ async fn cu_prover_works_with_odd_threads_number() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -280,7 +280,7 @@ async fn cu_prover_changes_epoch_correctly() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => match proofs.entry(proof.epoch) {
+                ToUtilityMessage::ProofFound { proof, .. } => match proofs.entry(proof.epoch) {
                     Entry::Vacant(entry) => {
                         entry.insert(vec![proof]);
                     }
