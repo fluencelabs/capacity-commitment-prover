@@ -272,7 +272,7 @@ async fn cc_job_pausable() {
         (proofs_before_pause, proofs_after_pause)
     });
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     ingredients.thread.pause().await.unwrap();
 
     {
@@ -280,7 +280,7 @@ async fn cc_job_pausable() {
         *is_thread_paused_locked.borrow_mut() = true;
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     ingredients.thread.stop().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
@@ -372,7 +372,7 @@ async fn proving_therad_produces_repeatable_hashes() {
         .await
         .unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     ingredients.thread.stop().await.unwrap();
     let proofs = handle.await.unwrap();

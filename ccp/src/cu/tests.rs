@@ -158,7 +158,7 @@ async fn cu_prover_can_be_paused() {
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     prover.pause().await.unwrap();
 
     let status = prover.status();
@@ -169,7 +169,7 @@ async fn cu_prover_can_be_paused() {
         *is_thread_paused_locked.borrow_mut() = true;
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     prover.stop().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
@@ -201,13 +201,13 @@ async fn cu_prover_produces_correct_proofs() {
     });
 
     prover.new_epoch(epoch_1, cu_id_1).await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let epoch_2 = test::generate_epoch_params(2, 0xFF);
     let cu_id_2 = test::generate_cu_id(2);
 
     prover.new_epoch(epoch_2, cu_id_2).await.unwrap();
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let result = prover.stop().await;
     let proofs = handle.await.unwrap();
@@ -240,7 +240,7 @@ async fn cu_prover_works_with_odd_threads_number() {
 
     prover.new_epoch(epoch, cu_id).await.unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     let result = prover.stop().await;
     let proofs = handle.await.unwrap();
 
@@ -291,7 +291,7 @@ async fn cu_prover_changes_epoch_correctly() {
             .new_epoch(params[param_id].0, params[param_id].1)
             .await
             .unwrap();
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
 
     let result = prover.stop().await;
