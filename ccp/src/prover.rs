@@ -210,8 +210,10 @@ impl CCProver {
             &self.cu_provers,
             self.status,
         );
+        self.align_with(roadmap).await?;
         self.status = CCStatus::Running { epoch: new_epoch };
-        self.align_with(roadmap).await
+
+        Ok(())
     }
 }
 

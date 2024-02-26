@@ -18,18 +18,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
-name = "affinity"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "763e484feceb7dd021b21c5c6f81aee06b1594a743455ec7efbf72e6355e447b"
-dependencies = [
- "cfg-if",
- "errno",
- "libc",
- "num_cpus",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -272,13 +260,13 @@ dependencies = [
 name = "ccp-main"
 version = "0.1.0"
 dependencies = [
- "affinity",
  "capacity-commitment-prover",
  "ccp-config",
  "ccp-randomx",
  "ccp-rpc-server",
  "ccp-shared",
  "clap",
+ "cpu-utils",
  "eyre",
  "tokio",
  "tracing",
@@ -340,8 +328,8 @@ dependencies = [
 name = "ccp-shared"
 version = "0.1.0"
 dependencies = [
- "cpu-utils",
  "hex",
+ "newtype_derive",
  "rand 0.8.5",
  "serde",
 ]
@@ -477,9 +465,9 @@ dependencies = [
 name = "cpu-utils"
 version = "0.1.0"
 dependencies = [
+ "ccp-shared",
  "core_affinity",
  "hwlocality",
- "newtype_derive",
  "nonempty",
  "serde",
  "thiserror",

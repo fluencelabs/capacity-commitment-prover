@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+mod core;
 mod cuid;
 mod difficulty;
 mod epoch_parameters;
@@ -23,6 +24,9 @@ mod result_hash;
 
 use std::collections::HashMap;
 
+pub use core::CPUIdType;
+pub use core::LogicalCoreId;
+pub use core::PhysicalCoreId;
 pub use cuid::CUIDInner;
 pub use cuid::CUID;
 pub use difficulty::Difficulty;
@@ -36,6 +40,4 @@ pub use result_hash::ResultHash;
 pub use result_hash::ResultHashInner;
 pub use result_hash::RANDOMX_RESULT_SIZE;
 
-pub use cpu_utils::LogicalCoreId;
-pub use cpu_utils::PhysicalCoreId;
 pub type CUAllocation = HashMap<PhysicalCoreId, CUID>;

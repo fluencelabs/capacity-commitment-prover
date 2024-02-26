@@ -31,33 +31,36 @@ use crate::utility_thread::message::RawProof;
 use crate::utility_thread::message::ToUtilityMessage;
 use crate::utility_thread::message::ToUtilityOutlet;
 
-#[allow(dead_code)]
-async fn create_thread_init_dataset(
-    core_id: LogicalCoreId,
-    epoch: EpochParameters,
-    cu_id: CUID,
-) -> (ProvingThreadAsync, DatasetHandle, ToUtilityOutlet) {
-    let flags = RandomXFlags::recommended_full_mem();
+pub(crate) struct ThreadInitIngredients {
+    pub(crate) thread: ProvingThreadAsync,
+    pub(crate) dataset: DatasetHandle,
+    pub(crate) to_utility: ToUtilityOutlet,
+}
 
-    let (inlet, outlet) = mpsc::channel(1);
+impl ThreadInitIngredients {
+    #[allow(dead_code)]
+    pub(self) async fn create(core_id: LogicalCoreId, epoch: EpochParameters, cu_id: CUID) -> Self {
+        let flags = RandomXFlags::recommended_full_mem();
 
-    let mut thread = ProvingThreadAsync::new(core_id, inlet, false);
-    let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
-    let actual_cache = thread
-        .create_cache(epoch.global_nonce, cu_id, flags)
-        .await
-        .unwrap();
-    thread
-        .initialize_dataset(
-            actual_cache.handle(),
-            actual_dataset.handle(),
-            0,
-            actual_dataset.items_count(),
-        )
-        .await
-        .unwrap();
+        let (inlet, outlet) = mpsc::channel(1);
 
-    (thread, actual_dataset.handle(), outlet)
+        let mut thread = ProvingThreadAsync::new(core_id, inlet, false);
+        let dataset = thread.allocate_dataset(flags).await.unwrap();
+        let cache = thread
+            .create_cache(epoch.global_nonce, cu_id, flags)
+            .await
+            .unwrap();
+        thread
+            .initialize_dataset(cache.handle(), dataset.handle(), 0, dataset.items_count())
+            .await
+            .unwrap();
+
+        Self {
+            thread,
+            dataset: dataset.handle(),
+            to_utility: outlet,
+        }
+    }
 }
 
 #[tokio::test]
@@ -94,7 +97,7 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, _outlet) = mpsc::channel(1);
+    let (inlet, mut outlet) = mpsc::channel(1);
     let mut thread = ProvingThreadAsync::new(2.into(), inlet, false);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread
@@ -110,7 +113,11 @@ async fn dataset_creation_works() {
         )
         .await
         .unwrap();
+
+    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+
     thread.stop().await.unwrap();
+    handle.await.unwrap();
 
     let flags = RandomXFlags::recommended_full_mem();
     let actual_vm = RandomXVM::fast(actual_dataset.handle(), flags).unwrap();
@@ -136,7 +143,7 @@ async fn dataset_creation_works_with_three_threads() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, _outlet) = mpsc::channel(1);
+    let (inlet, _outlet) = mpsc::channel(100);
     let threads_count = 3u32;
 
     let mut threads = (0..threads_count)
@@ -194,12 +201,12 @@ async fn dataset_creation_works_with_three_threads() {
 async fn cc_job_stopable() {
     let epoch = test::generate_epoch_params(4, 0xFF);
     let cu_id = test::generate_cu_id(4);
-    let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(2.into(), epoch, cu_id).await;
+    let mut ingredients = ThreadInitIngredients::create(2.into(), epoch, cu_id).await;
 
     let flags = RandomXFlags::recommended_full_mem();
-    thread
-        .run_cc_job(actual_dataset, flags, epoch, cu_id)
+    ingredients
+        .thread
+        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -207,17 +214,22 @@ async fn cc_job_stopable() {
         let flags = RandomXFlags::recommended();
         let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            let expected_result_hash = run_light_randomx(
-                global_nonce_cu.as_slice(),
-                proof.local_nonce.as_ref(),
-                flags,
-            );
-            assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
+        while let Some(message) = ingredients.to_utility.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => {
+                    let expected_result_hash = run_light_randomx(
+                        global_nonce_cu.as_slice(),
+                        proof.local_nonce.as_ref(),
+                        flags,
+                    );
+                    assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
+                }
+                _ => {}
+            }
         }
     });
 
-    thread.stop().await.unwrap();
+    ingredients.thread.stop().await.unwrap();
     let _ = handle.await;
 }
 
@@ -227,13 +239,12 @@ async fn cc_job_pausable() {
 
     let epoch = test::generate_epoch_params(5, 0xFF);
     let cu_id = test::generate_cu_id(5);
-
-    let (mut thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(3.into(), epoch, cu_id).await;
+    let mut ingredients = ThreadInitIngredients::create(3.into(), epoch, cu_id).await;
 
     let flags = RandomXFlags::recommended_full_mem();
-    thread
-        .run_cc_job(actual_dataset, flags, epoch, cu_id)
+    ingredients
+        .thread
+        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
@@ -244,28 +255,33 @@ async fn cc_job_pausable() {
         let mut proofs_before_pause = Vec::new();
         let mut proofs_after_pause = Vec::new();
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
-            if !*is_thread_paused_locked.borrow() {
-                proofs_before_pause.push(proof);
-            } else {
-                proofs_after_pause.push(proof);
+        while let Some(message) = ingredients.to_utility.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => {
+                    let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
+                    if !*is_thread_paused_locked.borrow() {
+                        proofs_before_pause.push(proof);
+                    } else {
+                        proofs_after_pause.push(proof);
+                    }
+                }
+                _ => {}
             }
         }
 
         (proofs_before_pause, proofs_after_pause)
     });
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
-    thread.pause().await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+    ingredients.thread.pause().await.unwrap();
 
     {
         let is_thread_paused_locked = is_thread_paused.lock().unwrap();
         *is_thread_paused_locked.borrow_mut() = true;
     }
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
-    thread.stop().await.unwrap();
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
+    ingredients.thread.stop().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
     assert!(!proofs_before_pause.is_empty());
@@ -274,29 +290,34 @@ async fn cc_job_pausable() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn proving_thread_works() {
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let epoch = test::generate_epoch_params(6, 0xFF);
     let cu_id = test::generate_cu_id(6);
-    let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(4.into(), epoch, cu_id).await;
+    let mut ingredients = ThreadInitIngredients::create(4.into(), epoch, cu_id).await;
 
     let flags = RandomXFlags::recommended_full_mem();
-    thread
-        .run_cc_job(actual_dataset, flags, epoch, cu_id)
+    ingredients
+        .thread
+        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
-    let message = outlet.recv().await.unwrap();
-    let proof = match message {
-        ToUtilityMessage::ProofFound(proof) => proof,
-        ToUtilityMessage::ErrorHappened { .. } => {
-            panic!()
+    let handle = tokio::spawn(async move {
+        let mut proofs = Vec::new();
+        while let Some(message) = ingredients.to_utility.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                _ => {}
+            }
         }
-    };
 
-    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+        proofs
+    });
 
-    thread.stop().await.unwrap();
-    let _ = handle.await;
+    ingredients.thread.stop().await.unwrap();
+    let proofs = handle.await.unwrap();
+    let proof = proofs[0];
 
     let flags = RandomXFlags::recommended();
     let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
@@ -330,27 +351,30 @@ fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: 
 async fn proving_therad_produces_repeatable_hashes() {
     let epoch = test::generate_epoch_params(7, 0xFF);
     let cu_id = test::generate_cu_id(7);
-    let (thread, actual_dataset, mut outlet) =
-        create_thread_init_dataset(5.into(), epoch, cu_id).await;
+    let mut ingredients = ThreadInitIngredients::create(5.into(), epoch, cu_id).await;
 
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            proofs.push(proof)
+        while let Some(message) = ingredients.to_utility.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                _ => {}
+            }
         }
 
         proofs
     });
 
     let flags = RandomXFlags::recommended_full_mem();
-    thread
-        .run_cc_job(actual_dataset, flags, epoch, cu_id)
+    ingredients
+        .thread
+        .run_cc_job(ingredients.dataset, flags, epoch, cu_id)
         .await
         .unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
-    thread.stop().await.unwrap();
+    ingredients.thread.stop().await.unwrap();
     let proofs = handle.await.unwrap();
     batch_proof_verification(proofs.into_iter(), epoch.difficulty);
 }
