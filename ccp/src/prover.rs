@@ -62,8 +62,10 @@ impl NoxCCPApi for CCProver {
             &self.cu_provers,
             self.status,
         );
+        self.align_with(roadmap).await?;
         self.status = CCStatus::Running { epoch: new_epoch };
-        self.align_with(roadmap).await
+
+        Ok(())
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
