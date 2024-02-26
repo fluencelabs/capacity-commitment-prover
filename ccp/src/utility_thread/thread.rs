@@ -38,12 +38,18 @@ pub(crate) struct UtilityThread {
 }
 
 impl UtilityThread {
-    pub(crate) fn spawn(core_id: LogicalCoreId, proof_storage_dir: std::path::PathBuf) -> Self {
+    pub(crate) fn spawn(
+        core_id: LogicalCoreId,
+        prev_proof_idx: ProofIdx,
+        proof_storage_dir: std::path::PathBuf,
+        prev_global_nonce: Option<GlobalNonce>,
+    ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(100);
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
-        let new_proof_handler = NewProofHandler::new(proof_storage);
+        let new_proof_handler =
+            NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
 
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
@@ -106,10 +112,14 @@ struct NewProofHandler {
 }
 
 impl NewProofHandler {
-    pub(self) fn new(proof_storage: ProofStorage) -> Self {
+    pub(self) fn new(
+        proof_storage: ProofStorage,
+        prev_proof_idx: ProofIdx,
+        last_seen_global_nonce: Option<GlobalNonce>,
+    ) -> Self {
         Self {
-            proof_idx: ProofIdx::zero(),
-            last_seen_global_nonce: GlobalNonce::new([0u8; 32]),
+            proof_idx: prev_proof_idx,
+            last_seen_global_nonce: last_seen_global_nonce.unwrap_or(GlobalNonce::new([0u8; 32])),
             proof_storage,
         }
     }

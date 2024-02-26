@@ -1,14 +1,17 @@
-use std::{path::PathBuf, time::Duration};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-use crate::CCProver;
+use crate::{state_storage::CCPState, CCProver};
 use ccp_config::CCPConfig;
-use ccp_randomx::RandomXFlags;
+use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
+use ccp_shared::types::LocalNonce;
 use ccp_shared::{
     nox_ccp_api::NoxCCPApi,
     types::{CUAllocation, EpochParameters, CUID},
 };
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
+use randomx_rust_wrapper::{RandomXFlags, ResultHash};
 use test_log::test;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
@@ -33,6 +36,26 @@ fn get_prover(
     CCProver::new(0.into(), config)
 }
 
+async fn get_prover_from_saved_state(
+    dir_to_store_proofs: impl Into<PathBuf>,
+    dir_to_store_persistent_state: impl Into<PathBuf>,
+) -> CCProver {
+    let dir_to_store_proofs = dir_to_store_proofs.into();
+    let dir_to_store_persistent_state = dir_to_store_persistent_state.into();
+    let enable_msr = false;
+    let config = CCPConfig {
+        thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: 1.try_into().unwrap(),
+        },
+        randomx_flags: RandomXFlags::recommended_full_mem(),
+        dir_to_store_proofs,
+        dir_to_store_persistent_state,
+        enable_msr,
+    };
+
+    CCProver::from_saved_state(0.into(), config).await.unwrap()
+}
+
 fn get_epoch_params() -> EpochParameters {
     generate_epoch_params(1, 50)
 }
@@ -50,18 +73,30 @@ fn get_cu_allocation() -> CUAllocation {
     }
 }
 
+fn load_state(state_dir: &Path) -> Option<CCPState> {
+    let state_data = std::fs::read(state_dir.join("state.json")).unwrap();
+    serde_json::from_slice(&state_data).unwrap()
+}
+
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
-    let cu_alloc = get_cu_allocation();
     let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
     prover
-        .on_active_commitment(epoch_params.clone(), cu_alloc.clone())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
+
+    let state = load_state(state_dir.path());
+    let expected_state = Some(CCPState {
+        epoch_params,
+        cu_allocation: cu_allocation.clone(),
+    });
+
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs = prover
@@ -79,7 +114,10 @@ async fn prover_on_active_commitment() {
 
     for proof in proofs {
         assert!(
-            cu_alloc.values().find(|p| *p == &proof.cu_id).is_some(),
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
             "{:?}",
             proof
         );
@@ -92,6 +130,9 @@ async fn prover_on_active_commitment() {
     }
 
     prover.stop().await.unwrap();
+
+    assert_eq!(state, expected_state);
+    assert!(!state_dir.path().join("state.json.draft").exists());
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -117,8 +158,11 @@ async fn prover_on_active_no_active_commitment() {
     let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
     let state_dir = tempdir::TempDir::new("state").unwrap();
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+
     prover
-        .on_active_commitment(get_epoch_params(), get_cu_allocation())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
 
@@ -132,13 +176,19 @@ async fn prover_on_active_no_active_commitment() {
 
     prover.on_no_active_commitment().await.unwrap();
 
+    // state is cleared on no_active_commitment
+    let state = load_state(state_dir.path());
+    let expected_state = None;
+
     let proofs_after = prover
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
-    assert!(proofs_after.is_empty());
 
     prover.stop().await.unwrap();
+
+    assert!(proofs_after.is_empty());
+    assert_eq!(state, expected_state);
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -148,8 +198,9 @@ async fn prover_on_active_reduce_allocation_on_active_commitment() {
 
     let mut prover = get_prover(proofs_dir.path(), state_dir.path());
     let mut cu_allocation = get_cu_allocation();
+    let epoch_params = get_epoch_params();
     prover
-        .on_active_commitment(get_epoch_params(), cu_allocation.clone())
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
 
@@ -157,7 +208,7 @@ async fn prover_on_active_reduce_allocation_on_active_commitment() {
 
     cu_allocation.remove(&2.into()).unwrap();
     prover
-        .on_active_commitment(get_epoch_params(), cu_allocation)
+        .on_active_commitment(epoch_params, cu_allocation)
         .await
         .unwrap();
 
@@ -333,12 +384,22 @@ async fn prover_on_active_change_epoch() {
         .await
         .unwrap();
 
+    let state = load_state(state_dir.path());
+    let expected_state = Some(CCPState {
+        epoch_params: epoch_params_second,
+        cu_allocation: cu_allocation.clone(),
+    });
+
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
+
+    prover.stop().await.unwrap();
+
+    assert_eq!(state, expected_state);
 
     for proof in proofs_after {
         assert!(
@@ -360,6 +421,188 @@ async fn prover_on_active_change_epoch() {
             proof
         );
     }
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_restore_from_state_with_no_proofs() {
+    let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+
+    let state_path = state_dir.path().join("state.json");
+    let initial_state = Some(CCPState {
+        epoch_params,
+        cu_allocation: cu_allocation.clone(),
+    });
+    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
+        .await
+        .unwrap();
+
+    let prover = get_prover_from_saved_state(proofs_dir.path(), state_dir.path()).await;
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    let state = load_state(state_dir.path());
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        proofs.len() > 3,
+        "{:?}",
+        proofs,
+    );
+
+    for proof in proofs {
+        assert!(
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
+            "{:?}",
+            proof
+        );
+        assert_eq!(
+            proof.id.global_nonce, epoch_params.global_nonce,
+            "{:?}",
+            proof
+        );
+        assert_eq!(proof.id.difficulty, epoch_params.difficulty, "{:?}", proof);
+    }
 
     prover.stop().await.unwrap();
+
+    assert_eq!(state, initial_state);
+    assert!(!state_dir.path().join("state.json.draft").exists());
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_restore_from_state_with_proofs() {
+    let proofs_dir = tempdir::TempDir::new("proofs").unwrap();
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+
+    let epoch_params_old = generate_epoch_params(2, 50);
+    let mut cu_allocation_old = get_cu_allocation();
+    cu_allocation_old.remove(&2.into()).expect("Invalid test");
+
+    let state_path = state_dir.path().join("state.json");
+    let initial_state = Some(CCPState {
+        epoch_params,
+        cu_allocation: cu_allocation.clone(),
+    });
+    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
+        .await
+        .unwrap();
+
+    // Good proofs
+    for good_idx_str in ["100"] {
+        let good_idx: ProofIdx = good_idx_str.parse().unwrap();
+
+        let proof_id = CCProofId::new(
+            epoch_params.global_nonce.clone(),
+            epoch_params.difficulty,
+            good_idx,
+        );
+        let proof = CCProof::new(
+            proof_id,
+            LocalNonce::random(),
+            cu_allocation.values().next().unwrap().clone(),
+            ResultHash::from_slice([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ]),
+        );
+        tokio::fs::write(
+            proofs_dir.path().join(good_idx_str),
+            serde_json::to_vec(&proof).unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+
+    // Bad proofs
+    for bad_idx_str in ["2", "500"] {
+        let bad_idx: ProofIdx = bad_idx_str.parse().unwrap();
+
+        let proof_id = CCProofId::new(
+            epoch_params_old.global_nonce.clone(),
+            epoch_params_old.difficulty,
+            bad_idx,
+        );
+        let proof = CCProof::new(
+            proof_id,
+            LocalNonce::random(),
+            cu_allocation.values().next().unwrap().clone(),
+            ResultHash::from_slice([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ]),
+        );
+        tokio::fs::write(
+            proofs_dir.path().join(bad_idx_str),
+            serde_json::to_vec(&proof).unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+
+    let prover = get_prover_from_saved_state(proofs_dir.path(), state_dir.path()).await;
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    let state = load_state(state_dir.path());
+
+    let proofs = prover
+        .get_proofs_after("0".parse().unwrap())
+        .await
+        .expect("reading proofs");
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        proofs.len() > 3,
+        "not enough proofs: {:?}",
+        proofs,
+    );
+
+    for proof in proofs {
+        assert!(
+            cu_allocation
+                .values()
+                .find(|p| *p == &proof.cu_id)
+                .is_some(),
+            "{:?}",
+            proof
+        );
+        assert_eq!(
+            proof.id.global_nonce, epoch_params.global_nonce,
+            "{:?}",
+            proof
+        );
+        assert_eq!(proof.id.difficulty, epoch_params.difficulty, "{:?}", proof);
+
+        let min_bad_idx: ProofIdx = "100".parse().unwrap();
+        assert!(
+            min_bad_idx <= proof.id.idx,
+            "idx too small: {}",
+            proof.id.idx
+        );
+
+        let max_bad_idx: ProofIdx = "500".parse().unwrap();
+        assert!(proof.id.idx < max_bad_idx, "idx too big: {}", proof.id.idx);
+    }
+
+    prover.stop().await.unwrap();
+
+    assert_eq!(state, initial_state);
+    assert!(!state_dir.path().join("state.json.draft").exists());
 }

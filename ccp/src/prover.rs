@@ -34,6 +34,8 @@ use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::state_storage::CCPState;
+use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
@@ -46,6 +48,7 @@ pub struct CCProver {
     status: CCStatus,
     utility_thread: UtilityThread,
     proof_drainer: ProofStorageDrainer,
+    state_storage: StateStorage,
 }
 
 impl NoxCCPApi for CCProver {
@@ -56,16 +59,10 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let roadmap = CCProverAlignmentRoadmap::make(
-            new_allocation,
-            new_epoch,
-            &self.cu_provers,
-            self.status,
-        );
-        self.align_with(roadmap).await?;
-        self.status = CCStatus::Running { epoch: new_epoch };
-
-        Ok(())
+        self.apply_cc_parameters(new_epoch, &new_allocation).await?;
+        // Save data only if align_with is successful; otherwise invalid commitment will be stored
+        // and used on restart to fail again.
+        self.save_state(new_epoch, new_allocation).await
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
@@ -74,6 +71,8 @@ impl NoxCCPApi for CCProver {
 
         run_unordered(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
+
+        self.save_no_state().await?;
 
         Ok(())
     }
@@ -95,12 +94,18 @@ impl ToCCStatus for CCProver {
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
-        let utility_thread = UtilityThread::spawn(utility_core_id, config.dir_to_store_proofs);
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            ProofIdx::zero(),
+            config.dir_to_store_proofs,
+            None,
+        );
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
             enable_msr: config.enable_msr,
         };
+        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
 
         Self {
             cu_provers: HashMap::new(),
@@ -108,6 +113,7 @@ impl CCProver {
             status: CCStatus::Idle,
             utility_thread,
             proof_drainer: proof_cleaner,
+            state_storage,
         }
     }
 
@@ -128,6 +134,86 @@ impl CCProver {
         self.on_no_active_commitment().await?;
         // stop background thread
         self.utility_thread.stop().await.map_err(Into::into)
+    }
+
+    pub async fn from_saved_state(
+        utility_core_id: LogicalCoreId,
+        config: CCPConfig,
+    ) -> CCResult<Self> {
+        let mut proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
+        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
+
+        let prev_state = state_storage.try_to_load_data().await?;
+
+        let start_proof_idx = proof_cleaner
+            .validate_proofs(prev_state.as_ref().map(|state| &state.epoch_params))
+            .await?;
+        log::info!("continuing from proof index {start_proof_idx}");
+
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: config.randomx_flags,
+            thread_allocation_policy: config.thread_allocation_policy,
+            enable_msr: config.enable_msr,
+        };
+
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            start_proof_idx,
+            config.dir_to_store_proofs,
+            prev_state
+                .as_ref()
+                .map(|state| state.epoch_params.global_nonce),
+        );
+
+        let mut self_ = Self {
+            cu_provers: HashMap::new(),
+            cu_prover_config,
+            status: CCStatus::Idle,
+            utility_thread,
+            proof_drainer: proof_cleaner,
+            state_storage,
+        };
+
+        if let Some(prev_state) = prev_state {
+            self_
+                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .await?;
+        }
+
+        Ok(self_)
+    }
+
+    async fn save_state(
+        &self,
+        epoch_state: EpochParameters,
+        cu_allocation: CUAllocation,
+    ) -> CCResult<()> {
+        let state = CCPState {
+            epoch_params: epoch_state,
+            cu_allocation,
+        };
+        Ok(self.state_storage.save_state(Some(&state)).await?)
+    }
+
+    async fn save_no_state(&self) -> CCResult<()> {
+        Ok(self.state_storage.save_state(None).await?)
+    }
+
+    async fn apply_cc_parameters(
+        &mut self,
+        new_epoch: EpochParameters,
+        new_allocation: &HashMap<PhysicalCoreId, CUID>,
+    ) -> Result<(), <CCProver as NoxCCPApi>::Error> {
+        let roadmap = CCProverAlignmentRoadmap::make(
+            new_allocation.clone(),
+            new_epoch,
+            &self.cu_provers,
+            self.status,
+        );
+        self.align_with(roadmap).await?;
+        self.status = CCStatus::Running { epoch: new_epoch };
+
+        Ok(())
     }
 }
 

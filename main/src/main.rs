@@ -119,7 +119,7 @@ fn main() -> eyre::Result<()> {
 
 async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Result<()> {
     // Build a prover
-    let prover = build_prover(prover_args);
+    let prover = build_prover(prover_args).await?;
     tracing::info!("created prover");
 
     // Launch RPC API
@@ -136,7 +136,7 @@ async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Resu
     Ok(())
 }
 
-fn build_prover(prover_args: ProverArgs) -> CCProver {
+async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
     // TODO an option?
     let randomx_flags = RandomXFlags::recommended_full_mem();
 
@@ -150,7 +150,11 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
         enable_msr: prover_args.enable_msr,
     };
 
-    CCProver::new(prover_args.utility_core_id.into(), config)
+    CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
+        .await
+        // e doesn't implement Sync, and cannot be converted to anyhow::Error or eyre::Error.
+        // as it will be reported to a user immediately, convert the error to string
+        .map_err(|e| eyre::eyre!(e.to_string()))
 }
 
 // Preliminary check that is useful on early diagnostics.
