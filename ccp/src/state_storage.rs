@@ -23,6 +23,7 @@ use serde::Serialize;
 
 use crate::utility_thread::save_reliably;
 
+const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
 const STATE_FILE: &str = "state.json";
 
 pub(crate) struct StateStorage {
@@ -42,14 +43,13 @@ impl StateStorage {
     }
 
     pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
-        let data = serde_json::to_vec(&state).expect("TODO");
+        let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
 
         log::info!("Saving state to {:?}", path);
 
-        tokio::task::spawn_blocking(move || save_reliably(&path, &data))
-            .await
-            .unwrap()
+        tokio::task::spawn_blocking(move || save_reliably(&path, &data)).await??;
+        Ok(())
     }
 
     // TODO should it return error on IO problems?

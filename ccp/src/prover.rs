@@ -59,8 +59,7 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        self.apply_commitment_parameters(new_epoch, &new_allocation)
-            .await?;
+        self.apply_cc_parameters(new_epoch, &new_allocation).await?;
         // Save data only if align_with is successful; otherwise invalid commitment will be stored
         // and used on restart to fail again.
         self.save_state(new_epoch, new_allocation).await
@@ -154,6 +153,7 @@ impl CCProver {
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
+            enable_msr: config.enable_msr,
         };
 
         let utility_thread = UtilityThread::spawn(
@@ -176,7 +176,7 @@ impl CCProver {
 
         if let Some(prev_state) = prev_state {
             self_
-                .apply_commitment_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
                 .await?;
         }
 
@@ -199,7 +199,7 @@ impl CCProver {
         Ok(self.state_storage.save_state(None).await?)
     }
 
-    async fn apply_commitment_parameters(
+    async fn apply_cc_parameters(
         &mut self,
         new_epoch: EpochParameters,
         new_allocation: &HashMap<PhysicalCoreId, CUID>,

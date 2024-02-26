@@ -150,8 +150,8 @@ async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
 
     CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
         .await
-        // e doesn't implemenet Sync, and cannot be converted to anyhow::Error or eyre::Error.
-        // As it will be reported to a user immediately, convert the error to string.
+        // e doesn't implement Sync, and cannot be converted to anyhow::Error or eyre::Error.
+        // as it will be reported to a user immediately, convert the error to string
         .map_err(|e| eyre::eyre!(e.to_string()))
 }
 

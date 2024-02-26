@@ -21,8 +21,6 @@ use tokio::fs::DirEntry;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 
-const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde deserializer shouldn't fail";
-
 #[derive(Debug)]
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
@@ -55,8 +53,17 @@ impl ProofStorageDrainer {
                     }
 
                     let file_content = tokio::fs::read(entry.path()).await?;
-                    let proof: CCProof =
-                        serde_json::from_slice(&file_content).expect(EXPECT_DEFAULT_DESERIALIZER);
+                    let proof: CCProof = match serde_json::from_slice(&file_content) {
+                        Ok(proof) => proof,
+                        Err(e) => {
+                            log::warn!(
+                                "failed to parse proof file {:?}: {}, ignoring",
+                                entry.path(),
+                                e
+                            );
+                            continue;
+                        }
+                    };
 
                     proofs.push(proof);
                 }
@@ -84,8 +91,7 @@ impl ProofStorageDrainer {
                 Ok(Some(entry)) => {
                     if let Some(entry_proof_id) = Self::proof_idx_from_filename(&entry).await? {
                         let file_content = tokio::fs::read(entry.path()).await?;
-                        let proof: CCProof = serde_json::from_slice(&file_content)
-                            .expect(EXPECT_DEFAULT_DESERIALIZER);
+                        let proof: CCProof = serde_json::from_slice(&file_content)?;
 
                         log::debug!("loaded proof {entry_proof_id}: {proof:?}");
 
@@ -128,14 +134,20 @@ impl ProofStorageDrainer {
         let file_name_str = match file_name.to_str() {
             Some(name) => name,
             // file is not utf-8, someone else put a file into the proof directory, ignore it
-            None => return Ok(None),
+            None => {
+                log::warn!("non-utf-8 file name: {file_name:?}, ignoring");
+                return Ok(None);
+            }
         };
 
         match ProofIdx::from_str(file_name_str) {
             Ok(current_proof_idx) => Ok(Some(current_proof_idx)),
             // if the file name isn't u64, then again someone else put a file into
             // the proof directory, ignore it
-            Err(_) => Ok(None),
+            Err(_) => {
+                log::warn!("non-numeric file name: {file_name:?}, ignoring");
+                Ok(None)
+            }
         }
     }
 
