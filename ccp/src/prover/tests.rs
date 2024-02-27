@@ -466,6 +466,7 @@ async fn prover_restore_from_state_with_no_proofs() {
 async fn prover_restore_from_state_with_proofs() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
     let proofs_dir = state_dir.path().join("ccp_proofs");
+    tokio::fs::create_dir(&proofs_dir).await.unwrap();
 
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
