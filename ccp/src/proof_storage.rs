@@ -35,7 +35,9 @@ impl ProofStorageDrainer {
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
     pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
-        tokio::fs::remove_dir_all(&self.proof_directory).await?;
+        if tokio::fs::try_exists(&self.proof_directory).await? {
+            tokio::fs::remove_dir_all(&self.proof_directory).await?;
+        }
         tokio::fs::create_dir(&self.proof_directory).await
     }
 
@@ -43,6 +45,8 @@ impl ProofStorageDrainer {
     /// the provided proof id.
     pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> tokio::io::Result<Vec<CCProof>> {
         let mut proofs = Vec::new();
+
+        ensure_dir(&self.proof_directory).await?;
 
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
         loop {
@@ -84,6 +88,8 @@ impl ProofStorageDrainer {
         let global_nonce = epoch_params.map(|params| &params.global_nonce);
         let difficulty = epoch_params.map(|params| &params.difficulty);
         log::debug!("using GN {global_nonce:?} and difficulty {difficulty:?}");
+
+        ensure_dir(&self.proof_directory).await?;
 
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
         loop {
@@ -156,5 +162,15 @@ impl ProofStorageDrainer {
         Ok(entry_proof_idx
             .map(|current_proof_idx| proof_idx < current_proof_idx)
             .unwrap_or(false))
+    }
+}
+
+pub(crate) async fn ensure_dir(path: &PathBuf) -> tokio::io::Result<()> {
+    match tokio::fs::create_dir(path).await {
+        Ok(()) => Ok(()),
+        Err(e) => match e.kind() {
+            std::io::ErrorKind::AlreadyExists => Ok(()),
+            _ => Err(e),
+        },
     }
 }
