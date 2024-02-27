@@ -34,21 +34,20 @@ use clap::ArgAction;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::Mutex;
-use tracing_subscriber::EnvFilter;
 
 use capacity_commitment_prover::CCProver;
 use ccp_config::CCPConfig;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_randomx::RandomXFlags;
 use ccp_rpc_server::CCPRcpHttpServer;
+use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(long)]
     bind_address: String,
-
     #[arg(long = "tokio-core-id")]
-    tokio_core_ids: Vec<u32>,
+    tokio_core_ids: Vec<usize>,
 
     #[command(flatten)]
     prover_args: ProverArgs,
@@ -63,10 +62,10 @@ struct ProverArgs {
     threads_per_physical_core: std::num::NonZeroUsize,
 
     #[arg(long)]
-    dir_to_store_proofs: PathBuf,
+    proof_dir: PathBuf,
 
     #[arg(long)]
-    dir_to_store_persistent_state: PathBuf,
+    state_dir: PathBuf,
 
     #[arg(long, action = ArgAction::SetTrue)]
     enable_msr: bool,
@@ -89,26 +88,25 @@ fn main() -> eyre::Result<()> {
         eyre::bail!("please, define at least one --tokio-core-id");
     }
 
-    check_writable_dir(&args.prover_args.dir_to_store_proofs)
-        .wrap_err("The --dir-to-store-proofs value should be a writeable directory path")?;
-    check_writable_dir(&args.prover_args.dir_to_store_persistent_state).wrap_err(
-        "The --dir-to-store-persistent-state value should be a writeable directory path",
+    check_writable_dir(&args.prover_args.proof_dir)
+        .wrap_err("The --proof-dir value should be a writeable directory path")?;
+    check_writable_dir(&args.prover_args.state_dir).wrap_err(
+        "The --state-dir value should be a writeable directory path",
     )?;
 
-    let tokio_cores = args
-        .tokio_core_ids
-        .into_iter()
-        .map(Into::into)
-        .collect::<Vec<_>>();
+    #[cfg(target_os = "linux")]
+    let tokio_cores = args.tokio_core_ids;
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(2)
         .on_thread_start(move || {
-            let pid = std::thread::current().id();
-            tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
-            if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.iter().copied()) {
-                tracing::error!("Tokio thread pinning failed");
+            #[cfg(target_os = "linux")]
+            {
+                let pid = std::thread::current().id();
+                tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
+                affinity::set_thread_affinity(&tokio_cores)
+                    .expect("failed to set tokio thread affinity");
             }
         })
         .build()
@@ -145,8 +143,8 @@ async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
             threads_per_physical_core: prover_args.threads_per_physical_core,
         },
         randomx_flags,
-        dir_to_store_proofs: prover_args.dir_to_store_proofs,
-        dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,
+        proof_dir: prover_args.proof_dir,
+        state_dir: prover_args.state_dir,
         enable_msr: prover_args.enable_msr,
     };
 

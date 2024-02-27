@@ -93,19 +93,15 @@ impl ToCCStatus for CCProver {
 
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
-        let proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
-        let utility_thread = UtilityThread::spawn(
-            utility_core_id,
-            ProofIdx::zero(),
-            config.dir_to_store_proofs,
-            None,
-        );
+        let proof_cleaner = ProofStorageDrainer::new(config.proof_dir.clone());
+        let utility_thread =
+            UtilityThread::spawn(utility_core_id, ProofIdx::zero(), config.proof_dir, None);
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
             enable_msr: config.enable_msr,
         };
-        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
+        let state_storage = StateStorage::new(config.state_dir);
 
         Self {
             cu_provers: HashMap::new(),
@@ -140,8 +136,8 @@ impl CCProver {
         utility_core_id: LogicalCoreId,
         config: CCPConfig,
     ) -> CCResult<Self> {
-        let mut proof_cleaner = ProofStorageDrainer::new(config.dir_to_store_proofs.clone());
-        let state_storage = StateStorage::new(config.dir_to_store_persistent_state);
+        let mut proof_cleaner = ProofStorageDrainer::new(config.proof_dir.clone());
+        let state_storage = StateStorage::new(config.state_dir);
 
         let prev_state = state_storage.try_to_load_data().await?;
 
@@ -159,7 +155,7 @@ impl CCProver {
         let utility_thread = UtilityThread::spawn(
             utility_core_id,
             start_proof_idx,
-            config.dir_to_store_proofs,
+            config.proof_dir,
             prev_state
                 .as_ref()
                 .map(|state| state.epoch_params.global_nonce),

@@ -16,20 +16,17 @@ use test_log::test;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 
-fn get_prover(
-    dir_to_store_proofs: impl Into<PathBuf>,
-    dir_to_store_persistent_state: impl Into<PathBuf>,
-) -> CCProver {
-    let dir_to_store_proofs = dir_to_store_proofs.into();
-    let dir_to_store_persistent_state = dir_to_store_persistent_state.into();
+fn get_prover(proof_dir: impl Into<PathBuf>, state_dir: impl Into<PathBuf>) -> CCProver {
+    let proof_dir = proof_dir.into();
+    let state_dir = state_dir.into();
     let enable_msr = false;
     let config = CCPConfig {
         thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 1.try_into().unwrap(),
         },
         randomx_flags: RandomXFlags::recommended_full_mem(),
-        dir_to_store_proofs,
-        dir_to_store_persistent_state,
+        proof_dir,
+        state_dir,
         enable_msr,
     };
 
@@ -37,19 +34,19 @@ fn get_prover(
 }
 
 async fn get_prover_from_saved_state(
-    dir_to_store_proofs: impl Into<PathBuf>,
-    dir_to_store_persistent_state: impl Into<PathBuf>,
+    proof_dir: impl Into<PathBuf>,
+    state_dir: impl Into<PathBuf>,
 ) -> CCProver {
-    let dir_to_store_proofs = dir_to_store_proofs.into();
-    let dir_to_store_persistent_state = dir_to_store_persistent_state.into();
+    let proof_dir = proof_dir.into();
+    let state_dir = state_dir.into();
     let enable_msr = false;
     let config = CCPConfig {
         thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 1.try_into().unwrap(),
         },
         randomx_flags: RandomXFlags::recommended_full_mem(),
-        dir_to_store_proofs,
-        dir_to_store_persistent_state,
+        proof_dir,
+        state_dir,
         enable_msr,
     };
 
