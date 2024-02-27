@@ -40,6 +40,8 @@ use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
 
+const PROOF_DIR: &str = "ccp_proofs";
+
 pub type CCResult<T> = Result<T, CCProverError>;
 
 pub struct CCProver {
@@ -93,9 +95,10 @@ impl ToCCStatus for CCProver {
 
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
-        let proof_cleaner = ProofStorageDrainer::new(config.proof_dir.clone());
+        let proof_dir = config.state_dir.join(PROOF_DIR);
+        let proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
         let utility_thread =
-            UtilityThread::spawn(utility_core_id, ProofIdx::zero(), config.proof_dir, None);
+            UtilityThread::spawn(utility_core_id, ProofIdx::zero(), proof_dir, None);
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
@@ -136,7 +139,8 @@ impl CCProver {
         utility_core_id: LogicalCoreId,
         config: CCPConfig,
     ) -> CCResult<Self> {
-        let mut proof_cleaner = ProofStorageDrainer::new(config.proof_dir.clone());
+        let proof_dir = config.state_dir.join(PROOF_DIR);
+        let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
         let state_storage = StateStorage::new(config.state_dir);
 
         let prev_state = state_storage.try_to_load_data().await?;
@@ -155,7 +159,7 @@ impl CCProver {
         let utility_thread = UtilityThread::spawn(
             utility_core_id,
             start_proof_idx,
-            config.proof_dir,
+            proof_dir,
             prev_state
                 .as_ref()
                 .map(|state| state.epoch_params.global_nonce),

@@ -62,9 +62,6 @@ struct ProverArgs {
     threads_per_physical_core: std::num::NonZeroUsize,
 
     #[arg(long)]
-    proof_dir: PathBuf,
-
-    #[arg(long)]
     state_dir: PathBuf,
 
     #[arg(long, action = ArgAction::SetTrue)]
@@ -88,11 +85,8 @@ fn main() -> eyre::Result<()> {
         eyre::bail!("please, define at least one --tokio-core-id");
     }
 
-    check_writable_dir(&args.prover_args.proof_dir)
-        .wrap_err("The --proof-dir value should be a writeable directory path")?;
-    check_writable_dir(&args.prover_args.state_dir).wrap_err(
-        "The --state-dir value should be a writeable directory path",
-    )?;
+    check_writable_dir(&args.prover_args.state_dir)
+        .wrap_err("The --state-dir value should be a writeable directory path")?;
 
     #[cfg(target_os = "linux")]
     let tokio_cores = args.tokio_core_ids;
@@ -143,7 +137,6 @@ async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
             threads_per_physical_core: prover_args.threads_per_physical_core,
         },
         randomx_flags,
-        proof_dir: prover_args.proof_dir,
         state_dir: prover_args.state_dir,
         enable_msr: prover_args.enable_msr,
     };
