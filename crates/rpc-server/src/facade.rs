@@ -16,7 +16,6 @@
 
 use std::fmt::Display;
 use std::sync::Arc;
-use std::time::Duration;
 
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
@@ -27,24 +26,21 @@ use ccp_shared::types::EpochParameters;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
-use tokio::sync::Mutex;
-use tokio::time::timeout;
-
-const WAIT_LOCK_DURATION: Duration = Duration::from_secs(2);
+use tokio::sync::RwLock;
 
 /// An async façade for RPC.
 pub struct OfflineFacade<P> {
     sender_to_worker: mpsc::Sender<FacadeMessage>,
-    prover: Arc<Mutex<P>>,
+    prover: Arc<RwLock<P>>,
 }
 
 impl<P> OfflineFacade<P>
 where
-    P: NoxCCPApi + 'static,
+    P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
 {
     pub fn new(prover: P) -> Self {
-        let prover = Arc::new(Mutex::new(prover));
+        let prover = Arc::new(RwLock::new(prover));
 
         let (sender_to_worker, receiver) = mpsc::channel(100);
 
@@ -64,6 +60,7 @@ enum FacadeMessage {
 
 impl<P: NoxCCPApi> NoxCCPApi for OfflineFacade<P>
 where
+    P: Sync,
     <P as NoxCCPApi>::Error: Display,
 {
     type Error = eyre::Error;
@@ -89,10 +86,12 @@ where
     }
 
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        let guard = match timeout(WAIT_LOCK_DURATION, self.prover.lock()).await {
+        let guard = match self.prover.try_read() {
             Ok(g) => g,
             Err(e) => {
-                return Err(e).context("failed to get lock in get_proofs_after: lock is still busy")
+                return Err(e).context(
+                    "failed to get prover lock: probably on_active_commitment in progress",
+                );
             }
         };
         guard
@@ -104,14 +103,14 @@ where
     }
 }
 
-async fn facade_loop<P>(prover: Arc<Mutex<P>>, mut receiver: mpsc::Receiver<FacadeMessage>)
+async fn facade_loop<P>(prover: Arc<RwLock<P>>, mut receiver: mpsc::Receiver<FacadeMessage>)
 where
     P: NoxCCPApi,
     <P as NoxCCPApi>::Error: Display,
 {
     use FacadeMessage::*;
     while let Some(message) = receive_last(&mut receiver).await {
-        let mut guard = prover.lock().await;
+        let mut guard = prover.write().await;
         match message {
             OnActiveCommitment(epoch_parameters, cu_allocation) => {
                 let res = guard
