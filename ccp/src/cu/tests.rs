@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRConfig;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -81,7 +82,7 @@ fn create_config(cores_count: usize) -> CUProverConfig {
         threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(cores_count).unwrap(),
         },
-        msr_enabled: false,
+        msr_config: MSRConfig::disabled_msr(),
     }
 }
 

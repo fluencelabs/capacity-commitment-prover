@@ -17,6 +17,9 @@
 #[cfg(test)]
 mod tests;
 
+use ccp_msr::get_original_cpu_msr_preset;
+use ccp_msr::MSRConfig;
+use ccp_msr::MSRCpuPreset;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
@@ -183,6 +186,36 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
+        let original_msr_preset = if config.enable_msr {
+            prev_state
+                .as_ref()
+                .map_or_else(get_original_cpu_msr_preset, |state| {
+                    state.msr_config.original_msr_preset.clone()
+                })
+        } else {
+            MSRCpuPreset::empty()
+        };
+
+        let msr_config = MSRConfig {
+            enable_msr: config.enable_msr,
+            original_msr_preset,
+        };
+
+        let original_msr_preset = if config.enable_msr {
+            prev_state
+                .as_ref()
+                .map_or_else(get_original_cpu_msr_preset, |state| {
+                    state.msr_config.original_msr_preset.clone()
+                })
+        } else {
+            MSRCpuPreset::empty()
+        };
+
+        let msr_config = MSRConfig {
+            enable_msr: config.enable_msr,
+            original_msr_preset,
+        };
+
         let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
@@ -230,9 +263,12 @@ impl CCProver {
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
+        let msr_config = self.cu_prover_config.msr_config.clone();
+
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
+            msr_config,
         };
         self.state_storage.save_state(Some(&state)).await
     }

@@ -17,14 +17,41 @@
 use std::fs::File;
 use std::io;
 
-use crate::cpu_preset::get_cpu_preset;
+use crate::msr_cpu_preset::get_cpu_preset;
+use crate::msr_cpu_preset::MSRCpuPreset;
 use crate::msr_item::MSRItem;
+use crate::msr_mode::detect_msr_mode;
 use crate::msr_mode::MSR_MODE;
+use crate::MSRConfig;
 use crate::MSRError;
 use crate::MSRResult;
 use crate::MSR;
 
 use cpu_utils::LogicalCoreId;
+use once_cell::sync::Lazy;
+
+/// This global is used with Linux only to look for the original
+/// MSR state only once.
+static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(|| {
+    let core_id = 0.into();
+    let mode = detect_msr_mode();
+    let preset = get_cpu_preset(mode);
+    let msr_config = MSRConfig::new(true, preset.clone());
+    let msr = MSRImpl::new(msr_config, core_id);
+    let original_items = preset
+        .get_valid_items()
+        .map(|preset_item| {
+            let item = msr.read(preset_item.register_id(), core_id);
+            if let Ok(item) = item {
+                item
+            } else {
+                // Adding an invalid Item to effectively disable the MSR
+                MSRItem::new(0, 0)
+            }
+        })
+        .collect();
+    MSRCpuPreset::new(original_items)
+});
 
 enum MSRFileOpMode {
     MSRRead,
@@ -43,15 +70,21 @@ fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
 #[derive(Debug)]
 pub struct MSRImpl {
     is_enabled: bool,
-    stored_state: Vec<MSRItem>,
+    original_preset: MSRCpuPreset,
     core_id: LogicalCoreId,
 }
 
 impl MSRImpl {
-    pub fn new(is_enabled: bool, core_id: LogicalCoreId) -> Self {
+    pub fn new(msr_config: MSRConfig, core_id: LogicalCoreId) -> Self {
+        let is_enabled = msr_config.enable_msr;
+        let original_preset = if msr_config.original_msr_preset.is_empty() {
+            CPU_MSR_ORIGINAL_PRESET.clone()
+        } else {
+            msr_config.original_msr_preset
+        };
         Self {
             is_enabled,
-            stored_state: vec![],
+            original_preset,
             core_id,
         }
     }
@@ -84,12 +117,12 @@ impl MSRImpl {
         Ok(())
     }
 
-    fn read(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<MSRItem> {
+    pub fn read(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<MSRItem> {
         let value = self.rdmsr(register_id, core_id)?;
         Ok(MSRItem::new(register_id, value))
     }
 
-    fn write(&self, item: MSRItem, core_id: LogicalCoreId) -> MSRResult<()> {
+    pub fn write(&self, item: MSRItem, core_id: LogicalCoreId) -> MSRResult<()> {
         let value_to_write = if item.mask() != MSRItem::NO_MASK {
             let old_value = self.rdmsr(item.register_id(), core_id)?;
             MSRItem::masked_value(old_value, item.value(), item.mask())
@@ -108,7 +141,7 @@ impl MSRImpl {
 }
 
 impl MSR for MSRImpl {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()> {
+    fn write_preset(&mut self) -> MSRResult<()> {
         if !self.is_enabled {
             tracing::debug!("MSR is disabled.");
             return Ok(());
@@ -118,16 +151,7 @@ impl MSR for MSRImpl {
         let preset = get_cpu_preset(mode);
         tracing::debug!("MSR mode: mode:{:?}.", mode);
 
-        for item in preset.get_items() {
-            if store_state && item.is_valid() {
-                // TODO Check for errors here and clean the stored state
-                let current_item_value = self.read(item.register_id(), self.core_id)?;
-                self.stored_state.push(current_item_value);
-                tracing::debug!("Stored MSR item :{:?}.", current_item_value);
-            }
-        }
-
-        for item in preset.get_items() {
+        for item in preset.get_valid_items() {
             // TODO Check for errors here and rollback/clean the stored state
             self.write(*item, self.core_id)?;
         }
@@ -141,13 +165,12 @@ impl MSR for MSRImpl {
             return Ok(());
         }
 
-        for item in self.stored_state.iter().filter(|item| item.is_valid()) {
+        for item in self.original_preset.get_valid_items() {
             self.write(*item, self.core_id)?;
         }
-        self.stored_state.clear();
 
         self.core_id = core_id;
-        self.write_preset(true)
+        self.write_preset()
     }
 
     fn restore(self) -> MSRResult<()> {
@@ -158,7 +181,7 @@ impl MSR for MSRImpl {
 
         tracing::debug!("Restore MSR state.");
 
-        for item in self.stored_state.iter().filter(|item| item.is_valid()) {
+        for item in self.original_preset.get_valid_items() {
             self.write(*item, self.core_id)?;
         }
         Ok(())

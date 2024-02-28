@@ -40,6 +40,7 @@ pub fn detect_msr_mode() -> MSRMode {
         _ => MSRModNone,
     }
 }
+
 fn detect_amd_msr_mode(cpuid: &CpuId<CpuIdReaderNative>) -> MSRMode {
     use MSRMode::*;
 

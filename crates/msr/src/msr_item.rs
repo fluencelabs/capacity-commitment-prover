@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-#[derive(Clone, Copy, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MSRItem {
     register_id: u32,
     value: u64,

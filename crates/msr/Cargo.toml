@@ -20,3 +20,5 @@ nix.workspace = true
 once_cell.workspace = true
 raw-cpuid.workspace = true
 tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true

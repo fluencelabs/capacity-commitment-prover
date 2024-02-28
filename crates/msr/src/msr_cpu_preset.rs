@@ -15,56 +15,72 @@
  */
 
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 
 use crate::msr_mode::MSRMode;
 use crate::MSRItem;
 
-pub struct CCPCpuPreset {
-    items: Vec<MSRItem>,
-}
-
-impl CCPCpuPreset {
-    pub fn new(items: Vec<MSRItem>) -> CCPCpuPreset {
-        Self { items }
-    }
-
-    pub(crate) fn get_items(&self) -> &Vec<MSRItem> {
-        &self.items
-    }
-}
-
-static CCP_CPU_MSR_PRESETS: Lazy<Vec<CCPCpuPreset>> = Lazy::new(|| {
+/// This is a set of MSR items that are used to disable CPU cache for
+/// a variety of CPU models.
+static CPU_MSR_PRESETS: Lazy<Vec<MSRCpuPreset>> = Lazy::new(|| {
     vec![
-        CCPCpuPreset::new(vec![]),
-        CCPCpuPreset::new(vec![
+        // No-op
+        MSRCpuPreset::new(vec![]),
+        // ModRyzen17h
+        MSRCpuPreset::new(vec![
             MSRItem::new(0xc0011020, 0),
             MSRItem::with_mask(0xc0011021, 0x40, !0x20),
             MSRItem::new(0xc0011022, 0x1510000),
             MSRItem::new(0xc001102b, 0x2000cc16),
         ]),
-        CCPCpuPreset::new(vec![
+        // ModRyzen19h
+        MSRCpuPreset::new(vec![
             MSRItem::new(0xc0011020, 0x0004480000000000),
             MSRItem::with_mask(0xc0011021, 0x001c000200000040, !0x20),
             MSRItem::new(0xc0011022, 0xc000000401570000),
             MSRItem::new(0xc001102b, 0x2000cc10),
         ]),
-        CCPCpuPreset::new(vec![
+        // Ryzen19hZen4
+        MSRCpuPreset::new(vec![
             MSRItem::new(0xc0011020, 0x0004400000000000),
             MSRItem::with_mask(0xc0011021, 0x0004000000000040, !0x20),
             MSRItem::new(0xc0011022, 0x8680000401570000),
             MSRItem::new(0xc001102b, 0x2040cc10),
         ]),
-        CCPCpuPreset::new(vec![MSRItem::new(0x1a4, 0xf)]),
-        CCPCpuPreset::new(vec![]),
+        // Intel
+        MSRCpuPreset::new(vec![MSRItem::new(0x1a4, 0xf)]),
     ]
 });
 
-pub fn get_cpu_preset(mode: MSRMode) -> &'static CCPCpuPreset {
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRCpuPreset {
+    items: Vec<MSRItem>,
+}
+
+impl MSRCpuPreset {
+    pub fn new(items: Vec<MSRItem>) -> MSRCpuPreset {
+        Self { items }
+    }
+
+    pub fn empty() -> MSRCpuPreset {
+        Self { items: vec![] }
+    }
+
+    pub(crate) fn get_valid_items(&self) -> impl Iterator<Item = &MSRItem> {
+        self.items.iter().filter(|item| item.is_valid())
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+pub fn get_cpu_preset(mode: MSRMode) -> &'static MSRCpuPreset {
     match mode {
-        MSRMode::MSRModNone => &CCP_CPU_MSR_PRESETS[0],
-        MSRMode::MSRModRyzen17h => &CCP_CPU_MSR_PRESETS[1],
-        MSRMode::MSRModRyzen19h => &CCP_CPU_MSR_PRESETS[2],
-        MSRMode::MSRModRyzen19hZen4 => &CCP_CPU_MSR_PRESETS[3],
-        MSRMode::MSRModIntel => &CCP_CPU_MSR_PRESETS[4],
+        MSRMode::MSRModNone => &CPU_MSR_PRESETS[0],
+        MSRMode::MSRModRyzen17h => &CPU_MSR_PRESETS[1],
+        MSRMode::MSRModRyzen19h => &CPU_MSR_PRESETS[2],
+        MSRMode::MSRModRyzen19hZen4 => &CPU_MSR_PRESETS[3],
+        MSRMode::MSRModIntel => &CPU_MSR_PRESETS[4],
     }
 }

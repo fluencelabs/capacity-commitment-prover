@@ -14,31 +14,71 @@
  * limitations under the License.
  */
 
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-mod cpu_preset;
+/// This crate is MSR control framework for the archs that have ways to control CPU cache
+/// via MSR registers manipulation, e.g. Linux on x86_64.
+/// For everything else it's a no-op.
+/// Please note there are number of globals that are accessed in the main code.
 mod errors;
+mod msr_cpu_preset;
 mod msr_item;
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-mod msr_linux;
 #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 mod msr_mode;
 #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-pub use msr_linux::MSRImpl;
+mod msr_x86_64;
+
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+mod msr_cpu_preset_x86_64;
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+pub use msr_cpu_preset_x86_64::get_original_cpu_msr_preset;
+
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+pub use msr_mode::detect_msr_mode;
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+pub use msr_x86_64::MSRImpl;
 
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 mod msr_other;
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-pub use msr_other::MSRImpl;
+pub use msr_non_x86_64::detect_msr_mode;
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+pub use msr_non_x86_64::get_original_cpu_msr_preset;
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+pub use msr_non_x86_64::MSRImpl;
 
 use cpu_utils::LogicalCoreId;
 
 pub use errors::MSRError;
+pub use msr_cpu_preset::get_cpu_preset;
+pub use msr_cpu_preset::MSRCpuPreset;
 pub use msr_item::MSRItem;
+use serde::{Deserialize, Serialize};
 
 pub type MSRResult<T> = Result<T, MSRError>;
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRConfig {
+    pub enable_msr: bool,
+    pub original_msr_preset: MSRCpuPreset,
+}
+
+impl MSRConfig {
+    pub fn new(enable_msr: bool, original_msr_preset: MSRCpuPreset) -> MSRConfig {
+        Self {
+            enable_msr,
+            original_msr_preset,
+        }
+    }
+
+    pub fn disabled_msr() -> MSRConfig {
+        Self {
+            enable_msr: false,
+            original_msr_preset: MSRCpuPreset::new(vec![]),
+        }
+    }
+}
+
 pub trait MSR {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()>;
+    fn write_preset(&mut self) -> MSRResult<()>;
     fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
     fn restore(self) -> MSRResult<()>;
 }

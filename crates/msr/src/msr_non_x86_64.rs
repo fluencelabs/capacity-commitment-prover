@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/// This module is no-op implementation to allow the code to compile on non-x86_64 archs.
 use cpu_utils::LogicalCoreId;
 
 use crate::MSRResult;
@@ -40,4 +41,16 @@ impl MSR for MSRImpl {
     fn restore(self) -> MSRResult<()> {
         Ok(())
     }
+}
+
+pub fn detect_msr_mode() -> MSRMode {
+    MSRModNone
+}
+
+pub fn get_original_cpu_msr_preset() -> MSRCpuPreset {
+    use crate::msr_cpu_preset::CPU_MSR_PRESETS;
+    use msr_mode::MSRMode;
+
+    let mode = MSRMode::MSRModNone;
+    get_cpu_preset(mode).clone()
 }

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRConfig;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Dataset;
@@ -43,6 +44,16 @@ pub struct CUProver {
     status: CUStatus,
 }
 
+#[derive(Clone, Debug)]
+pub struct CUProverConfig {
+    pub randomx_flags: RandomXFlags,
+    /// Defines how many threads will be assigned to a specific physical core,
+    /// aims to utilize benefits of hyper-threading.
+    pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
+    /// Controls MSR-based performance optimization state and stores original MSR registers values.
+    pub msr_config: MSRConfig,
+}
+
 impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
@@ -50,8 +61,9 @@ impl CUProver {
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
-        let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(to_utility, config.msr_enabled)?;
+        let mut threads =
+            ThreadAllocator::new(config.thread_allocation_policy, core_id, &topology)?
+                .allocate(to_utility, config.msr_config)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;

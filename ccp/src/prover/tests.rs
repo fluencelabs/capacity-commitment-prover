@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
+use ccp_msr::MSRConfig;
 use ccp_randomx::ResultHash;
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
 use ccp_shared::types::LocalNonce;
@@ -96,9 +97,11 @@ async fn prover_on_active_commitment() {
         .unwrap();
 
     let state = load_state(state_dir.path());
-    let expected_state = Some(CCPState {
+
+    let expected_state: Option<CCPState> = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_config: MSRConfig::disabled_msr(),
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -384,6 +387,7 @@ async fn prover_on_active_change_epoch() {
     let expected_state = Some(CCPState {
         epoch_params: epoch_params_second,
         cu_allocation: cu_allocation.clone(),
+        msr_config: MSRConfig::disabled_msr(),
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -430,6 +434,7 @@ async fn prover_restore_from_state_with_no_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_config: MSRConfig::disabled_msr(),
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await
@@ -494,6 +499,7 @@ async fn prover_restore_from_state_with_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_config: MSRConfig::disabled_msr(),
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await

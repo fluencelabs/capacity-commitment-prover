@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRConfig;
 use tokio::sync::mpsc;
 
 use ccp_msr::MSRImpl;
@@ -43,13 +44,13 @@ impl ProvingThreadAsync {
     pub(crate) fn new(
         core_id: LogicalCoreId,
         to_utility: ToUtilityInlet,
-        msr_enabled: bool,
+        msr_config: MSRConfig,
     ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
         let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
-        let mut msr = MSRImpl::new(msr_enabled, core_id);
-        let _ = msr.write_preset(true);
+        let mut msr = MSRImpl::new(msr_config, core_id);
+        let _ = msr.write_preset();
 
         Self {
             to_sync,
