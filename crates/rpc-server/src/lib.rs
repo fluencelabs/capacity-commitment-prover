@@ -26,8 +26,9 @@
     unreachable_patterns
 )]
 
+mod facade;
+
 use std::collections::HashMap;
-use std::error::Error;
 use std::sync::Arc;
 
 use jsonrpsee::core::async_trait;
@@ -49,21 +50,25 @@ use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
 
+pub use crate::facade::OfflineFacade;
+
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<P>>,
 }
 
 impl<P> CCPRcpHttpServer<P> {
-    pub fn new(cc_prover: Arc<Mutex<P>>) -> Self {
-        Self { cc_prover }
+    pub fn new(cc_prover: P) -> Self {
+        Self {
+            cc_prover: Arc::new(Mutex::new(cc_prover)),
+        }
     }
 }
 
 impl<P> CCPRcpHttpServer<P>
 where
     P: NoxCCPApi + 'static,
-    <P as NoxCCPApi>::Error: Error,
+    <P as NoxCCPApi>::Error: ToString,
 {
     ///  Run the JSON-RPC HTTP server in the background.
     ///
@@ -84,7 +89,7 @@ where
 impl<P> CCPRpcServer for CCPRcpHttpServer<P>
 where
     P: NoxCCPApi + 'static,
-    <P as NoxCCPApi>::Error: Error,
+    <P as NoxCCPApi>::Error: ToString,
 {
     #[instrument(skip(self))]
     async fn on_active_commitment(
