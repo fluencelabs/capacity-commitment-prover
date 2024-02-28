@@ -23,6 +23,8 @@ use std::path::PathBuf;
 
 use ccp_shared::proof::CCProof;
 
+use crate::proof_storage::ensure_dir;
+
 const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
 
 #[derive(Debug)]
@@ -38,6 +40,7 @@ impl ProofStorage {
     }
 
     pub async fn store_new_proof(&self, proof: CCProof) -> tokio::io::Result<()> {
+        ensure_dir(&self.proof_directory).await?;
         let proof_as_string = serde_json::to_string(&proof).expect(EXPECT_DEFAULT_SERIALIZER);
         let proof_path = self.proof_directory.join(proof.id.idx.to_string());
         tokio::task::spawn_blocking(move || save_reliably(&proof_path, proof_as_string)).await??;

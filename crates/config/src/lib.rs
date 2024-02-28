@@ -34,8 +34,7 @@ use ccp_randomx::RandomXFlags;
 pub struct CCPConfig {
     pub thread_allocation_policy: ThreadsPerCoreAllocationPolicy,
     pub randomx_flags: RandomXFlags,
-    pub dir_to_store_proofs: PathBuf,
-    pub dir_to_store_persistent_state: PathBuf,
+    pub state_dir: PathBuf,
     pub enable_msr: bool,
 }
 
