@@ -34,20 +34,21 @@ use clap::ArgAction;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::Mutex;
+use tracing_subscriber::EnvFilter;
 
 use capacity_commitment_prover::CCProver;
 use ccp_config::CCPConfig;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_randomx::RandomXFlags;
 use ccp_rpc_server::CCPRcpHttpServer;
-use tracing_subscriber::EnvFilter;
 
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(long)]
     bind_address: String,
+
     #[arg(long = "tokio-core-id")]
-    tokio_core_ids: Vec<usize>,
+    tokio_core_ids: Vec<u32>,
 
     #[command(flatten)]
     prover_args: ProverArgs,
@@ -88,19 +89,20 @@ fn main() -> eyre::Result<()> {
     check_writable_dir(&args.prover_args.state_dir)
         .wrap_err("The --state-dir value should be a writeable directory path")?;
 
-    #[cfg(target_os = "linux")]
-    let tokio_cores = args.tokio_core_ids;
+    let tokio_cores = args
+        .tokio_core_ids
+        .into_iter()
+        .map(Into::into)
+        .collect::<Vec<_>>();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(2)
         .on_thread_start(move || {
-            #[cfg(target_os = "linux")]
-            {
-                let pid = std::thread::current().id();
-                tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
-                affinity::set_thread_affinity(&tokio_cores)
-                    .expect("failed to set tokio thread affinity");
+            let pid = std::thread::current().id();
+            tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
+            if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.iter().copied()) {
+                tracing::error!("Tokio thread pinning failed");
             }
         })
         .build()
