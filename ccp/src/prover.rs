@@ -40,7 +40,7 @@ use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
 
-const PROOF_DIR: &str = "ccp_proofs";
+const PROOF_DIR: &str = "cc_proofs";
 
 pub type CCResult<T> = Result<T, CCProverError>;
 
@@ -96,7 +96,7 @@ impl ToCCStatus for CCProver {
 impl CCProver {
     pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
         let proof_dir = config.state_dir.join(PROOF_DIR);
-        let proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
+        let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
         let utility_thread =
             UtilityThread::spawn(utility_core_id, ProofIdx::zero(), proof_dir, None);
         let cu_prover_config = CUProverConfig {
@@ -111,7 +111,7 @@ impl CCProver {
             cu_prover_config,
             status: CCStatus::Idle,
             utility_thread,
-            proof_drainer: proof_cleaner,
+            proof_drainer,
             state_storage,
         }
     }

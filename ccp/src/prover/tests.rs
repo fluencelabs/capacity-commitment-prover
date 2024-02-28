@@ -465,7 +465,7 @@ async fn prover_restore_from_state_with_no_proofs() {
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_restore_from_state_with_proofs() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
-    let proofs_dir = state_dir.path().join("ccp_proofs");
+    let proofs_dir = state_dir.path().join("cc_proofs");
     tokio::fs::create_dir(&proofs_dir).await.unwrap();
 
     let epoch_params = get_epoch_params();
