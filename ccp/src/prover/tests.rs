@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use crate::{state_storage::CCPState, CCProver};
 use ccp_config::CCPConfig;
+use ccp_randomx::{RandomXFlags, ResultHash};
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
 use ccp_shared::types::LocalNonce;
 use ccp_shared::{
@@ -11,7 +12,6 @@ use ccp_shared::{
 };
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
-use randomx_rust_wrapper::{RandomXFlags, ResultHash};
 use test_log::test;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
