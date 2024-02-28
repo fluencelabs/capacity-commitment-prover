@@ -27,7 +27,7 @@ use super::record::ThreadHashrateRecord;
 use crate::hashrate::record::HashrateCUEntryVariant;
 
 #[derive(Clone, Debug, Default)]
-pub(crate) struct HashrateCollectorByTimer {
+pub(crate) struct SlidingWindowHashrateCollector {
     running_average_10: HashMap<LogicalCoreId, RunningAverage<10>>,
     running_average_60: HashMap<LogicalCoreId, RunningAverage<60>>,
     running_average_900: HashMap<LogicalCoreId, RunningAverage<900>>,
@@ -46,7 +46,7 @@ struct RunningAverageRecord {
     pub(self) duration: Duration,
 }
 
-impl HashrateCollectorByTimer {
+impl SlidingWindowHashrateCollector {
     pub(crate) fn new() -> Self {
         Self::default()
     }

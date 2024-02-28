@@ -31,7 +31,7 @@ use futures::FutureExt;
 use super::message::*;
 use super::UTResult;
 use crate::hashrate::HashrateCollector;
-use crate::hashrate::HashrateCollectorByTimer;
+use crate::hashrate::SlidingWindowHashrateCollector;
 use crate::hashrate::HashrateSaver;
 use crate::utility_thread::proof_storage::ProofStorage;
 use crate::utility_thread::UtilityThreadError;
@@ -59,7 +59,7 @@ impl UtilityThread {
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let new_proof_handler = NewProofHandler::new(proof_storage);
         let hashrate_collector = HashrateCollector::new();
-        let hashrate_collector_by_timer = HashrateCollectorByTimer::new();
+        let sliding_window_hashrate_collector = SlidingWindowHashrateCollector::new();
         let hashrate_saver = HashrateSaver::from_directory(hashrate_dir);
 
         let handle = tokio::spawn(Self::utility_closure(
@@ -68,7 +68,7 @@ impl UtilityThread {
             shutdown_out,
             new_proof_handler,
             hashrate_collector,
-            hashrate_collector_by_timer,
+            sliding_window_hashrate_collector,
             hashrate_saver,
         ));
 
@@ -96,7 +96,7 @@ impl UtilityThread {
         mut shutdown_out: ThreadShutdownOutlet,
         mut new_proof_handler: NewProofHandler,
         mut hashrate_collector: HashrateCollector,
-        mut hashrate_collector_by_timer: HashrateCollectorByTimer,
+        mut sliding_window_hashrate_collector: SlidingWindowHashrateCollector,
         hashrate_saver: HashrateSaver,
     ) -> UTResult<()> {
         if !cpu_utils::pinning::pin_current_thread_to(core_id) {
@@ -122,7 +122,7 @@ impl UtilityThread {
                             if let Some(prev_epoch_hashrate) = hashrate_collector.count_record(record) {
                                 hashrate_saver.save_hashrate_previous(prev_epoch_hashrate)?;
                             }
-                            hashrate_collector_by_timer.count_record(record);
+                            sliding_window_hashrate_collector.count_record(record);
                         }
                     }},
                 _ = hashrate_ticker.tick() => {
