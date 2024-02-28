@@ -23,13 +23,13 @@ use tokio::time::Instant;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
-use super::hashrate_record::HashrateCUEntryVariant;
-use super::hashrate_record::HashrateCURecord;
+use super::record::HashrateCUEntryVariant;
+use super::record::ThreadHashrateRecord;
 
 #[derive(Clone, Debug)]
 pub(crate) struct HashrateCollector {
     status: CollectorStatus,
-    entries: HashMap<LogicalCoreId, CUHashrateRaw>,
+    entries: HashMap<LogicalCoreId, ThreadHashrateRaw>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -42,7 +42,7 @@ pub(crate) enum CollectorStatus {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct CUHashrateRaw {
+pub(crate) struct ThreadHashrateRaw {
     cache_creation: ParameterStatus<Duration>,
     dataset_initialization: Vec<Duration>,
     pow_duration: ParameterStatus<Duration>,
@@ -56,14 +56,15 @@ pub(crate) enum ParameterStatus<T> {
     NotMeasured,
 }
 
-pub(crate) type Hashrate = HashMap<LogicalCoreId, CUHashrate>;
+pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct CUHashrate {
+pub(crate) struct ThreadHashrate {
     // hashes from epoch start, counts operations with cache and dataset
     pub(crate) effective_hashrate: f64,
     // pure hashrate, which doesn't count operations with cache and dataset
     pub(crate) hashrate: ParameterStatus<f64>,
+    pub(crate) proofs_found: u64,
     pub(crate) cache_creation: ParameterStatus<Duration>,
     pub(crate) dataset_initialization: ParameterStatus<Duration>,
 }
@@ -76,7 +77,10 @@ impl HashrateCollector {
         }
     }
 
-    pub(crate) fn count_entry(&mut self, hashrate_record: HashrateCURecord) -> Option<Hashrate> {
+    pub(crate) fn count_record(
+        &mut self,
+        hashrate_record: ThreadHashrateRecord,
+    ) -> Option<Hashrate> {
         use std::collections::hash_map::Entry;
 
         let result = match self.status {
@@ -95,7 +99,7 @@ impl HashrateCollector {
 
         match self.entries.entry(hashrate_record.core_id) {
             Entry::Vacant(entry) => {
-                entry.insert(CUHashrateRaw::from_single_record(hashrate_record));
+                entry.insert(ThreadHashrateRaw::from_single_record(hashrate_record));
             }
             Entry::Occupied(entry) => entry.into_mut().count_record(hashrate_record),
         };
@@ -103,7 +107,7 @@ impl HashrateCollector {
         result
     }
 
-    pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, CUHashrate> {
+    pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, ThreadHashrate> {
         let epoch_duration = match self.status {
             CollectorStatus::Started { started_time, .. } => started_time.elapsed(),
             CollectorStatus::JustCreated => return HashMap::new(),
@@ -127,9 +131,10 @@ impl HashrateCollector {
                     None => ParameterStatus::NotMeasured,
                 };
 
-                let statistics = CUHashrate {
+                let statistics = ThreadHashrate {
                     effective_hashrate: info.hashes_checked as f64 / epoch_duration,
                     hashrate,
+                    proofs_found: info.proofs_found,
                     cache_creation: info.cache_creation,
                     dataset_initialization,
                 };
@@ -144,7 +149,7 @@ impl HashrateCollector {
 
         match self.entries.entry(core_id) {
             Entry::Vacant(entry) => {
-                entry.insert(CUHashrateRaw::from_proof_found());
+                entry.insert(ThreadHashrateRaw::from_proof_found());
             }
             Entry::Occupied(entry) => entry.into_mut().count_proof_found(),
         };
@@ -160,7 +165,7 @@ impl HashrateCollector {
     }
 }
 
-impl Default for CUHashrateRaw {
+impl Default for ThreadHashrateRaw {
     fn default() -> Self {
         Self {
             cache_creation: ParameterStatus::NotMeasured,
@@ -172,8 +177,8 @@ impl Default for CUHashrateRaw {
     }
 }
 
-impl CUHashrateRaw {
-    pub(self) fn from_single_record(entry: HashrateCURecord) -> Self {
+impl ThreadHashrateRaw {
+    pub(self) fn from_single_record(entry: ThreadHashrateRecord) -> Self {
         match entry.variant {
             HashrateCUEntryVariant::CacheCreation => Self::from_cache_creation(entry.duration),
             HashrateCUEntryVariant::DatasetInitialization { .. } => {
@@ -185,7 +190,7 @@ impl CUHashrateRaw {
         }
     }
 
-    pub(self) fn count_record(&mut self, new_entry: HashrateCURecord) {
+    pub(self) fn count_record(&mut self, new_entry: ThreadHashrateRecord) {
         match new_entry.variant {
             HashrateCUEntryVariant::CacheCreation => {
                 self.cache_creation = ParameterStatus::Measured(new_entry.duration)

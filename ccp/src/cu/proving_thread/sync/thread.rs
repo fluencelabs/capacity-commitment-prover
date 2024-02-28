@@ -32,7 +32,7 @@ use super::STFResult;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::errors::ProvingThreadSyncFacadeError;
-use crate::hashrate::HashrateCURecord;
+use crate::hashrate::ThreadHashrateRecord;
 
 const HASHES_PER_ROUND: usize = 1024;
 
@@ -145,7 +145,8 @@ impl ProvingThreadSync {
                 let duration = start.elapsed();
 
                 to_async.send_cache(cache)?;
-                let hashrate = HashrateCURecord::cache_creation(params.epoch, core_id, duration);
+                let hashrate =
+                    ThreadHashrateRecord::cache_creation(params.epoch, core_id, duration);
                 to_utility.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
@@ -167,7 +168,7 @@ impl ProvingThreadSync {
 
                 to_async.notify_dataset_initialized()?;
 
-                let hasrate = HashrateCURecord::dataset_initialization(
+                let hasrate = ThreadHashrateRecord::dataset_initialization(
                     params.epoch,
                     core_id,
                     duration,
@@ -184,7 +185,7 @@ impl ProvingThreadSync {
                 let job = RandomXJob::from_cc_job(job, HASHES_PER_ROUND)?;
                 let duration = start.elapsed();
 
-                let hashrate = HashrateCURecord::hashes_checked(
+                let hashrate = ThreadHashrateRecord::hashes_checked(
                     job.epoch(),
                     core_id,
                     duration,

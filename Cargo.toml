@@ -43,6 +43,7 @@ anyhow = "1.0"
 byteorder = "1.5"
 bitflags = "2.4"
 cmake = "0.1"
+crossterm = "0.27"
 clap = { version = "4.5.0", features = ["derive"] }
 chrono = "0.4"
 env_logger = "0.10"

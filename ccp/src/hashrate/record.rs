@@ -19,15 +19,15 @@ use std::time::Duration;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
-#[derive(Debug)]
-pub(crate) struct HashrateCURecord {
+#[derive(Copy, Clone, Debug)]
+pub(crate) struct ThreadHashrateRecord {
     pub(crate) epoch: EpochParameters,
     pub(crate) core_id: LogicalCoreId,
     pub(crate) duration: Duration,
     pub(crate) variant: HashrateCUEntryVariant,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum HashrateCUEntryVariant {
     CacheCreation,
 
@@ -36,7 +36,7 @@ pub(crate) enum HashrateCUEntryVariant {
     HashesChecked { hashes_count: usize },
 }
 
-impl HashrateCURecord {
+impl ThreadHashrateRecord {
     pub(crate) fn cache_creation(
         epoch: EpochParameters,
         core_id: LogicalCoreId,
@@ -83,7 +83,7 @@ impl HashrateCURecord {
     }
 }
 
-impl std::fmt::Display for HashrateCURecord {
+impl std::fmt::Display for ThreadHashrateRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.variant {
             HashrateCUEntryVariant::CacheCreation => write!(

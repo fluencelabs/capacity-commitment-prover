@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-mod hashrate_collector;
-mod hashrate_record;
-mod hashrate_saver;
+mod collector;
+mod collector_by_timer;
+mod record;
+mod saver;
 
-pub(crate) use hashrate_collector::HashrateCollector;
-pub(crate) use hashrate_record::HashrateCURecord;
-pub(crate) use hashrate_saver::HashrateSaver;
+pub(crate) use collector::HashrateCollector;
+pub(crate) use collector_by_timer::HashrateCollectorByTimer;
+pub(crate) use record::ThreadHashrateRecord;
+pub(crate) use saver::HashrateSaver;

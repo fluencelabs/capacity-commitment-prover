@@ -28,7 +28,7 @@ use super::STResult;
 use crate::cu::proving_thread::messages::AsyncToSyncMessage;
 use crate::cu::proving_thread::messages::NewCCJob;
 use crate::cu::proving_thread::sync::channels_facade::ToUtility;
-use crate::hashrate::HashrateCURecord;
+use crate::hashrate::ThreadHashrateRecord;
 
 /// The state machine of the sync part of proving thread, it
 #[derive(Debug)]
@@ -97,8 +97,12 @@ impl RandomXJob {
 
         let duration = start.elapsed();
 
-        let message =
-            HashrateCURecord::hashes_checked(self.epoch, core_id, duration, self.hashes_per_round);
+        let message = ThreadHashrateRecord::hashes_checked(
+            self.epoch,
+            core_id,
+            duration,
+            self.hashes_per_round,
+        );
         to_utility.send_hashrate(message)?;
 
         Ok(())

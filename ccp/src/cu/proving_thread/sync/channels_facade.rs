@@ -22,7 +22,7 @@ use super::to_utility_message::ToUtilityInlet;
 use super::to_utility_message::ToUtilityMessage;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
-use crate::hashrate::HashrateCURecord;
+use crate::hashrate::ThreadHashrateRecord;
 use crate::utility_thread::message::{ProvingThreadSyncError, RawProof};
 
 #[derive(Clone, Debug)]
@@ -81,7 +81,7 @@ impl ToUtility {
         self.to_utility.blocking_send(message).map_err(Into::into)
     }
 
-    pub(crate) fn send_hashrate(&self, hashrate_message: HashrateCURecord) -> STResult<()> {
+    pub(crate) fn send_hashrate(&self, hashrate_message: ThreadHashrateRecord) -> STResult<()> {
         let to_utility_message = ToUtilityMessage::hashrate(hashrate_message);
         self.to_utility
             .blocking_send(to_utility_message)

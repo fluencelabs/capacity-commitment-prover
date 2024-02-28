@@ -16,7 +16,7 @@
 
 use std::path::PathBuf;
 
-use super::hashrate_collector::Hashrate;
+use super::collector::Hashrate;
 
 const PREV_HASHRATE_FILE_NAME: &str = "prev_epoch_hashrate.json";
 const CURRENT_HASHRATE_FILE_NAME: &str = "current_epoch_hashrate.json";
