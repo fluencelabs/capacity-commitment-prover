@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use std::fmt::Display;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -40,7 +41,7 @@ pub struct OfflineFacade<P> {
 impl<P> OfflineFacade<P>
 where
     P: NoxCCPApi + 'static,
-    <P as NoxCCPApi>::Error: ToString,
+    <P as NoxCCPApi>::Error: Display,
 {
     pub fn new(prover: P) -> Self {
         let prover = Arc::new(Mutex::new(prover));
@@ -63,7 +64,7 @@ enum FacadeMessage {
 
 impl<P: NoxCCPApi> NoxCCPApi for OfflineFacade<P>
 where
-    <P as NoxCCPApi>::Error: ToString,
+    <P as NoxCCPApi>::Error: Display,
 {
     type Error = eyre::Error;
 
@@ -106,7 +107,7 @@ where
 async fn facade_loop<P>(prover: Arc<Mutex<P>>, mut receiver: mpsc::Receiver<FacadeMessage>)
 where
     P: NoxCCPApi,
-    <P as NoxCCPApi>::Error: ToString,
+    <P as NoxCCPApi>::Error: Display,
 {
     use FacadeMessage::*;
     while let Some(message) = receive_last(&mut receiver).await {
@@ -117,13 +118,13 @@ where
                     .on_active_commitment(epoch_parameters, cu_allocation)
                     .await;
                 if let Err(e) = res {
-                    tracing::error!("nested prover on_active_commitment failed: {e:?}");
+                    tracing::error!("nested prover on_active_commitment failed: {e}");
                 }
             }
             OnNoCommitment => {
                 let res = guard.on_no_active_commitment().await;
                 if let Err(e) = res {
-                    tracing::error!("nested prover on_no_active_commitment failed: {e:?}");
+                    tracing::error!("nested prover on_no_active_commitment failed: {e}");
                 }
             }
         }
