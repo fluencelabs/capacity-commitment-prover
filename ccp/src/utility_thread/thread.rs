@@ -93,44 +93,51 @@ impl UtilityThread {
         mut new_proof_handler: NewProofHandler,
         mut hashrate_handler: HashrateHandler,
     ) -> UTResult<()> {
-        if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-            log::error!("utility_thread: failed to pin to {core_id} core");
-        }
+        let closure = async move {
+            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
+                log::error!("utility_thread: failed to pin to {core_id} core");
+            }
 
-        let mut cum_hashrate_ticker =
-            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+            let mut cum_hashrate_ticker =
+                time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
 
-        let mut instant_hashrate_ticker =
-            time::interval(Duration::from_secs(INSTANT_HASHRATE_UPDATE_INTERVAL));
+            let mut instant_hashrate_ticker =
+                time::interval(Duration::from_secs(INSTANT_HASHRATE_UPDATE_INTERVAL));
 
-        loop {
-            tokio::select! {
-                Some(message) = to_utility.recv() => {
-                    match message {
-                        ToUtilityMessage::ProofFound { core_id, proof} => {
-                            new_proof_handler.handle_found_proof(proof).await?;
-                            hashrate_handler.proof_found(core_id);
-                        }
-                        ToUtilityMessage::ErrorHappened { thread_location, error} => {
-                            log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
-                        }
-                        ToUtilityMessage::Hashrate(record) => {
-                            log::info!("utility_thread: hashrate {record}");
-                            hashrate_handler.account_record(record)?;
-                        }
-                    }},
-                _ = cum_hashrate_ticker.tick() => {
-                    hashrate_handler.handle_cum_tick()?;
-                }
-                _ = instant_hashrate_ticker.tick() => {
-                    hashrate_handler.handle_instant_tick()?;
-                }
-                _ = &mut shutdown_out => {
-                    log::info!("utility_thread: utility thread was shutdown");
-                    return Ok(());
+            loop {
+                tokio::select! {
+                    Some(message) = to_utility.recv() => {
+                        match message {
+                            ToUtilityMessage::ProofFound { core_id, proof} => {
+                                new_proof_handler.handle_found_proof(proof).await?;
+                                hashrate_handler.proof_found(core_id);
+                            }
+                            ToUtilityMessage::ErrorHappened { thread_location, error} => {
+                                log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
+                            }
+                            ToUtilityMessage::Hashrate(record) => {
+                                log::info!("utility_thread: hashrate {record}");
+                                hashrate_handler.account_record(record)?;
+                            }
+                        }},
+                    _ = cum_hashrate_ticker.tick() => {
+                        hashrate_handler.handle_cum_tick()?;
+                    }
+                    _ = instant_hashrate_ticker.tick() => {
+                        hashrate_handler.handle_instant_tick()?;
+                    }
+                    _ = &mut shutdown_out => {
+                        log::info!("utility_thread: utility thread was shutdown");
+                        return Ok(());
+                    }
                 }
             }
-        }
+        };
+
+        let result = closure.await;
+        println!("closure closed with {result:?}");
+
+        result
     }
 }
 
