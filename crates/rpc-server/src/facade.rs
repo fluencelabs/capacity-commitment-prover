@@ -45,9 +45,9 @@ where
     pub fn new(prover: P) -> Self {
         let prover = Arc::new(RwLock::new(prover));
 
-        let (to_worker, from_worker) = mpsc::channel(100);
+        let (to_worker, from_facade) = mpsc::channel(100);
 
-        let worker = tokio::task::spawn(facade_loop(prover.clone(), from_worker));
+        let worker = tokio::task::spawn(facade_loop(prover.clone(), from_facade));
 
         Self {
             to_worker,
@@ -125,13 +125,14 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
     }
 }
 
-async fn facade_loop<P>(prover: Arc<RwLock<P>>, mut from_worker: mpsc::Receiver<FacadeMessage>)
+#[tracing::instrument(skip_all)]
+async fn facade_loop<P>(prover: Arc<RwLock<P>>, mut from_facade: mpsc::Receiver<FacadeMessage>)
 where
     P: NoxCCPApi,
     <P as NoxCCPApi>::Error: Display,
 {
     use FacadeMessage::*;
-    while let Some(message) = receive_last(&mut from_worker).await {
+    while let Some(message) = receive_last(&mut from_facade).await {
         let mut guard = prover.write().await;
         match message {
             OnActiveCommitment(epoch_parameters, cu_allocation) => {
