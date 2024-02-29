@@ -319,6 +319,7 @@ dependencies = [
  "capacity-commitment-prover",
  "ccp-rpc-client",
  "ccp-shared",
+ "eyre",
  "jsonrpsee",
  "tokio",
  "tracing",
