@@ -24,11 +24,11 @@ pub(crate) struct ThreadHashrateRecord {
     pub(crate) epoch: EpochParameters,
     pub(crate) core_id: LogicalCoreId,
     pub(crate) duration: Duration,
-    pub(crate) variant: HashrateCUEntryVariant,
+    pub(crate) variant: HashrateRecordType,
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum HashrateCUEntryVariant {
+pub(crate) enum HashrateRecordType {
     CacheCreation,
 
     DatasetInitialization { start_item: u64, items_count: u64 },
@@ -46,7 +46,7 @@ impl ThreadHashrateRecord {
             epoch,
             core_id,
             duration,
-            variant: HashrateCUEntryVariant::CacheCreation,
+            variant: HashrateRecordType::CacheCreation,
         }
     }
 
@@ -61,7 +61,7 @@ impl ThreadHashrateRecord {
             epoch,
             core_id,
             duration,
-            variant: HashrateCUEntryVariant::DatasetInitialization {
+            variant: HashrateRecordType::DatasetInitialization {
                 start_item,
                 items_count,
             },
@@ -78,7 +78,7 @@ impl ThreadHashrateRecord {
             epoch,
             core_id,
             duration,
-            variant: HashrateCUEntryVariant::HashesChecked { hashes_count },
+            variant: HashrateRecordType::HashesChecked { hashes_count },
         }
     }
 }
@@ -86,12 +86,12 @@ impl ThreadHashrateRecord {
 impl std::fmt::Display for ThreadHashrateRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.variant {
-            HashrateCUEntryVariant::CacheCreation => write!(
+            HashrateRecordType::CacheCreation => write!(
                 f,
                 "core id {}: spent {:?} for cache creation",
                 self.core_id, self.duration
             ),
-            HashrateCUEntryVariant::DatasetInitialization {
+            HashrateRecordType::DatasetInitialization {
                 start_item,
                 items_count,
             } => write!(
@@ -99,7 +99,7 @@ impl std::fmt::Display for ThreadHashrateRecord {
                 "core id {}: spent {:?} for dataset init in ({start_item}, {items_count})",
                 self.core_id, self.duration
             ),
-            HashrateCUEntryVariant::HashesChecked { hashes_count } => {
+            HashrateRecordType::HashesChecked { hashes_count } => {
                 let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
                 write!(f, "core id {}: hashrate {hashrate}", self.core_id)
             }

@@ -15,35 +15,12 @@
  */
 
 use thiserror::Error as ThisError;
-use tokio::task::JoinError;
-
-use crate::cu::CUProverError;
-use crate::hashrate::HashrateError;
-use crate::utility_thread::UtilityThreadError;
 
 #[derive(ThisError, Debug)]
-pub enum CCProverError {
+pub enum HashrateError {
     #[error(transparent)]
-    CUProverError(#[from] CUProverError),
-
-    #[error("CU prover errors are happened: {0:?}")]
-    CUProverErrors(Vec<CUProverError>),
+    IOError(#[from] std::io::Error),
 
     #[error(transparent)]
-    HashrateError(#[from] HashrateError),
-
-    #[error(transparent)]
-    JoinError(#[from] JoinError),
-
-    #[error(transparent)]
-    UtilityThreadError(#[from] UtilityThreadError),
-
-    #[error(transparent)]
-    IOError(#[from] tokio::io::Error),
-}
-
-impl From<Vec<CUProverError>> for CCProverError {
-    fn from(errors: Vec<CUProverError>) -> Self {
-        Self::CUProverErrors(errors)
-    }
+    CSVError(#[from] csv::Error),
 }

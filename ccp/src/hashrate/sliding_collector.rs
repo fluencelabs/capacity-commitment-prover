@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::time::Duration;
@@ -24,7 +22,7 @@ use std::time::Instant;
 use ccp_shared::types::LogicalCoreId;
 
 use super::record::ThreadHashrateRecord;
-use crate::hashrate::record::HashrateCUEntryVariant;
+use crate::hashrate::record::HashrateRecordType;
 
 pub(crate) type SlidingHashrate<const SECS: u64> = HashMap<LogicalCoreId, SlidingWindow<SECS>>;
 
@@ -34,7 +32,7 @@ pub(crate) struct SlidingHashrateCollector<const SECS: u64> {
 }
 
 #[derive(Clone, Debug)]
-struct SlidingWindow<const SECS: u64> {
+pub(crate) struct SlidingWindow<const SECS: u64> {
     records: VecDeque<SlidingWindowRecord>,
     window_size: Duration,
 }
@@ -42,7 +40,7 @@ struct SlidingWindow<const SECS: u64> {
 #[derive(Copy, Clone, Debug)]
 struct SlidingWindowRecord {
     pub(self) time: Instant,
-    pub(self) hashes_count: u64,
+    pub(self) checked_hashes_count: u64,
     pub(self) duration: Duration,
 }
 
@@ -53,7 +51,7 @@ impl<const SECS: u64> SlidingHashrateCollector<SECS> {
 
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) {
         let hashes_count = match record.variant {
-            HashrateCUEntryVariant::HashesChecked { hashes_count } => hashes_count as u64,
+            HashrateRecordType::HashesChecked { hashes_count } => hashes_count as u64,
             _ => {
                 return;
             }
@@ -80,7 +78,7 @@ impl<const SECS: u64> SlidingWindow<SECS> {
         }
     }
 
-    pub(self) fn count_record(&mut self, hashes_count: u64, duration: Duration) {
+    pub(self) fn account_record(&mut self, hashes_count: u64, duration: Duration) {
         let current_time = Instant::now();
         self.prune_old(current_time);
 
@@ -93,7 +91,7 @@ impl<const SECS: u64> SlidingWindow<SECS> {
         let mut overall_duration = Duration::default();
 
         for record in self.records.iter() {
-            overall_hashes_found += record.hashes_count;
+            overall_hashes_found += record.checked_hashes_count;
             overall_duration += record.duration;
         }
 
@@ -101,13 +99,13 @@ impl<const SECS: u64> SlidingWindow<SECS> {
     }
 
     fn prune_old(&mut self, current_time: Instant) {
-        let last_count_time = match current_time.checked_sub(self.window_size) {
+        let last_account_time = match current_time.checked_sub(self.window_size) {
             Some(time) => time,
             None => return,
         };
 
-        while let Some(last_record) = self.records.back() {
-            if last_record.time < last_count_time {
+        while let Some(record) = self.records.back() {
+            if record.time < last_account_time {
                 self.records.pop_back();
             }
         }
@@ -118,7 +116,7 @@ impl SlidingWindowRecord {
     pub(self) fn new(time: Instant, hashes_count: u64, duration: Duration) -> Self {
         Self {
             time,
-            hashes_count,
+            checked_hashes_count: hashes_count,
             duration,
         }
     }
@@ -135,10 +133,10 @@ fn add_record_to_hashmap<const SECS: u64>(
     match running_average.entry(core_id) {
         Entry::Vacant(entry) => {
             let mut new_average = SlidingWindow::new();
-            new_average.count_record(hashes_count, duration);
+            new_average.account_record(hashes_count, duration);
             entry.insert(new_average);
         }
-        Entry::Occupied(entry) => entry.into_mut().count_record(hashes_count, duration),
+        Entry::Occupied(entry) => entry.into_mut().account_record(hashes_count, duration),
     }
 }
 
@@ -147,7 +145,7 @@ use std::fmt::Formatter;
 
 impl<const SECS: u64> fmt::Display for SlidingHashrateCollector<SECS> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        for (core, average) in self.sliding_hashrate {
+        for (core, average) in self.sliding_hashrate.iter() {
             writeln!(f, "core {} - {}", core, average.compute_hashrate())?;
         }
 

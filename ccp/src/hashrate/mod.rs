@@ -15,12 +15,16 @@
  */
 
 mod collector;
+mod errors;
 mod handler;
 mod record;
 mod saver;
 mod sliding_collector;
 
+pub(crate) type HResult<T> = Result<T, HashrateError>;
+
 pub(crate) use collector::HashrateCollector;
+pub(crate) use errors::HashrateError;
 pub(crate) use handler::HashrateHandler;
 pub(crate) use record::ThreadHashrateRecord;
 pub(crate) use saver::HashrateSaver;

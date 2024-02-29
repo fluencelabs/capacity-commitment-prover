@@ -48,14 +48,17 @@ pub(crate) struct UtilityThread {
 impl UtilityThread {
     pub(crate) fn spawn(
         core_id: LogicalCoreId,
+        prev_proof_idx: ProofIdx,
         proof_storage_dir: std::path::PathBuf,
+        prev_global_nonce: Option<GlobalNonce>,
         hashrate_handler: HashrateHandler,
     ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(100);
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
-        let new_proof_handler = NewProofHandler::new(proof_storage);
+        let new_proof_handler =
+            NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
 
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
@@ -106,25 +109,25 @@ impl UtilityThread {
                     match message {
                         ToUtilityMessage::ProofFound { core_id, proof} => {
                             new_proof_handler.handle_found_proof(proof).await?;
-                            hashrate_collector.proof_found(core_id);
+                            hashrate_handler.proof_found(core_id);
                         }
                         ToUtilityMessage::ErrorHappened { thread_location, error} => {
                             log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
                         }
                         ToUtilityMessage::Hashrate(record) => {
                             log::info!("utility_thread: new hashrate message {record}");
-                            hashrate_handler.account_record(record)
+                            hashrate_handler.account_record(record)?;
                         }
                     }},
                 _ = cum_hashrate_ticker.tick() => {
-                    hashrate_handler.handle_cum_tick()
+                    hashrate_handler.handle_cum_tick()?;
                 }
                 _ = instant_hashrate_ticker.tick() => {
-                    hashrate_handler.handle_instant_tick()
+                    hashrate_handler.handle_instant_tick()?;
                 }
                 _ = &mut shutdown_out => {
                     log::info!("utility_thread: utility thread was shutdown");
-                    return Ok(())
+                    return Ok(());
                 }
             }
         }
@@ -138,10 +141,14 @@ struct NewProofHandler {
 }
 
 impl NewProofHandler {
-    pub(self) fn new(proof_storage: ProofStorage) -> Self {
+    pub(self) fn new(
+        proof_storage: ProofStorage,
+        prev_proof_idx: ProofIdx,
+        last_seen_global_nonce: Option<GlobalNonce>,
+    ) -> Self {
         Self {
-            proof_idx: ProofIdx::zero(),
-            last_seen_global_nonce: GlobalNonce::new([0u8; 32]),
+            proof_idx: prev_proof_idx,
+            last_seen_global_nonce: last_seen_global_nonce.unwrap_or(GlobalNonce::new([0u8; 32])),
             proof_storage,
         }
     }

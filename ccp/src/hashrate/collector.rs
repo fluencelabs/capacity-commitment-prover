@@ -23,37 +23,23 @@ use tokio::time::Instant;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
-use super::record::HashrateCUEntryVariant;
+use super::record::HashrateRecordType;
 use super::record::ThreadHashrateRecord;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct HashrateCollector {
     status: CollectorStatus,
     entries: HashMap<LogicalCoreId, ThreadHashrateRaw>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum CollectorStatus {
     Started {
         started_time: Instant,
         epoch: EpochParameters,
     },
+    #[default]
     JustCreated,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct ThreadHashrateRaw {
-    cache_creation: ParameterStatus<Duration>,
-    dataset_initialization: Vec<Duration>,
-    pow_duration: ParameterStatus<Duration>,
-    hashes_checked: u64,
-    proofs_found: u64,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum ParameterStatus<T> {
-    Measured(T),
-    NotMeasured,
 }
 
 pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
@@ -69,39 +55,54 @@ pub(crate) struct ThreadHashrate {
     pub(crate) dataset_initialization: ParameterStatus<Duration>,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ThreadHashrateRaw {
+    cache_creation: ParameterStatus<Duration>,
+    dataset_initialization: ParameterStatus<Duration>,
+    cc_job_duration: ParameterStatus<Duration>,
+    hashes_checked_count: u64,
+    proofs_found_count: u64,
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ParameterStatus<T> {
+    Measured(T),
+    #[default]
+    NotMeasured,
+}
+
+#[derive(Clone, Debug, Default)]
+pub(crate) enum EpochObservation {
+    EpochChanged {
+        prev_epoch_hashrate: Hashrate,
+    },
+
+    #[default]
+    EpochNotChanged,
+
+    StartedWorking,
+}
+
 impl HashrateCollector {
     pub(crate) fn new() -> Self {
-        Self {
-            status: CollectorStatus::JustCreated,
-            entries: HashMap::new(),
-        }
+        Self::default()
     }
 
     pub(crate) fn account_record(
         &mut self,
         hashrate_record: ThreadHashrateRecord,
-    ) -> Option<Hashrate> {
+    ) -> EpochObservation {
         use std::collections::hash_map::Entry;
 
-        let result = match self.status {
-            CollectorStatus::JustCreated => {
-                self.new_epoch(hashrate_record.epoch);
-                None
-            }
-            CollectorStatus::Started { epoch, .. } if epoch == hashrate_record.epoch => None,
-            CollectorStatus::Started { .. } => {
-                let statistics = self.collect();
-                self.new_epoch(hashrate_record.epoch);
-
-                Some(statistics)
-            }
-        };
+        let result = self.observe_epoch(hashrate_record.epoch);
 
         match self.entries.entry(hashrate_record.core_id) {
             Entry::Vacant(entry) => {
-                entry.insert(ThreadHashrateRaw::from_single_record(hashrate_record));
+                let mut raw_hashrate = ThreadHashrateRaw::default();
+                raw_hashrate.account_record(hashrate_record);
+                entry.insert(raw_hashrate);
             }
-            Entry::Occupied(entry) => entry.into_mut().count_record(hashrate_record),
+            Entry::Occupied(entry) => entry.into_mut().account_record(hashrate_record),
         };
 
         result
@@ -118,25 +119,16 @@ impl HashrateCollector {
         self.entries
             .iter()
             .map(|(&core_id, info)| {
-                let hashrate = match info.pow_duration {
-                    ParameterStatus::Measured(duration) => {
-                        let hashrate = info.hashes_checked as f64 / duration.as_secs_f64();
-                        ParameterStatus::Measured(hashrate)
-                    }
-                    ParameterStatus::NotMeasured => ParameterStatus::NotMeasured,
-                };
-
-                let dataset_initialization = match info.dataset_initialization.iter().max() {
-                    Some(&duration) => ParameterStatus::Measured(duration),
-                    None => ParameterStatus::NotMeasured,
-                };
+                let hashrate = info.cc_job_duration.map(|cc_job_duration| {
+                    info.hashes_checked_count as f64 / cc_job_duration.as_secs_f64()
+                });
 
                 let statistics = ThreadHashrate {
-                    effective_hashrate: info.hashes_checked as f64 / epoch_duration,
+                    effective_hashrate: info.hashes_checked_count as f64 / epoch_duration,
                     hashrate,
-                    proofs_found: info.proofs_found,
+                    proofs_found: info.proofs_found_count,
                     cache_creation: info.cache_creation,
-                    dataset_initialization,
+                    dataset_initialization: info.dataset_initialization,
                 };
 
                 (core_id, statistics)
@@ -149,13 +141,35 @@ impl HashrateCollector {
 
         match self.entries.entry(core_id) {
             Entry::Vacant(entry) => {
-                entry.insert(ThreadHashrateRaw::from_proof_found());
+                let mut raw_hashrate = ThreadHashrateRaw::default();
+                raw_hashrate.account_proof_found();
+                entry.insert(raw_hashrate);
             }
-            Entry::Occupied(entry) => entry.into_mut().count_proof_found(),
+            Entry::Occupied(entry) => entry.into_mut().account_proof_found(),
         };
     }
 
-    fn new_epoch(&mut self, epoch: EpochParameters) {
+    fn observe_epoch(&mut self, new_epoch: EpochParameters) -> EpochObservation {
+        match self.status {
+            CollectorStatus::JustCreated => {
+                self.handler_new_epoch(new_epoch);
+                EpochObservation::StartedWorking
+            }
+            CollectorStatus::Started { epoch, .. } => {
+                if epoch == new_epoch {
+                    return EpochObservation::EpochNotChanged;
+                }
+
+                let prev_epoch_hashrate = self.collect();
+                self.handler_new_epoch(new_epoch);
+                EpochObservation::EpochChanged {
+                    prev_epoch_hashrate,
+                }
+            }
+        }
+    }
+
+    fn handler_new_epoch(&mut self, epoch: EpochParameters) {
         self.status = CollectorStatus::Started {
             started_time: Instant::now(),
             epoch,
@@ -165,81 +179,36 @@ impl HashrateCollector {
     }
 }
 
-impl Default for ThreadHashrateRaw {
-    fn default() -> Self {
-        Self {
-            cache_creation: ParameterStatus::NotMeasured,
-            dataset_initialization: vec![],
-            pow_duration: ParameterStatus::NotMeasured,
-            hashes_checked: 0,
-            proofs_found: 0,
+impl ThreadHashrateRaw {
+    pub(self) fn account_record(&mut self, new_entry: ThreadHashrateRecord) {
+        match new_entry.variant {
+            HashrateRecordType::CacheCreation => {
+                self.cache_creation = ParameterStatus::Measured(new_entry.duration)
+            }
+            HashrateRecordType::DatasetInitialization { .. } => {
+                self.dataset_initialization = ParameterStatus::Measured(new_entry.duration)
+            }
+            HashrateRecordType::HashesChecked { hashes_count } => {
+                self.cc_job_duration
+                    .map(|duration| duration + new_entry.duration);
+                self.hashes_checked_count += hashes_count as u64
+            }
         }
+    }
+
+    pub(crate) fn account_proof_found(&mut self) {
+        self.proofs_found_count += 1;
     }
 }
 
-impl ThreadHashrateRaw {
-    pub(self) fn from_single_record(entry: ThreadHashrateRecord) -> Self {
-        match entry.variant {
-            HashrateCUEntryVariant::CacheCreation => Self::from_cache_creation(entry.duration),
-            HashrateCUEntryVariant::DatasetInitialization { .. } => {
-                Self::from_dataset_initialization(entry.duration)
-            }
-            HashrateCUEntryVariant::HashesChecked { hashes_count } => {
-                Self::from_cc_job(entry.duration, hashes_count as u64)
-            }
-        }
-    }
-
-    pub(self) fn count_record(&mut self, new_entry: ThreadHashrateRecord) {
-        match new_entry.variant {
-            HashrateCUEntryVariant::CacheCreation => {
-                self.cache_creation = ParameterStatus::Measured(new_entry.duration)
-            }
-            HashrateCUEntryVariant::DatasetInitialization { .. } => {
-                self.dataset_initialization.push(new_entry.duration)
-            }
-            HashrateCUEntryVariant::HashesChecked { hashes_count } => {
-                let new_duration = match self.pow_duration {
-                    ParameterStatus::Measured(duration) => duration + new_entry.duration,
-                    ParameterStatus::NotMeasured => new_entry.duration,
-                };
-
-                self.pow_duration = ParameterStatus::Measured(new_duration);
-                self.hashes_checked += hashes_count as u64
-            }
-        }
-    }
-
-    pub(crate) fn count_proof_found(&mut self) {
-        self.proofs_found += 1;
-    }
-
-    fn from_cache_creation(duration: Duration) -> Self {
-        Self {
-            cache_creation: ParameterStatus::Measured(duration),
-            ..<_>::default()
-        }
-    }
-
-    fn from_dataset_initialization(duration: Duration) -> Self {
-        Self {
-            dataset_initialization: vec![duration],
-            ..<_>::default()
-        }
-    }
-
-    fn from_cc_job(duration: Duration, hashes_checked: u64) -> Self {
-        Self {
-            pow_duration: ParameterStatus::Measured(duration),
-            hashes_checked,
-            ..<_>::default()
-        }
-    }
-
-    fn from_proof_found() -> Self {
-        Self {
-            proofs_found: 1,
-            ..<_>::default()
+impl<T> ParameterStatus<T> {
+    pub fn map<U, F>(self, f: F) -> ParameterStatus<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        match self {
+            ParameterStatus::Measured(value) => ParameterStatus::Measured(f(value)),
+            ParameterStatus::NotMeasured => ParameterStatus::NotMeasured,
         }
     }
 }

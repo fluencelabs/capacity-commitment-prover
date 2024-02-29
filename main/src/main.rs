@@ -63,13 +63,13 @@ struct ProverArgs {
     threads_per_physical_core: std::num::NonZeroUsize,
 
     #[arg(long)]
-    dir_to_store_proofs: PathBuf,
-
-    #[arg(long)]
-    dir_to_store_persistent_state: PathBuf,
+    state_dir: PathBuf,
 
     #[arg(long, action = ArgAction::SetTrue)]
     enable_msr: bool,
+
+    #[arg(long, action = ArgAction::SetTrue)]
+    report_hashrate: bool,
 }
 
 fn main() -> eyre::Result<()> {
@@ -89,11 +89,8 @@ fn main() -> eyre::Result<()> {
         eyre::bail!("please, define at least one --tokio-core-id");
     }
 
-    check_writable_dir(&args.prover_args.dir_to_store_proofs)
-        .wrap_err("The --dir-to-store-proofs value should be a writeable directory path")?;
-    check_writable_dir(&args.prover_args.dir_to_store_persistent_state).wrap_err(
-        "The --dir-to-store-persistent-state value should be a writeable directory path",
-    )?;
+    check_writable_dir(&args.prover_args.state_dir)
+        .wrap_err("The --state-dir value should be a writeable directory path")?;
 
     let tokio_cores = args
         .tokio_core_ids
@@ -119,7 +116,7 @@ fn main() -> eyre::Result<()> {
 
 async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Result<()> {
     // Build a prover
-    let prover = build_prover(prover_args);
+    let prover = build_prover(prover_args).await?;
     tracing::info!("created prover");
 
     // Launch RPC API
@@ -136,7 +133,7 @@ async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Resu
     Ok(())
 }
 
-fn build_prover(prover_args: ProverArgs) -> CCProver {
+async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
     // TODO an option?
     let randomx_flags = RandomXFlags::recommended_full_mem();
 
@@ -145,12 +142,16 @@ fn build_prover(prover_args: ProverArgs) -> CCProver {
             threads_per_physical_core: prover_args.threads_per_physical_core,
         },
         randomx_flags,
-        dir_to_store_proofs: prover_args.dir_to_store_proofs,
-        dir_to_store_persistent_state: prover_args.dir_to_store_persistent_state,
+        state_dir: prover_args.state_dir,
         enable_msr: prover_args.enable_msr,
+        report_hashrate: prover_args.report_hashrate,
     };
 
-    CCProver::new(prover_args.utility_core_id.into(), config)
+    CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
+        .await
+        // e doesn't implement Sync, and cannot be converted to anyhow::Error or eyre::Error.
+        // as it will be reported to a user immediately, convert the error to string
+        .map_err(|e| eyre::eyre!(e.to_string()))
 }
 
 // Preliminary check that is useful on early diagnostics.
@@ -158,10 +159,12 @@ fn check_writable_dir(path: &Path) -> eyre::Result<()> {
     if !path.is_dir() {
         eyre::bail!("{path:?} is not a directory");
     }
+
     let meta = std::fs::metadata(path)?;
-    let perm = meta.permissions();
-    if perm.readonly() {
+    let permissions = meta.permissions();
+    if permissions.readonly() {
         eyre::bail!("{path:?} is not writable");
     }
+
     Ok(())
 }

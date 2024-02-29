@@ -32,6 +32,7 @@ mod errors;
 mod hashrate;
 mod proof_storage;
 pub mod prover;
+mod state_storage;
 pub mod status;
 pub(crate) mod utility_thread;
 
