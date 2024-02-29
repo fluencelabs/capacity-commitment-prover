@@ -108,10 +108,6 @@ impl RandomXJob {
         Ok(())
     }
 
-    pub(crate) fn epoch(&self) -> EpochParameters {
-        self.epoch
-    }
-
     fn is_last_iteration(&self, hash_id: usize) -> bool {
         hash_id == self.hashes_per_round - 1
     }
