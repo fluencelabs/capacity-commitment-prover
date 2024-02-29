@@ -97,7 +97,7 @@ impl RandomXJob {
 
         let duration = start.elapsed();
 
-        let message = ThreadHashrateRecord::hashes_checked(
+        let message = ThreadHashrateRecord::checked_hashes(
             self.epoch,
             core_id,
             duration,

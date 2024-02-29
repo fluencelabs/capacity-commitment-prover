@@ -185,7 +185,7 @@ impl ProvingThreadSync {
                 let job = RandomXJob::from_cc_job(job, HASHES_PER_ROUND)?;
                 let duration = start.elapsed();
 
-                let hashrate = ThreadHashrateRecord::hashes_checked(
+                let hashrate = ThreadHashrateRecord::checked_hashes(
                     job.epoch(),
                     core_id,
                     duration,

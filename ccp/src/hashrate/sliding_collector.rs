@@ -51,7 +51,9 @@ impl<const SECS: u64> SlidingHashrateCollector<SECS> {
 
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) {
         let hashes_count = match record.variant {
-            HashrateRecordType::HashesChecked { hashes_count } => hashes_count as u64,
+            HashrateRecordType::CheckedHashes {
+                count: hashes_count,
+            } => hashes_count as u64,
             _ => {
                 return;
             }

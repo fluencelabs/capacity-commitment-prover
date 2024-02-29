@@ -26,6 +26,7 @@ use ccp_shared::types::LogicalCoreId;
 use super::record::HashrateRecordType;
 use super::record::ThreadHashrateRecord;
 
+/// Collects and analyzes hashrate comes from sync threads.
 #[derive(Clone, Debug, Default)]
 pub(crate) struct HashrateCollector {
     status: CollectorStatus,
@@ -34,25 +35,27 @@ pub(crate) struct HashrateCollector {
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum CollectorStatus {
-    Started {
+    Busy {
         started_time: Instant,
         epoch: EpochParameters,
     },
     #[default]
-    JustCreated,
+    Idle,
 }
 
 pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
 
+/// Unprocessed cumulative hashrate for a sync thread.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ThreadHashrateRaw {
     cache_creation: ParameterStatus<Duration>,
     dataset_initialization: ParameterStatus<Duration>,
     cc_job_duration: ParameterStatus<Duration>,
-    hashes_checked_count: u64,
-    proofs_found_count: u64,
+    checked_hashes_count: u64,
+    found_proofs_count: u64,
 }
 
+/// Processed cumulative hashrate for a sync thread.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ThreadHashrate {
     // hashes from epoch start, counts operations with cache and dataset
@@ -108,8 +111,8 @@ impl HashrateCollector {
 
     pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, ThreadHashrate> {
         let epoch_duration = match self.status {
-            CollectorStatus::Started { started_time, .. } => started_time.elapsed(),
-            CollectorStatus::JustCreated => return HashMap::new(),
+            CollectorStatus::Busy { started_time, .. } => started_time.elapsed(),
+            CollectorStatus::Idle => return HashMap::new(),
         };
 
         let epoch_duration = epoch_duration.as_secs_f64();
@@ -119,12 +122,12 @@ impl HashrateCollector {
             .map(|(&core_id, info)| {
                 let hashrate = info
                     .cc_job_duration
-                    .map(|duration| info.hashes_checked_count as f64 / duration.as_secs_f64());
+                    .map(|duration| info.checked_hashes_count as f64 / duration.as_secs_f64());
 
                 let statistics = ThreadHashrate {
-                    effective_hashrate: info.hashes_checked_count as f64 / epoch_duration,
+                    effective_hashrate: info.checked_hashes_count as f64 / epoch_duration,
                     hashrate,
-                    proofs_found: info.proofs_found_count,
+                    proofs_found: info.found_proofs_count,
                     cache_creation: info.cache_creation,
                     dataset_initialization: info.dataset_initialization,
                 };
@@ -149,11 +152,11 @@ impl HashrateCollector {
 
     fn observe_epoch(&mut self, new_epoch: EpochParameters) -> EpochObservation {
         match self.status {
-            CollectorStatus::JustCreated => {
+            CollectorStatus::Idle => {
                 self.handler_new_epoch(new_epoch);
                 EpochObservation::StartedWorking
             }
-            CollectorStatus::Started { epoch, .. } => {
+            CollectorStatus::Busy { epoch, .. } => {
                 if epoch == new_epoch {
                     return EpochObservation::EpochNotChanged;
                 }
@@ -168,7 +171,7 @@ impl HashrateCollector {
     }
 
     fn handler_new_epoch(&mut self, epoch: EpochParameters) {
-        self.status = CollectorStatus::Started {
+        self.status = CollectorStatus::Busy {
             started_time: Instant::now(),
             epoch,
         };
@@ -186,16 +189,18 @@ impl ThreadHashrateRaw {
             HashrateRecordType::DatasetInitialization { .. } => {
                 self.dataset_initialization = ParameterStatus::Measured(new_entry.duration)
             }
-            HashrateRecordType::HashesChecked { hashes_count } => {
+            HashrateRecordType::CheckedHashes {
+                count: hashes_count,
+            } => {
                 self.cc_job_duration
                     .map(|duration| duration + new_entry.duration);
-                self.hashes_checked_count += hashes_count as u64
+                self.checked_hashes_count += hashes_count as u64
             }
         }
     }
 
     pub(crate) fn account_proof_found(&mut self) {
-        self.proofs_found_count += 1;
+        self.found_proofs_count += 1;
     }
 }
 

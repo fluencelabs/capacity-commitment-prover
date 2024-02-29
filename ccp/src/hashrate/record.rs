@@ -33,7 +33,7 @@ pub(crate) enum HashrateRecordType {
 
     DatasetInitialization { start_item: u64, items_count: u64 },
 
-    HashesChecked { hashes_count: usize },
+    CheckedHashes { count: usize },
 }
 
 impl ThreadHashrateRecord {
@@ -68,7 +68,7 @@ impl ThreadHashrateRecord {
         }
     }
 
-    pub(crate) fn hashes_checked(
+    pub(crate) fn checked_hashes(
         epoch: EpochParameters,
         core_id: LogicalCoreId,
         duration: Duration,
@@ -78,7 +78,9 @@ impl ThreadHashrateRecord {
             epoch,
             core_id,
             duration,
-            variant: HashrateRecordType::HashesChecked { hashes_count },
+            variant: HashrateRecordType::CheckedHashes {
+                count: hashes_count,
+            },
         }
     }
 }
@@ -99,7 +101,9 @@ impl std::fmt::Display for ThreadHashrateRecord {
                 "core id {}: spent {:?} for dataset init in ({start_item}, {items_count})",
                 self.core_id, self.duration
             ),
-            HashrateRecordType::HashesChecked { hashes_count } => {
+            HashrateRecordType::CheckedHashes {
+                count: hashes_count,
+            } => {
                 let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
                 write!(f, "core id {}: hashrate {hashrate}", self.core_id)
             }
