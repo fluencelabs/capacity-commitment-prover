@@ -24,22 +24,20 @@ use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::GlobalNonce;
 use cpu_utils::LogicalCoreId;
-use crossterm::event::{EventStream, KeyCode};
-use futures::StreamExt;
-use futures::FutureExt;
 
 use super::message::*;
 use super::UTResult;
-use crate::hashrate::HashrateCollector;
-use crate::hashrate::SlidingWindowHashrateCollector;
-use crate::hashrate::HashrateSaver;
 use crate::utility_thread::proof_storage::ProofStorage;
 use crate::utility_thread::UtilityThreadError;
 
 type ThreadShutdownInlet = oneshot::Sender<()>;
 type ThreadShutdownOutlet = oneshot::Receiver<()>;
 
-const HASHRATE_UPDATE_INTERVAL: u64 = 60;
+const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
+const INSTANT_HASHRATE_UPDATE_INTERVAL: u64 = 10;
+
+pub(crate) type HashrateHandler =
+    crate::hashrate::HashrateHandler<INSTANT_HASHRATE_UPDATE_INTERVAL>;
 
 pub(crate) struct UtilityThread {
     to_utility: ToUtilityInlet,
@@ -51,25 +49,20 @@ impl UtilityThread {
     pub(crate) fn spawn(
         core_id: LogicalCoreId,
         proof_storage_dir: std::path::PathBuf,
-        hashrate_dir: std::path::PathBuf,
+        hashrate_handler: HashrateHandler,
     ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(100);
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let new_proof_handler = NewProofHandler::new(proof_storage);
-        let hashrate_collector = HashrateCollector::new();
-        let sliding_window_hashrate_collector = SlidingWindowHashrateCollector::new();
-        let hashrate_saver = HashrateSaver::from_directory(hashrate_dir);
 
         let handle = tokio::spawn(Self::utility_closure(
             core_id,
             from_utility,
             shutdown_out,
             new_proof_handler,
-            hashrate_collector,
-            sliding_window_hashrate_collector,
-            hashrate_saver,
+            hashrate_handler,
         ));
 
         Self {
@@ -95,16 +88,17 @@ impl UtilityThread {
         mut to_utility: ToUtilityOutlet,
         mut shutdown_out: ThreadShutdownOutlet,
         mut new_proof_handler: NewProofHandler,
-        mut hashrate_collector: HashrateCollector,
-        mut sliding_window_hashrate_collector: SlidingWindowHashrateCollector,
-        hashrate_saver: HashrateSaver,
+        mut hashrate_handler: HashrateHandler,
     ) -> UTResult<()> {
         if !cpu_utils::pinning::pin_current_thread_to(core_id) {
             log::error!("utility_thread: failed to pin to {core_id} core");
         }
 
-        let mut hashrate_ticker = time::interval(Duration::from_secs(HASHRATE_UPDATE_INTERVAL));
-        let mut event_stream = EventStream::new();
+        let mut cum_hashrate_ticker =
+            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+
+        let mut instant_hashrate_ticker =
+            time::interval(Duration::from_secs(INSTANT_HASHRATE_UPDATE_INTERVAL));
 
         loop {
             tokio::select! {
@@ -119,32 +113,17 @@ impl UtilityThread {
                         }
                         ToUtilityMessage::Hashrate(record) => {
                             log::info!("utility_thread: new hashrate message {record}");
-                            if let Some(prev_epoch_hashrate) = hashrate_collector.count_record(record) {
-                                hashrate_saver.save_hashrate_previous(prev_epoch_hashrate)?;
-                            }
-                            sliding_window_hashrate_collector.count_record(record);
+                            hashrate_handler.account_record(record)
                         }
                     }},
-                _ = hashrate_ticker.tick() => {
-                    let hashrate = hashrate_collector.collect();
-                    hashrate_saver.save_hashrate_current(hashrate)?;
+                _ = cum_hashrate_ticker.tick() => {
+                    hashrate_handler.handle_cum_tick()
                 }
-                maybe_event = event_stream.next().fuse() => {
-                    use crossterm::event::Event;
-
-                    println!("crossterm event: {maybe_event:?}");
-                    log::info!("event received");
-
-                    if let Some(Ok(event)) = maybe_event {
-                        if event == Event::Key(KeyCode::Enter.into()) {
-                            log::info!("enter pressed");
-                            //println!("{hashrate_collector_by_timer:?}");
-                        }
-                    }
+                _ = instant_hashrate_ticker.tick() => {
+                    hashrate_handler.handle_instant_tick()
                 }
                 _ = &mut shutdown_out => {
                     log::info!("utility_thread: utility thread was shutdown");
-
                     return Ok(())
                 }
             }

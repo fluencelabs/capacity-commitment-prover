@@ -27,9 +27,8 @@ futures.workspace = true
 
 anyhow.workspace = true
 byteorder.workspace = true
-crossterm.workspace = true
-crossterm.features = ["event-stream"]
 chrono.workspace = true
+csv.workspace = true
 env_logger.workspace = true
 rand.workspace = true
 log.workspace = true

@@ -77,7 +77,7 @@ impl HashrateCollector {
         }
     }
 
-    pub(crate) fn count_record(
+    pub(crate) fn account_record(
         &mut self,
         hashrate_record: ThreadHashrateRecord,
     ) -> Option<Hashrate> {

@@ -15,11 +15,13 @@
  */
 
 mod collector;
-mod sliding_window_collector;
+mod handler;
 mod record;
 mod saver;
+mod sliding_collector;
 
 pub(crate) use collector::HashrateCollector;
-pub(crate) use sliding_window_collector::SlidingWindowHashrateCollector;
+pub(crate) use handler::HashrateHandler;
 pub(crate) use record::ThreadHashrateRecord;
 pub(crate) use saver::HashrateSaver;
+pub(crate) use sliding_collector::SlidingHashrateCollector;

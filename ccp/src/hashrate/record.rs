@@ -88,7 +88,7 @@ impl std::fmt::Display for ThreadHashrateRecord {
         match self.variant {
             HashrateCUEntryVariant::CacheCreation => write!(
                 f,
-                "logical core id {}: spent {:?} for cache creation",
+                "core id {}: spent {:?} for cache creation",
                 self.core_id, self.duration
             ),
             HashrateCUEntryVariant::DatasetInitialization {
@@ -96,14 +96,13 @@ impl std::fmt::Display for ThreadHashrateRecord {
                 items_count,
             } => write!(
                 f,
-                "logical core id {}: spent {:?} for dataset init in ({start_item}, {items_count})",
+                "core id {}: spent {:?} for dataset init in ({start_item}, {items_count})",
                 self.core_id, self.duration
             ),
-            HashrateCUEntryVariant::HashesChecked { hashes_count } => write!(
-                f,
-                "logical core id {}: spent {:?} to check {hashes_count} hashes",
-                self.core_id, self.duration
-            ),
+            HashrateCUEntryVariant::HashesChecked { hashes_count } => {
+                let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
+                write!(f, "core id {}: hashrate {hashrate}", self.core_id)
+            }
         }
     }
 }

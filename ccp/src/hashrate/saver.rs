@@ -14,36 +14,78 @@
  * limitations under the License.
  */
 
+use std::path::Path;
 use std::path::PathBuf;
+use tokio::time::Instant;
 
 use super::collector::Hashrate;
+use super::sliding_collector::SlidingHashrate;
 
 const PREV_HASHRATE_FILE_NAME: &str = "prev_epoch_hashrate.json";
 const CURRENT_HASHRATE_FILE_NAME: &str = "current_epoch_hashrate.json";
+const HASHRATE_DIR: &str = "hashrate";
+const SLIDING_HASHRATE_DIR: &str = "sliding_hashrate";
+const SLIDING_LOG_ROTATE_COUNT: u32 = 6 * 60 * 24;
 
 pub(crate) struct HashrateSaver {
-    prev_file_path: PathBuf,
-    current_file_path: PathBuf,
+    prev_hashrate_path: PathBuf,
+    current_hashrate_path: PathBuf,
+    sliding_hashrate_path: PathBuf,
 }
 
 impl HashrateSaver {
-    pub(crate) fn from_directory(dir: PathBuf) -> Self {
-        let prev_file_path = dir.join(PREV_HASHRATE_FILE_NAME);
-        let current_file_path = dir.join(CURRENT_HASHRATE_FILE_NAME);
+    pub(crate) fn from_directory(state_path: PathBuf) -> Result<Self, std::io::Error> {
+        let hashrate_dir = state_path.join(HASHRATE_DIR);
+        ensure_dir_exists_and_empty(hashrate_dir)?;
 
-        Self {
-            prev_file_path,
-            current_file_path,
-        }
+        let prev_hashrate_path = hashrate_dir.join(PREV_HASHRATE_FILE_NAME);
+        let current_hashrate_path = hashrate_dir.join(CURRENT_HASHRATE_FILE_NAME);
+        let sliding_hashrate_path = hashrate_dir.join(SLIDING_HASHRATE_DIR);
+
+        let saver = Self {
+            prev_hashrate_path,
+            current_hashrate_path,
+            sliding_hashrate_path,
+        };
+
+        Ok(saver)
     }
 
     pub(crate) fn save_hashrate_previous(&self, hashrate: Hashrate) -> Result<(), std::io::Error> {
         let hashrate = serde_json::to_vec(&hashrate).unwrap();
-        std::fs::write(self.prev_file_path.as_path(), hashrate)
+        std::fs::write(self.prev_hashrate_path.as_path(), hashrate)
     }
 
     pub(crate) fn save_hashrate_current(&self, hashrate: Hashrate) -> Result<(), std::io::Error> {
         let hashrate = serde_json::to_vec(&hashrate).unwrap();
-        std::fs::write(self.current_file_path.as_path(), hashrate)
+        std::fs::write(self.current_hashrate_path.as_path(), hashrate)
     }
+
+    pub(crate) fn save_sliding_hashrate<const SECS: u64>(
+        &self,
+        hashrate: &SlidingHashrate<SECS>,
+    ) -> Result<(), std::io::Error> {
+        let current_time = Instant::now();
+
+        for (core_id, sliding_hashrate) in hashrate {
+            let core_id: usize = (*core_id).into();
+            let path = self.sliding_hashrate_path.join(core_id.to_string());
+            let file = std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .append(true)
+                .open(path)?;
+
+            let mut writer = csv::Writer::from_writer(file);
+            let hashrate = sliding_hashrate.compute_hashrate();
+            writer.encode([format!("{:?}", current_time), hashrate])?;
+        }
+
+        Ok(())
+    }
+}
+
+fn ensure_dir_exists_and_empty<P: AsRef<Path>>(dir: P) -> Result<(), std::io::Error> {
+    let _ = std::fs::remove_dir_all(dir);
+    std::fs::create_dir(dir)
 }
