@@ -27,11 +27,13 @@ use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
+use tokio::task::JoinHandle;
 
 /// An async façade for RPC.
 pub struct OfflineFacade<P> {
     to_worker: mpsc::Sender<FacadeMessage>,
     prover: Arc<RwLock<P>>,
+    worker: JoinHandle<()>,
 }
 
 impl<P> OfflineFacade<P>
@@ -44,12 +46,18 @@ where
 
         let (to_worker, from_worker) = mpsc::channel(100);
 
-        let _worker = tokio::task::spawn(facade_loop(prover.clone(), from_worker));
+        let worker = tokio::task::spawn(facade_loop(prover.clone(), from_worker));
 
         Self {
             to_worker,
             prover,
+            worker,
         }
+    }
+
+    pub async fn stop(self) -> Result<(), tokio::task::JoinError> {
+        std::mem::drop(self.to_worker);
+        self.worker.await
     }
 }
 
