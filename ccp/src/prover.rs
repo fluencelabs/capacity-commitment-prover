@@ -183,20 +183,20 @@ impl CCProver {
         Ok(self_)
     }
 
-    pub async fn save_state(
+    async fn save_state(
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> tokio::io::Result<()> {
+    ) -> CCResult<()> {
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
         };
-        self.state_storage.save_state(Some(&state)).await
+        Ok(self.state_storage.save_state(Some(&state)).await?)
     }
 
-    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
-        self.state_storage.save_state(None).await
+    async fn save_no_state(&self) -> CCResult<()> {
+        Ok(self.state_storage.save_state(None).await?)
     }
 
     async fn apply_cc_parameters(
