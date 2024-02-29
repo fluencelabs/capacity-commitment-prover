@@ -115,7 +115,7 @@ impl UtilityThread {
                             log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
                         }
                         ToUtilityMessage::Hashrate(record) => {
-                            log::info!("utility_thread: new hashrate message {record}");
+                            log::info!("utility_thread: hashrate {record}");
                             hashrate_handler.account_record(record)?;
                         }
                     }},

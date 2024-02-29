@@ -181,18 +181,7 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::NewCCJob(job) => {
-                let start = Instant::now();
                 let job = RandomXJob::from_cc_job(job, HASHES_PER_ROUND)?;
-                let duration = start.elapsed();
-
-                let hashrate = ThreadHashrateRecord::checked_hashes(
-                    job.epoch(),
-                    core_id,
-                    duration,
-                    HASHES_PER_ROUND,
-                );
-                to_utility.send_hashrate(hashrate)?;
-
                 Ok(ThreadState::CCJob { job })
             }
 
