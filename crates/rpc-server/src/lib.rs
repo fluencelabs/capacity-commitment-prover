@@ -50,7 +50,7 @@ use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
 
-pub use crate::facade::OfflineFacade;
+pub use crate::facade::BackgroundFacade;
 
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex

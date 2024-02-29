@@ -29,14 +29,14 @@ use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
 use tokio::task::JoinHandle;
 
-/// An async façade for RPC.
-pub struct OfflineFacade<P> {
+/// An façade that handles RPC calls in background.
+pub struct BackgroundFacade<P> {
     to_worker: mpsc::Sender<FacadeMessage>,
     prover: Arc<RwLock<P>>,
     worker: JoinHandle<()>,
 }
 
-impl<P> OfflineFacade<P>
+impl<P> BackgroundFacade<P>
 where
     P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
@@ -66,7 +66,7 @@ enum FacadeMessage {
     OnNoCommitment,
 }
 
-impl<P: NoxCCPApi> NoxCCPApi for OfflineFacade<P>
+impl<P: NoxCCPApi> NoxCCPApi for BackgroundFacade<P>
 where
     P: Sync,
     <P as NoxCCPApi>::Error: Display,

@@ -29,7 +29,7 @@
 use std::path::Path;
 use std::path::PathBuf;
 
-use ccp_rpc_server::OfflineFacade;
+use ccp_rpc_server::BackgroundFacade;
 use clap::ArgAction;
 use clap::Parser;
 use eyre::WrapErr as _;
@@ -122,7 +122,7 @@ async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Resu
     tracing::info!("created prover");
 
     // Launch RPC API
-    let rpc_server = CCPRcpHttpServer::new(OfflineFacade::new(prover));
+    let rpc_server = CCPRcpHttpServer::new(BackgroundFacade::new(prover));
     tracing::info!("starting an RPC server");
     let server_handle = rpc_server
         .run_server(bind_address)
