@@ -23,15 +23,16 @@ use super::HashrateSaver;
 use super::SlidingHashrateCollector;
 use super::ThreadHashrateRecord;
 use crate::hashrate::collector::EpochObservation;
+use crate::hashrate::sliding_collector::SlidingHashrate;
 
-pub(crate) struct HashrateHandler<const SECS: u64> {
+pub(crate) struct HashrateHandler {
     collector: HashrateCollector,
     sliding_enabled: bool,
-    sliding_collector: SlidingHashrateCollector<SECS>,
+    sliding_collector: SlidingHashrateCollector,
     saver: HashrateSaver,
 }
 
-impl<const SECS: u64> HashrateHandler<SECS> {
+impl HashrateHandler {
     pub(crate) fn new(state_dir_path: PathBuf, sliding_enabled: bool) -> HResult<Self> {
         let collector = HashrateCollector::new();
         let sliding_collector = SlidingHashrateCollector::new();
@@ -72,12 +73,7 @@ impl<const SECS: u64> HashrateHandler<SECS> {
         self.saver.save_hashrate_current(hashrate)
     }
 
-    pub(crate) fn handle_instant_tick(&self) -> HResult<()> {
-        if self.sliding_enabled {
-            let sliding_hashrate = self.sliding_collector.sliding_hashrate();
-            self.saver.save_sliding_hashrate(sliding_hashrate)?;
-        }
-
-        Ok(())
+    pub(crate) fn sliding_hashrate(&self) -> &SlidingHashrate {
+        self.sliding_collector.hashrate()
     }
 }

@@ -19,18 +19,18 @@ use std::path::PathBuf;
 use tokio::time::Instant;
 
 use super::collector::Hashrate;
-use super::sliding_collector::SlidingHashrate;
 use super::HResult;
+use super::ThreadHashrateRecord;
 
 const PREV_HASHRATE_FILE_NAME: &str = "prev_epoch_hashrate.json";
 const CURRENT_HASHRATE_FILE_NAME: &str = "current_epoch_hashrate.json";
 const HASHRATE_DIR: &str = "hashrate";
-const SLIDING_HASHRATE_DIR: &str = "sliding_hashrate";
+const INSTANT_HASHRATE_DIR: &str = "sliding_hashrate";
 
 pub(crate) struct HashrateSaver {
     prev_hashrate_path: PathBuf,
     current_hashrate_path: PathBuf,
-    sliding_hashrate_path: PathBuf,
+    instant_hashrate_path: PathBuf,
 }
 
 impl HashrateSaver {
@@ -40,14 +40,14 @@ impl HashrateSaver {
 
         let prev_hashrate_path = hashrate_dir.join(PREV_HASHRATE_FILE_NAME);
         let current_hashrate_path = hashrate_dir.join(CURRENT_HASHRATE_FILE_NAME);
-        let sliding_hashrate_path = hashrate_dir.join(SLIDING_HASHRATE_DIR);
+        let instant_hashrate_path = hashrate_dir.join(INSTANT_HASHRATE_DIR);
 
-        ensure_dir_exists_and_empty(&sliding_hashrate_path)?;
+        ensure_dir_exists_and_empty(&instant_hashrate_path)?;
 
         let saver = Self {
             prev_hashrate_path,
             current_hashrate_path,
-            sliding_hashrate_path,
+            instant_hashrate_path,
         };
 
         Ok(saver)
@@ -63,33 +63,25 @@ impl HashrateSaver {
         std::fs::write(self.current_hashrate_path.as_path(), hashrate).map_err(Into::into)
     }
 
-    pub(crate) fn save_sliding_hashrate<const SECS: u64>(
-        &self,
-        hashrate: &SlidingHashrate<SECS>,
-    ) -> HResult<()> {
+    pub(crate) fn save_hashrate_entry(&self, record: &ThreadHashrateRecord) -> HResult<()> {
         let current_time = Instant::now();
 
-        for (core_id, sliding_hashrate) in hashrate {
-            let core_id: usize = (*core_id).into();
-            let path = self.sliding_hashrate_path.join(core_id.to_string());
-            let file = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path);
-            println!("file result {file:?}");
+        let core_id: usize = (*record.core_id).into();
+        let path = self.instant_hashrate_path.join(core_id.to_string());
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)?;
 
-            let mut writer = csv::Writer::from_writer(file?);
-            let hashrate = sliding_hashrate.compute_hashrate();
-            let result = writer.encode([format!("{:?}", current_time), hashrate.to_string()]);
-            println!("writing result {result:?}");
-            result?;
-        }
+        let mut writer = csv::Writer::from_writer(file);
+        let hashrate = sliding_hashrate.compute_hashrate();
+        writer.encode([format!("{:?}", current_time), hashrate.to_string()])?;
 
         Ok(())
     }
 
     pub(crate) fn cleanup_sliding_hashrate(&self) -> HResult<()> {
-        ensure_dir_exists_and_empty(&self.sliding_hashrate_path).map_err(Into::into)
+        ensure_dir_exists_and_empty(&self.instant_hashrate_path).map_err(Into::into)
     }
 }
 

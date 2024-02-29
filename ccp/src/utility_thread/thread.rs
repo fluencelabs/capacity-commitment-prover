@@ -27,6 +27,7 @@ use cpu_utils::LogicalCoreId;
 
 use super::message::*;
 use super::UTResult;
+use crate::hashrate::HashrateHandler;
 use crate::utility_thread::proof_storage::ProofStorage;
 use crate::utility_thread::UtilityThreadError;
 
@@ -34,15 +35,11 @@ type ThreadShutdownInlet = oneshot::Sender<()>;
 type ThreadShutdownOutlet = oneshot::Receiver<()>;
 
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
-const INSTANT_HASHRATE_UPDATE_INTERVAL: u64 = 10;
-
-pub(crate) type HashrateHandler =
-    crate::hashrate::HashrateHandler<INSTANT_HASHRATE_UPDATE_INTERVAL>;
 
 pub(crate) struct UtilityThread {
     to_utility: ToUtilityInlet,
     shutdown_in: ThreadShutdownInlet,
-    handle: tokio::task::JoinHandle<UTResult<()>>,
+    handle: tokio::task::JoinHandle<()>,
 }
 
 impl UtilityThread {
@@ -57,17 +54,11 @@ impl UtilityThread {
         let (shutdown_in, shutdown_out) = oneshot::channel();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
-        let new_proof_handler =
-            NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
+        let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
+        let ut_impl =
+            UtilityThreadImpl::new(from_utility, shutdown_out, proofs_handler, hashrate_handler);
 
-        let handle = tokio::spawn(Self::utility_closure(
-            core_id,
-            from_utility,
-            shutdown_out,
-            new_proof_handler,
-            hashrate_handler,
-        ));
-
+        let handle = tokio::spawn(ut_impl.utility_closure(core_id));
         Self {
             to_utility,
             shutdown_in,
@@ -79,65 +70,128 @@ impl UtilityThread {
         self.shutdown_in
             .send(())
             .map_err(|_| UtilityThreadError::ShutdownError)?;
-        self.handle.await?
+        Ok(self.handle.await?)
     }
 
     pub(crate) fn get_to_utility_channel(&self) -> ToUtilityInlet {
         self.to_utility.clone()
     }
+}
 
-    async fn utility_closure(
-        core_id: LogicalCoreId,
-        mut to_utility: ToUtilityOutlet,
-        mut shutdown_out: ThreadShutdownOutlet,
-        mut new_proof_handler: NewProofHandler,
-        mut hashrate_handler: HashrateHandler,
-    ) -> UTResult<()> {
-        let closure = async move {
-            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-                log::error!("utility_thread: failed to pin to {core_id} core");
-            }
+struct UtilityThreadImpl {
+    to_utility: ToUtilityOutlet,
+    shutdown_out: ThreadShutdownOutlet,
+    proofs_handler: NewProofHandler,
+    hashrate_handler: HashrateHandler,
+}
 
-            let mut cum_hashrate_ticker =
-                time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+impl UtilityThreadImpl {
+    pub(crate) fn new(
+        to_utility: ToUtilityOutlet,
+        shutdown_out: ThreadShutdownOutlet,
+        proofs_handler: NewProofHandler,
+        hashrate_handler: HashrateHandler,
+    ) -> Self {
+        Self {
+            to_utility,
+            shutdown_out,
+            proofs_handler,
+            hashrate_handler,
+        }
+    }
 
-            let mut instant_hashrate_ticker =
-                time::interval(Duration::from_secs(INSTANT_HASHRATE_UPDATE_INTERVAL));
+    pub(crate) async fn utility_closure(mut self, core_id: LogicalCoreId) {
+        use crossterm::event::EventStream;
+        use futures::FutureExt;
+        use futures::StreamExt;
 
-            loop {
-                tokio::select! {
-                    Some(message) = to_utility.recv() => {
-                        match message {
-                            ToUtilityMessage::ProofFound { core_id, proof} => {
-                                new_proof_handler.handle_found_proof(proof).await?;
-                                hashrate_handler.proof_found(core_id);
-                            }
-                            ToUtilityMessage::ErrorHappened { thread_location, error} => {
-                                log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
-                            }
-                            ToUtilityMessage::Hashrate(record) => {
-                                log::info!("utility_thread: hashrate {record}");
-                                hashrate_handler.account_record(record)?;
-                            }
-                        }},
-                    _ = cum_hashrate_ticker.tick() => {
-                        hashrate_handler.handle_cum_tick()?;
-                    }
-                    _ = instant_hashrate_ticker.tick() => {
-                        hashrate_handler.handle_instant_tick()?;
-                    }
-                    _ = &mut shutdown_out => {
-                        log::info!("utility_thread: utility thread was shutdown");
-                        return Ok(());
-                    }
+        if !cpu_utils::pinning::pin_current_thread_to(core_id) {
+            log::error!("utility_thread: failed to pin to {core_id} core");
+        }
+
+        let mut cum_hashrate_ticker =
+            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+
+        let mut terminal_event_reader = EventStream::new();
+
+        loop {
+            tokio::select! {
+                Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
+                _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
+                maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
+                _ = &mut self.shutdown_out => {
+                    log::info!("utility_thread: utility thread was shutdown");
+                    return;
                 }
             }
-        };
+        }
+    }
 
-        let result = closure.await;
-        println!("closure closed with {result:?}");
+    async fn handle_to_utility_message(&mut self, message: ToUtilityMessage) {
+        match message {
+            ToUtilityMessage::ProofFound { core_id, proof } => {
+                if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
+                    log::error!("failed to save proof: {error}\nfound proof {proof}");
+                }
+                self.hashrate_handler.proof_found(core_id);
+            }
+            ToUtilityMessage::ErrorHappened {
+                thread_location,
+                error,
+            } => {
+                log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
+            }
+            ToUtilityMessage::Hashrate(record) => {
+                log::info!("utility_thread: hashrate {record}");
+                if let Err(error) = self.hashrate_handler.account_record(record) {
+                    log::error!("account hashrate error faield: {error}");
+                }
+            }
+        }
+    }
 
-        result
+    async fn handle_cum_hashrate_tick(&mut self) {
+        if let Err(error) = self.hashrate_handler.handle_cum_tick() {
+            log::error!("cumulative hashrate tick failed: {error}");
+        }
+    }
+
+    async fn handle_terminal_event(
+        &mut self,
+        maybe_event: Option<Result<crossterm::event::Event, std::io::Error>>,
+    ) {
+        use crossterm::event::Event;
+        use crossterm::event::KeyCode;
+
+        if let Some(Ok(event)) = maybe_event {
+            if event == Event::Key(KeyCode::Enter.into()) {
+                let sliding_hashrate = self.hashrate_handler.sliding_hashrate();
+
+                println!(
+                    "{0: <10} | {1: <10} | {2: <10} | {3: <10}",
+                    "core id", "10 secs", "60 secs", "900 secs"
+                );
+
+                for (core_id, thread_hashrate) in sliding_hashrate {
+                    println!(
+                        "{0: <10} | {1: <10} | {2: <10} | {3: <10}",
+                        core_id,
+                        thread_hashrate
+                            .windows_10
+                            .compute_hashrate()
+                            .unwrap_or(0f64),
+                        thread_hashrate
+                            .windows_60
+                            .compute_hashrate()
+                            .unwrap_or(0f64),
+                        thread_hashrate
+                            .windows_900
+                            .compute_hashrate()
+                            .unwrap_or(0f64),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -160,10 +214,10 @@ impl NewProofHandler {
         }
     }
 
-    async fn handle_found_proof(&mut self, proof: RawProof) -> UTResult<()> {
+    async fn handle_found_proof(&mut self, proof: &RawProof) -> UTResult<()> {
         log::debug!("utility_thread: new proof_received {proof:?}");
 
-        self.maybe_new_epoch(&proof);
+        self.maybe_new_epoch(proof);
 
         let cc_proof_id = CCProofId::new(
             proof.epoch.global_nonce,

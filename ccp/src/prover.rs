@@ -33,12 +33,13 @@ use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
+use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
 use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
-use crate::utility_thread::{HashrateHandler, UtilityThread};
+use crate::utility_thread::UtilityThread;
 
 const PROOF_DIR: &str = "cc_proofs";
 
