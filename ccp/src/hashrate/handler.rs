@@ -56,7 +56,10 @@ impl<const SECS: u64> HashrateHandler<SECS> {
             self.saver.cleanup_sliding_hashrate()?;
         }
 
-        self.sliding_collector.account_record(record);
+        if self.sliding_enabled {
+            self.sliding_collector.account_record(record);
+        }
+
         Ok(())
     }
 

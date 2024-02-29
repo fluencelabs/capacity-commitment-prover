@@ -75,11 +75,14 @@ impl HashrateSaver {
             let file = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
-                .open(path)?;
+                .open(path);
+            println!("file result {file:?}");
 
-            let mut writer = csv::Writer::from_writer(file);
+            let mut writer = csv::Writer::from_writer(file?);
             let hashrate = sliding_hashrate.compute_hashrate();
-            writer.encode([format!("{:?}", current_time), hashrate.to_string()])?;
+            let result = writer.encode([format!("{:?}", current_time), hashrate.to_string()]);
+            println!("writing result {result:?}");
+            result?;
         }
 
         Ok(())
