@@ -70,7 +70,7 @@ impl NoxCCPApi for CCProver {
         self.apply_cc_parameters(new_epoch, &new_allocation).await?;
         // Save data only if align_with is successful; otherwise invalid commitment will be stored
         // and used on restart to fail again.
-        self.save_state(new_epoch, new_allocation).await
+        Ok(self.save_state(new_epoch, new_allocation).await?)
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
@@ -216,20 +216,20 @@ impl CCProver {
         Ok(self_)
     }
 
-    async fn save_state(
+    pub async fn save_state(
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> CCResult<()> {
+    ) -> tokio::io::Result<()> {
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
         };
-        Ok(self.state_storage.save_state(Some(&state)).await?)
+        self.state_storage.save_state(Some(&state)).await
     }
 
-    async fn save_no_state(&self) -> CCResult<()> {
-        Ok(self.state_storage.save_state(None).await?)
+    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
+        self.state_storage.save_state(None).await
     }
 
     async fn apply_cc_parameters(
