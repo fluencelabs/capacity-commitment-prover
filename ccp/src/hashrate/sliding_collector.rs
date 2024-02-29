@@ -109,6 +109,8 @@ impl<const SECS: u64> SlidingWindow<SECS> {
         while let Some(record) = self.records.back() {
             if record.time < last_account_time {
                 self.records.pop_back();
+            } else {
+                break;
             }
         }
     }
