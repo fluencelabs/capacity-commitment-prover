@@ -48,7 +48,10 @@ impl<const SECS: u64> HashrateHandler<SECS> {
     }
 
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) -> HResult<()> {
-        if let EpochObservation::EpochChanged { prev_epoch_hashrate} = self.collector.account_record(record) {
+        if let EpochObservation::EpochChanged {
+            prev_epoch_hashrate,
+        } = self.collector.account_record(record)
+        {
             self.saver.save_hashrate_previous(prev_epoch_hashrate)?;
             self.saver.cleanup_sliding_hashrate()?;
         }

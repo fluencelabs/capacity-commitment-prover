@@ -23,7 +23,8 @@ use super::to_utility_message::ToUtilityMessage;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
 use crate::hashrate::ThreadHashrateRecord;
-use crate::utility_thread::message::{ProvingThreadSyncError, RawProof};
+use crate::utility_thread::message::ProvingThreadSyncError;
+use crate::utility_thread::message::RawProof;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ToAsync {

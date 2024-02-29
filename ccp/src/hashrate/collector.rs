@@ -44,6 +44,15 @@ pub(crate) enum CollectorStatus {
 
 pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct ThreadHashrateRaw {
+    cache_creation: ParameterStatus<Duration>,
+    dataset_initialization: ParameterStatus<Duration>,
+    cc_job_duration: ParameterStatus<Duration>,
+    hashes_checked_count: u64,
+    proofs_found_count: u64,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ThreadHashrate {
     // hashes from epoch start, counts operations with cache and dataset
@@ -53,15 +62,6 @@ pub(crate) struct ThreadHashrate {
     pub(crate) proofs_found: u64,
     pub(crate) cache_creation: ParameterStatus<Duration>,
     pub(crate) dataset_initialization: ParameterStatus<Duration>,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub(crate) struct ThreadHashrateRaw {
-    cache_creation: ParameterStatus<Duration>,
-    dataset_initialization: ParameterStatus<Duration>,
-    cc_job_duration: ParameterStatus<Duration>,
-    hashes_checked_count: u64,
-    proofs_found_count: u64,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,10 +76,8 @@ pub(crate) enum EpochObservation {
     EpochChanged {
         prev_epoch_hashrate: Hashrate,
     },
-
     #[default]
     EpochNotChanged,
-
     StartedWorking,
 }
 
@@ -119,9 +117,9 @@ impl HashrateCollector {
         self.entries
             .iter()
             .map(|(&core_id, info)| {
-                let hashrate = info.cc_job_duration.map(|cc_job_duration| {
-                    info.hashes_checked_count as f64 / cc_job_duration.as_secs_f64()
-                });
+                let hashrate = info
+                    .cc_job_duration
+                    .map(|duration| info.hashes_checked_count as f64 / duration.as_secs_f64());
 
                 let statistics = ThreadHashrate {
                     effective_hashrate: info.hashes_checked_count as f64 / epoch_duration,

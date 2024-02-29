@@ -29,7 +29,6 @@ anyhow.workspace = true
 byteorder.workspace = true
 chrono.workspace = true
 csv.workspace = true
-env_logger.workspace = true
 rand.workspace = true
 log.workspace = true
 nonempty.workspace = true
@@ -38,6 +37,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+env_logger.workspace = true
 maplit.workspace = true
 tempdir.workspace = true
 tokio.workspace = true
