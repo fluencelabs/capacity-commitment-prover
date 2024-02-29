@@ -42,6 +42,8 @@ impl HashrateSaver {
         let current_hashrate_path = hashrate_dir.join(CURRENT_HASHRATE_FILE_NAME);
         let sliding_hashrate_path = hashrate_dir.join(SLIDING_HASHRATE_DIR);
 
+        ensure_dir_exists_and_empty(&sliding_hashrate_path)?;
+
         let saver = Self {
             prev_hashrate_path,
             current_hashrate_path,
