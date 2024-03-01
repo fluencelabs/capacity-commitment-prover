@@ -105,7 +105,7 @@ fn print_record_as_csv(
         HashrateRecordType::CheckedHashes { count } => {
             let hashrate =
                 super::hashratable::HashrateCalculator::hashrate(count as u64, record.duration);
-            ("cc job", hashrate.to_string())
+            ("hashrate", hashrate.to_string())
         }
     };
 
