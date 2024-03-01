@@ -73,7 +73,7 @@ impl HashrateSaver {
             .open(path)?;
 
         let writer = csv::Writer::from_writer(file);
-        print_record_as_csv(writer, record)
+        write_record_as_csv(writer, record)
     }
 
     pub(crate) fn cleanup_sliding_hashrate(&self) -> HResult<()> {
@@ -86,7 +86,7 @@ fn ensure_dir_exists_and_empty<P: AsRef<Path>>(dir: P) -> Result<(), std::io::Er
     std::fs::create_dir(dir)
 }
 
-fn print_record_as_csv(
+fn write_record_as_csv(
     mut writer: csv::Writer<std::fs::File>,
     record: &ThreadHashrateRecord,
 ) -> HResult<()> {
