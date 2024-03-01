@@ -57,19 +57,19 @@ jobs:
         with:
           crate: cargo-workflows
 
-      - name: Get nox version
+      - name: Get version version
         id: version
         run: |
           version="$(jq -r '.[]' .github/release-please/manifest.json)"
           echo "version=${version}" >> $GITHUB_OUTPUT
 
       - name: Set versions
-        run: echo TODO ${{ steps.version.outputs.version }}
+        run: cargo workspaces version -a -y --no-git-commit custom ${{ steps.version.outputs.version }}
 
       - name: Commit version bump
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: Bump nox version to ${{ steps.version.outputs.version }}"
+          commit_message: "chore: Bump version to ${{ steps.version.outputs.version }}"
           branch: ${{ fromJson(needs.release-please.outputs.pr).headBranchName }}
           commit_user_name: fluencebot
           commit_user_email: devops@fluence.one
