@@ -27,13 +27,13 @@ use crate::hashrate::sliding_collector::SlidingHashrate;
 
 pub(crate) struct HashrateHandler {
     collector: HashrateCollector,
-    sliding_enabled: bool,
+    instant_hashrate_enabled: bool,
     sliding_collector: SlidingHashrateCollector,
     saver: HashrateSaver,
 }
 
 impl HashrateHandler {
-    pub(crate) fn new(state_dir_path: PathBuf, sliding_enabled: bool) -> HResult<Self> {
+    pub(crate) fn new(state_dir_path: PathBuf, instant_hashrate_enabled: bool) -> HResult<Self> {
         let collector = HashrateCollector::new();
         let sliding_collector = SlidingHashrateCollector::new();
         let saver = HashrateSaver::from_directory(state_dir_path)?;
@@ -41,7 +41,7 @@ impl HashrateHandler {
         let handler = Self {
             collector,
             sliding_collector,
-            sliding_enabled,
+            instant_hashrate_enabled,
             saver,
         };
 
@@ -57,8 +57,9 @@ impl HashrateHandler {
             self.saver.cleanup_sliding_hashrate()?;
         }
 
-        if self.sliding_enabled {
-            self.sliding_collector.account_record(record);
+        self.sliding_collector.account_record(record);
+        if self.instant_hashrate_enabled {
+            self.saver.save_hashrate_entry(&record)?;
         }
 
         Ok(())

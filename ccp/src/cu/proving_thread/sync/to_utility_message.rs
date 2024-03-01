@@ -30,7 +30,7 @@ pub(crate) enum ToUtilityMessage {
         proof: RawProof,
     },
     ErrorHappened {
-        thread_location: LogicalCoreId,
+        core_id: LogicalCoreId,
         error: ProvingThreadSyncError,
     },
     Hashrate(ThreadHashrateRecord),
@@ -41,14 +41,8 @@ impl ToUtilityMessage {
         Self::ProofFound { core_id, proof }
     }
 
-    pub(crate) fn error_happened(
-        thread_location: LogicalCoreId,
-        error: ProvingThreadSyncError,
-    ) -> Self {
-        Self::ErrorHappened {
-            thread_location,
-            error,
-        }
+    pub(crate) fn error_happened(core_id: LogicalCoreId, error: ProvingThreadSyncError) -> Self {
+        Self::ErrorHappened { core_id, error }
     }
 
     pub(crate) fn hashrate(entry: ThreadHashrateRecord) -> Self {

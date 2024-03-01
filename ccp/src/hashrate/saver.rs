@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
+use chrono::Timelike;
 use std::path::Path;
 use std::path::PathBuf;
-use tokio::time::Instant;
 
 use super::collector::Hashrate;
 use super::HResult;
 use super::ThreadHashrateRecord;
+use crate::hashrate::record::HashrateRecordType;
 
 const PREV_HASHRATE_FILE_NAME: &str = "prev_epoch_hashrate.json";
 const CURRENT_HASHRATE_FILE_NAME: &str = "current_epoch_hashrate.json";
@@ -64,20 +65,15 @@ impl HashrateSaver {
     }
 
     pub(crate) fn save_hashrate_entry(&self, record: &ThreadHashrateRecord) -> HResult<()> {
-        let current_time = Instant::now();
-
-        let core_id: usize = (*record.core_id).into();
+        let core_id: usize = record.core_id.into();
         let path = self.instant_hashrate_path.join(core_id.to_string());
         let file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(path)?;
 
-        let mut writer = csv::Writer::from_writer(file);
-        let hashrate = sliding_hashrate.compute_hashrate();
-        writer.encode([format!("{:?}", current_time), hashrate.to_string()])?;
-
-        Ok(())
+        let writer = csv::Writer::from_writer(file);
+        print_record_as_csv(writer, record)
     }
 
     pub(crate) fn cleanup_sliding_hashrate(&self) -> HResult<()> {
@@ -88,4 +84,36 @@ impl HashrateSaver {
 fn ensure_dir_exists_and_empty<P: AsRef<Path>>(dir: P) -> Result<(), std::io::Error> {
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir(dir)
+}
+
+fn print_record_as_csv(
+    mut writer: csv::Writer<std::fs::File>,
+    record: &ThreadHashrateRecord,
+) -> HResult<()> {
+    use super::hashratable::Hashratable;
+
+    let now = chrono::Utc::now();
+
+    let (record_type, measurement_result) = match record.variant {
+        HashrateRecordType::CacheCreation => {
+            ("cache creation", record.duration.as_secs_f64().to_string())
+        }
+        HashrateRecordType::DatasetInitialization { .. } => (
+            "dataset initialization",
+            record.duration.as_secs_f64().to_string(),
+        ),
+        HashrateRecordType::CheckedHashes { count } => {
+            let hashrate =
+                super::hashratable::HashrateCalculator::hashrate(count as u64, record.duration);
+            ("cc job", hashrate.to_string())
+        }
+    };
+
+    writer
+        .encode([
+            format!("{:02}:{:02}:{:02}", now.hour(), now.minute(), now.second()),
+            record_type.to_string(),
+            measurement_result,
+        ])
+        .map_err(Into::into)
 }

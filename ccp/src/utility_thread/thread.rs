@@ -106,7 +106,7 @@ impl UtilityThreadImpl {
         use futures::StreamExt;
 
         if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-            log::error!("utility_thread: failed to pin to {core_id} core");
+            log::error!("failed to pin to {core_id} core");
         }
 
         let mut cum_hashrate_ticker =
@@ -120,7 +120,7 @@ impl UtilityThreadImpl {
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
                 maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = &mut self.shutdown_out => {
-                    log::info!("utility_thread: utility thread was shutdown");
+                    log::info!("utility thread was shutdown");
                     return;
                 }
             }
@@ -133,18 +133,17 @@ impl UtilityThreadImpl {
                 if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
                     log::error!("failed to save proof: {error}\nfound proof {proof}");
                 }
+
                 self.hashrate_handler.proof_found(core_id);
             }
-            ToUtilityMessage::ErrorHappened {
-                thread_location,
-                error,
-            } => {
-                log::error!("utility_thread: thread at {thread_location} core id encountered a error {error}");
+            ToUtilityMessage::ErrorHappened { core_id, error } => {
+                log::error!("thread at {core_id} core id encountered a error {error}");
             }
             ToUtilityMessage::Hashrate(record) => {
-                log::info!("utility_thread: hashrate {record}");
+                log::info!("{record}");
+
                 if let Err(error) = self.hashrate_handler.account_record(record) {
-                    log::error!("account hashrate error faield: {error}");
+                    log::error!("hashrate accounting failed: {error}");
                 }
             }
         }
@@ -166,6 +165,10 @@ impl UtilityThreadImpl {
         if let Some(Ok(event)) = maybe_event {
             if event == Event::Key(KeyCode::Enter.into()) {
                 let sliding_hashrate = self.hashrate_handler.sliding_hashrate();
+                if sliding_hashrate.is_empty() {
+                    println!("no hashrate for the last 900 secs,\nCCP is either busy with initialization or idle");
+                    return;
+                }
 
                 println!(
                     "{0: <10} | {1: <10} | {2: <10} | {3: <10}",
@@ -174,20 +177,11 @@ impl UtilityThreadImpl {
 
                 for (core_id, thread_hashrate) in sliding_hashrate {
                     println!(
-                        "{0: <10} | {1: <10} | {2: <10} | {3: <10}",
+                        "{0: <10} | {1: <10.2} | {2: <10.2} | {3: <10.2}",
                         core_id,
-                        thread_hashrate
-                            .windows_10
-                            .compute_hashrate()
-                            .unwrap_or(0f64),
-                        thread_hashrate
-                            .windows_60
-                            .compute_hashrate()
-                            .unwrap_or(0f64),
-                        thread_hashrate
-                            .windows_900
-                            .compute_hashrate()
-                            .unwrap_or(0f64),
+                        thread_hashrate.window_10.compute_hashrate(),
+                        thread_hashrate.window_60.compute_hashrate(),
+                        thread_hashrate.window_900.compute_hashrate()
                     );
                 }
             }

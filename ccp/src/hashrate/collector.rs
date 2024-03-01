@@ -110,22 +110,25 @@ impl HashrateCollector {
     }
 
     pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, ThreadHashrate> {
+        use super::hashratable::Hashratable;
+        use super::hashratable::HashrateCalculator;
+
         let epoch_duration = match self.status {
             CollectorStatus::Busy { started_time, .. } => started_time.elapsed(),
             CollectorStatus::Idle => return HashMap::new(),
         };
 
-        let epoch_duration = epoch_duration.as_secs_f64();
-
         self.entries
             .iter()
             .map(|(&core_id, info)| {
-                let hashrate = info
-                    .cc_job_duration
-                    .map(|duration| info.checked_hashes_count as f64 / duration.as_secs_f64());
+                let hashrate = info.cc_job_duration.map(|duration| {
+                    HashrateCalculator::hashrate(info.checked_hashes_count, duration)
+                });
 
+                let effective_hashrate =
+                    HashrateCalculator::hashrate(info.checked_hashes_count, epoch_duration);
                 let statistics = ThreadHashrate {
-                    effective_hashrate: info.checked_hashes_count as f64 / epoch_duration,
+                    effective_hashrate,
                     hashrate,
                     proofs_found: info.found_proofs_count,
                     cache_creation: info.cache_creation,
