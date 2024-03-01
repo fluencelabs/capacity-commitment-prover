@@ -39,6 +39,7 @@ jobs:
         with:
           repository: fluencelabs/capacity-commitment-prover
           ref: ${{ inputs.ref }}
+          submodules: recursive
 
       - name: Setup Rust toolchain
         uses: dsherret/rust-toolchain-file@v1
