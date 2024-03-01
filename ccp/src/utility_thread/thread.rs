@@ -161,6 +161,7 @@ impl UtilityThreadImpl {
     ) {
         use crossterm::event::Event;
         use crossterm::event::KeyCode;
+        use itertools::Itertools;
 
         if let Some(Ok(event)) = maybe_event {
             if event == Event::Key(KeyCode::Enter.into()) {
@@ -175,7 +176,10 @@ impl UtilityThreadImpl {
                     "core id", "10 secs", "60 secs", "900 secs"
                 );
 
-                for (core_id, thread_hashrate) in sliding_hashrate {
+                for (core_id, thread_hashrate) in sliding_hashrate
+                    .iter()
+                    .sorted_by_key(|(&core_id, _)| core_id)
+                {
                     println!(
                         "{0: <10} | {1: <10.2} | {2: <10.2} | {3: <10.2}",
                         core_id,

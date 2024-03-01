@@ -32,7 +32,7 @@ pub(crate) struct ToAsync {
 }
 
 impl ToAsync {
-    pub(crate) fn from_channel(to_async: SyncToAsyncInlet) -> Self {
+    pub(crate) fn new(to_async: SyncToAsyncInlet) -> Self {
         Self { to_async }
     }
 
@@ -73,7 +73,7 @@ pub(crate) struct ToUtility {
 }
 
 impl ToUtility {
-    pub(crate) fn from_channel(to_utility: ToUtilityInlet) -> Self {
+    pub(crate) fn new(to_utility: ToUtilityInlet) -> Self {
         Self { to_utility }
     }
 

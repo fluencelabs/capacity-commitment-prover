@@ -71,8 +71,8 @@ impl ProvingThreadSync {
     ) -> Box<dyn FnMut() -> STFResult<()> + Send + 'static> {
         let to_utility_outer = to_utility.clone();
 
-        let to_async = ToAsync::from_channel(to_async);
-        let to_utility = ToUtility::from_channel(to_utility);
+        let to_async = ToAsync::new(to_async);
+        let to_utility = ToUtility::new(to_utility);
 
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
             if !cpu_utils::pinning::pin_current_thread_to(core_id) {

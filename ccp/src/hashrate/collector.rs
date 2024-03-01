@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-use serde::Deserialize;
-use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::time::Instant;
 
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
+use serde::Deserialize;
+use serde::Serialize;
+use tokio::time::Instant;
 
 use super::record::HashrateRecordType;
 use super::record::ThreadHashrateRecord;
