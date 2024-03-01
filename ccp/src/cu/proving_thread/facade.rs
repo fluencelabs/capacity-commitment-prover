@@ -26,7 +26,7 @@ pub trait ProvingThreadFacade {
 
     async fn create_cache(
         &mut self,
-        global_nonce: GlobalNonce,
+        epoch: EpochParameters,
         cu_id: CUID,
         flags: RandomXFlags,
     ) -> Result<Cache, Self::Error>;
@@ -35,6 +35,7 @@ pub trait ProvingThreadFacade {
 
     async fn initialize_dataset(
         &mut self,
+        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,
@@ -43,9 +44,9 @@ pub trait ProvingThreadFacade {
 
     async fn run_cc_job(
         &self,
+        epoch: EpochParameters,
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Result<(), Self::Error>;
 

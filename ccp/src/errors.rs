@@ -18,6 +18,7 @@ use thiserror::Error as ThisError;
 use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
+use crate::hashrate::HashrateError;
 use crate::utility_thread::UtilityThreadError;
 
 #[derive(ThisError, Debug)]
@@ -27,6 +28,9 @@ pub enum CCProverError {
 
     #[error("CU prover errors are happened: {0:?}")]
     CUProverErrors(Vec<CUProverError>),
+
+    #[error(transparent)]
+    HashrateError(#[from] HashrateError),
 
     #[error(transparent)]
     JoinError(#[from] JoinError),

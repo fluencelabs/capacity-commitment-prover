@@ -128,6 +128,8 @@ async fn cu_prover_can_be_stopped() {
 async fn cu_prover_can_be_paused() {
     use std::sync;
 
+    let _ = env_logger::builder().is_test(true).try_init();
+
     let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
     let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
@@ -139,12 +141,17 @@ async fn cu_prover_can_be_paused() {
         let mut proofs_before_pause = Vec::new();
         let mut proofs_after_pause = Vec::new();
 
-        while let Some(ToUtilityMessage::ProofFound(proof)) = outlet.recv().await {
-            let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
-            if !*is_thread_paused_locked.borrow() {
-                proofs_before_pause.push(proof);
-            } else {
-                proofs_after_pause.push(proof);
+        while let Some(message) = outlet.recv().await {
+            match message {
+                ToUtilityMessage::ProofFound { proof, .. } => {
+                    let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
+                    if !*is_thread_paused_locked.borrow() {
+                        proofs_before_pause.push(proof);
+                    } else {
+                        proofs_after_pause.push(proof);
+                    }
+                }
+                _ => {}
             }
         }
 
@@ -193,7 +200,7 @@ async fn cu_prover_produces_correct_proofs() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -230,7 +237,7 @@ async fn cu_prover_works_with_odd_threads_number() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => proofs.push(proof),
+                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -273,7 +280,7 @@ async fn cu_prover_changes_epoch_correctly() {
 
         while let Some(message) = outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound(proof) => match proofs.entry(proof.epoch) {
+                ToUtilityMessage::ProofFound { proof, .. } => match proofs.entry(proof.epoch) {
                     Entry::Vacant(entry) => {
                         entry.insert(vec![proof]);
                     }

@@ -36,6 +36,7 @@ pub struct CCPConfig {
     pub randomx_flags: RandomXFlags,
     pub state_dir: PathBuf,
     pub enable_msr: bool,
+    pub report_hashrate: bool,
 }
 
 #[derive(Clone, Debug)]
