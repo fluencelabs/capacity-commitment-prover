@@ -1,0 +1,26 @@
+{
+  "bootstrap-sha": "2b712b5b716d677baeebdbe6d0cea7adc0be3343",
+  "release-type": "rust",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "plugins": [
+    {
+      "type": "cargo-workspace",
+      "merge": true
+    }
+  ],
+  "packages": {
+    "ccp": {
+      "component": "ccp"
+    },
+    "crates/randomx": {},
+    "crates/config": {},
+    "crates/cpu-utils": {},
+    "crates/rpc-client": {},
+    "crates/rpc-server": {},
+    "crates/shared": {},
+    "crates/test-utils": {},
+    "crates/utils": {},
+    "main": {}
+  }
+}

@@ -1,0 +1,92 @@
+name: "Build nox binary"
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "git ref to checkout to"
+        type: string
+        default: "master"
+      cargo-dependencies:
+        description: "Cargo dependencies map"
+        type: string
+        default: "null"
+
+jobs:
+  build:
+    name: "Build nox (${{ matrix.arch }})"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    env:
+      RUSTFLAGS: "-D warnings --cfg tokio_unstable -C link-arg=-B/usr/local/bin/mold"
+      RUSTC_WRAPPER: "sccache"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            target: x86_64-unknown-linux-gnu
+            runner: linux-amd64-c-2xlarge
+          - arch: arm64
+            target: aarch64-unknown-linux-gnu
+            runner: linux-arm64-c-2xlarge
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: fluencelabs/nox
+          ref: ${{ inputs.ref }}
+
+      - name: Get PR labels
+        id: labels
+        uses: joerick/pr-labels-action@v1.0.9
+
+      - name: Set profile
+        id: profile
+        run: |
+          if [[ -n "$GITHUB_PR_LABEL_PROFILING" ]]; then
+            echo "profile=profiling" >> $GITHUB_OUTPUT
+            echo "flags=--profile=profiling --features particle-node/dhat-heap" >> $GITHUB_OUTPUT
+          else
+            echo "profile=release" >> $GITHUB_OUTPUT
+            echo "flags=--profile=release" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Rust toolchain
+        uses: dsherret/rust-toolchain-file@v1
+
+      - name: Setup mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: false
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: ~/.cache/sccache
+          shared-key: nox-${{ matrix.arch }}
+          # github allows only 10GB of cache
+          # so save cache only on merge to master
+          # to use less space and speed up CI
+          save-if: ${{ github.event_name == 'push' }}
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.4
+
+      - name: Set dependencies
+        if: inputs.cargo-dependencies != 'null'
+        uses: fluencelabs/github-actions/cargo-set-dependency@main
+        with:
+          dependencies: ${{ inputs.cargo-dependencies }}
+
+      - name: Run cargo build
+        run: cargo build ${{ steps.profile.outputs.flags }} -p nox --target ${{ matrix.target }}
+
+      - name: Upload nox binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: nox-${{ matrix.arch }}
+          path: target/${{ matrix.target }}/${{ steps.profile.outputs.profile }}/nox
