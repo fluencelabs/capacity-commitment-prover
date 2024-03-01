@@ -10,7 +10,6 @@ on:
       image:
         type: string
         description: "ccp image name"
-        required: true
         default: "docker.fluence.dev/ccp"
 
 jobs:
