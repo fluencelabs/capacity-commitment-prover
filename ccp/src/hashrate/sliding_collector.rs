@@ -58,23 +58,15 @@ impl SlidingHashrateCollector {
     }
 
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) {
-        use std::collections::hash_map::Entry;
-
         let hashes_count = match record.variant {
             HashrateRecordType::CheckedHashes { count } => count as u64,
             _ => return,
         };
 
-        match self.hashrate.entry(record.core_id) {
-            Entry::Vacant(entry) => {
-                let mut hashrate = SlidingThreadHashrate::default();
-                hashrate.account_record(hashes_count, record.duration);
-                entry.insert(hashrate);
-            }
-            Entry::Occupied(entry) => entry
-                .into_mut()
-                .account_record(hashes_count, record.duration),
-        }
+        self.hashrate
+            .entry(record.core_id)
+            .or_default()
+            .account_record(hashes_count, record.duration);
     }
 
     pub(crate) fn hashrate(&self) -> &SlidingHashrate {

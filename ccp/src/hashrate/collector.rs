@@ -93,18 +93,11 @@ impl HashrateCollector {
         &mut self,
         hashrate_record: ThreadHashrateRecord,
     ) -> EpochObservation {
-        use std::collections::hash_map::Entry;
-
         let result = self.observe_epoch(hashrate_record.epoch);
-
-        match self.entries.entry(hashrate_record.core_id) {
-            Entry::Vacant(entry) => {
-                let mut raw_hashrate = ThreadHashrateRaw::default();
-                raw_hashrate.account_record(hashrate_record);
-                entry.insert(raw_hashrate);
-            }
-            Entry::Occupied(entry) => entry.into_mut().account_record(hashrate_record),
-        };
+        self.entries
+            .entry(hashrate_record.core_id)
+            .or_default()
+            .account_record(hashrate_record);
 
         result
     }
@@ -141,16 +134,10 @@ impl HashrateCollector {
     }
 
     pub(crate) fn proof_found(&mut self, core_id: LogicalCoreId) {
-        use std::collections::hash_map::Entry;
-
-        match self.entries.entry(core_id) {
-            Entry::Vacant(entry) => {
-                let mut raw_hashrate = ThreadHashrateRaw::default();
-                raw_hashrate.account_proof_found();
-                entry.insert(raw_hashrate);
-            }
-            Entry::Occupied(entry) => entry.into_mut().account_proof_found(),
-        };
+        self.entries
+            .entry(core_id)
+            .or_default()
+            .account_proof_found()
     }
 
     fn observe_epoch(&mut self, new_epoch: EpochParameters) -> EpochObservation {
