@@ -62,7 +62,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Run cargo build
-        run: cargo build --release -p ccp --target ${{ matrix.target }}
+        run: cargo build --release -p capacity-commitment-prover --target ${{ matrix.target }}
 
       - name: Upload ccp binary
         uses: actions/upload-artifact@v3
