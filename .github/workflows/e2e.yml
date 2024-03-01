@@ -33,6 +33,6 @@ jobs:
         contains(github.event.pull_request.labels.*.name, 'e2e') &&
         !github.event.pull_request.head.repo.fork
       )
-    uses: ./.github/workflows/aritfact.yml
+    uses: ./.github/workflows/artifact.yml
     with:
       ref: ${{ github.ref }}
