@@ -27,48 +27,21 @@
 )]
 
 use std::path::Path;
-use std::path::PathBuf;
 
 use ccp_rpc_server::BackgroundFacade;
-use clap::ArgAction;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tracing_subscriber::EnvFilter;
 
 use capacity_commitment_prover::CCProver;
+use ccp_config::load_config;
 use ccp_config::CCPConfig;
-use ccp_config::ThreadsPerCoreAllocationPolicy;
-use ccp_randomx::RandomXFlags;
 use ccp_rpc_server::CCPRcpHttpServer;
 
 #[derive(Parser, Debug)]
 struct Args {
     #[arg(long)]
-    bind_address: String,
-
-    #[arg(long = "tokio-core-id")]
-    tokio_core_ids: Vec<u32>,
-
-    #[command(flatten)]
-    prover_args: ProverArgs,
-}
-
-#[derive(Parser, Debug)]
-struct ProverArgs {
-    #[arg(long)]
-    utility_core_id: u32,
-
-    #[arg(long)]
-    threads_per_physical_core: std::num::NonZeroUsize,
-
-    #[arg(long)]
-    state_dir: PathBuf,
-
-    #[arg(long, action = ArgAction::SetTrue)]
-    enable_msr: bool,
-
-    #[arg(long, action = ArgAction::SetTrue)]
-    report_hashrate: bool,
+    config_path: String,
 }
 
 fn main() -> eyre::Result<()> {
@@ -84,16 +57,16 @@ fn main() -> eyre::Result<()> {
     let args = Args::parse();
     tracing::info!("{args:?}");
 
-    if args.tokio_core_ids.is_empty() {
-        eyre::bail!("please, define at least one --tokio-core-id");
-    }
+    let config = load_config(args.config_path.as_str())?;
 
-    check_writable_dir(&args.prover_args.state_dir)
+    check_writable_dir(&config.state_dir)
         .wrap_err("The --state-dir value should be a writeable directory path")?;
 
-    let tokio_cores = args
-        .tokio_core_ids
-        .into_iter()
+    let tokio_cores = config
+        .http_server
+        .utility_cores_ids
+        .iter()
+        .cloned()
         .map(Into::into)
         .collect::<Vec<_>>();
 
@@ -110,47 +83,31 @@ fn main() -> eyre::Result<()> {
         .build()
         .wrap_err("failed to build tokio runtime")?;
 
-    runtime.block_on(async_main(args.bind_address, args.prover_args))
+    runtime.block_on(async_main(config))
 }
 
-async fn async_main(bind_address: String, prover_args: ProverArgs) -> eyre::Result<()> {
-    // Build a prover
-    let prover = build_prover(prover_args).await?;
-    tracing::info!("created prover");
+async fn async_main(config: CCPConfig) -> eyre::Result<()> {
+    let bind_address = (config.http_server.host.clone(), config.http_server.port);
 
-    // Launch RPC API
+    tracing::info!("creating prover with config {config:?}");
+    let prover = CCProver::from_saved_state(config)
+        .await
+        .map_err(|e| eyre::eyre!(e.to_string()))?;
+
+    tracing::info!(
+        "starting RPC server on {}:{}",
+        bind_address.0,
+        bind_address.1
+    );
     let rpc_server = CCPRcpHttpServer::new(BackgroundFacade::new(prover));
-    tracing::info!("starting an RPC server");
     let server_handle = rpc_server
         .run_server(bind_address)
         .await
         .wrap_err("starting an RPC server failed")?;
-    tracing::info!("the RPC server started");
 
     server_handle.stopped().await; // wait indefinitely
 
     Ok(())
-}
-
-async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
-    // TODO an option?
-    let randomx_flags = RandomXFlags::recommended_full_mem();
-
-    let config = CCPConfig {
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: prover_args.threads_per_physical_core,
-        },
-        randomx_flags,
-        state_dir: prover_args.state_dir,
-        enable_msr: prover_args.enable_msr,
-        report_hashrate: prover_args.report_hashrate,
-    };
-
-    CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
-        .await
-        // e doesn't implement Sync, and cannot be converted to anyhow::Error or eyre::Error.
-        // as it will be reported to a user immediately, convert the error to string
-        .map_err(|e| eyre::eyre!(e.to_string()))
 }
 
 // Preliminary check that is useful on early diagnostics.

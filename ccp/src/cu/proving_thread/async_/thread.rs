@@ -43,12 +43,12 @@ impl ProvingThreadAsync {
     pub(crate) fn new(
         core_id: LogicalCoreId,
         to_utility: ToUtilityInlet,
-        enable_msr: bool,
+        msr_enabled: bool,
     ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
         let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
-        let mut msr = MSRImpl::new(enable_msr, core_id);
+        let mut msr = MSRImpl::new(msr_enabled, core_id);
         let _ = msr.write_preset(true);
 
         Self {

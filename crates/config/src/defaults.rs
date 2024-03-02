@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+// use crate::unresolved_config::LogLevel;
 
-mod config;
-mod config_loader;
-mod defaults;
-mod tests;
-mod unresolved_config;
+pub fn default_msr_enabled() -> bool {
+    true
+}
 
-pub use ccp_randomx::RandomXFlags;
-pub use config::*;
-pub use config_loader::load_config;
+/*
+pub fn default_log_level() -> LogLevel {
+    LogLevel::Off
+}
+
+ */
+
+pub fn report_hashrate() -> bool {
+    false
+}

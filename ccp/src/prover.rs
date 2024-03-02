@@ -95,25 +95,20 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
-    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> CCResult<Self> {
+    pub fn new(config: CCPConfig) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
         let hashrate_handler =
-            HashrateHandler::new(config.state_dir.clone(), config.report_hashrate)?;
+            HashrateHandler::new(config.state_dir.clone(), config.logs.report_hashrate)?;
         let utility_thread = UtilityThread::spawn(
-            utility_core_id,
+            config.http_server.utility_cores_ids,
             ProofIdx::zero(),
             proof_dir,
             None,
             hashrate_handler,
         );
 
-        let cu_prover_config = CUProverConfig {
-            randomx_flags: config.randomx_flags,
-            thread_allocation_policy: config.thread_allocation_policy,
-            enable_msr: config.enable_msr,
-        };
-
+        let cu_prover_config = config.optimizations.into();
         let state_storage = StateStorage::new(config.state_dir);
 
         let prover = Self {
@@ -146,10 +141,7 @@ impl CCProver {
         self.utility_thread.stop().await.map_err(Into::into)
     }
 
-    pub async fn from_saved_state(
-        utility_core_id: LogicalCoreId,
-        config: CCPConfig,
-    ) -> CCResult<Self> {
+    pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
         let state_storage = StateStorage::new(config.state_dir.clone());
@@ -161,9 +153,9 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
-        let hashrate_handler = HashrateHandler::new(config.state_dir, config.report_hashrate)?;
+        let hashrate_handler = HashrateHandler::new(config.state_dir, config.logs.report_hashrate)?;
         let utility_thread = UtilityThread::spawn(
-            utility_core_id,
+            config.http_server.utility_cores_ids,
             start_proof_idx,
             proof_dir,
             prev_state
@@ -172,11 +164,7 @@ impl CCProver {
             hashrate_handler,
         );
 
-        let cu_prover_config = CUProverConfig {
-            randomx_flags: config.randomx_flags,
-            thread_allocation_policy: config.thread_allocation_policy,
-            enable_msr: config.enable_msr,
-        };
+        let cu_prover_config = config.optimizations.into();
         let mut self_ = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,

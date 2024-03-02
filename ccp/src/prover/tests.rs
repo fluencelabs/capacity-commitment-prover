@@ -1,9 +1,25 @@
-use std::path::{Path, PathBuf};
+/*
+ * Copyright 2024 Fluence Labs Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 
-use crate::{state_storage::CCPState, CCProver};
 use ccp_config::CCPConfig;
-use ccp_randomx::{RandomXFlags, ResultHash};
+use ccp_randomx::ResultHash;
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
 use ccp_shared::types::LocalNonce;
 use ccp_shared::{
@@ -14,40 +30,33 @@ use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
 
+use crate::state_storage::CCPState;
+use crate::CCProver;
+
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 
 fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
-    let enable_msr = false;
-    let report_hashrate = false;
     let config = CCPConfig {
-        thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: 1.try_into().unwrap(),
-        },
-        randomx_flags: RandomXFlags::recommended_full_mem(),
+        http_server: <_>::default(),
+        optimizations: <_>::default(),
+        logs: <_>::default(),
         state_dir,
-        enable_msr,
-        report_hashrate,
     };
 
-    CCProver::new(0.into(), config).unwrap()
+    CCProver::new(config).unwrap()
 }
 
 async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
-    let enable_msr = false;
-    let report_hashrate = false;
     let config = CCPConfig {
-        thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
-            threads_per_physical_core: 1.try_into().unwrap(),
-        },
-        randomx_flags: RandomXFlags::recommended_full_mem(),
+        http_server: <_>::default(),
+        optimizations: <_>::default(),
+        logs: <_>::default(),
         state_dir,
-        enable_msr,
-        report_hashrate,
     };
 
-    CCProver::from_saved_state(0.into(), config).await.unwrap()
+    CCProver::from_saved_state(config).await.unwrap()
 }
 
 fn get_epoch_params() -> EpochParameters {

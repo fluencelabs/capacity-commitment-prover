@@ -44,7 +44,7 @@ pub(crate) struct UtilityThread {
 
 impl UtilityThread {
     pub(crate) fn spawn(
-        core_id: LogicalCoreId,
+        core_ids: Vec<LogicalCoreId>,
         prev_proof_idx: ProofIdx,
         proof_storage_dir: std::path::PathBuf,
         prev_global_nonce: Option<GlobalNonce>,
@@ -58,7 +58,7 @@ impl UtilityThread {
         let ut_impl =
             UtilityThreadImpl::new(from_utility, shutdown_out, proofs_handler, hashrate_handler);
 
-        let handle = tokio::spawn(ut_impl.utility_closure(core_id));
+        let handle = tokio::spawn(ut_impl.utility_closure(core_ids));
         Self {
             to_utility,
             shutdown_in,
@@ -100,13 +100,13 @@ impl UtilityThreadImpl {
         }
     }
 
-    pub(crate) async fn utility_closure(mut self, core_id: LogicalCoreId) {
+    pub(crate) async fn utility_closure(mut self, core_ids: Vec<LogicalCoreId>) {
         use crossterm::event::EventStream;
         use futures::FutureExt;
         use futures::StreamExt;
 
-        if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-            log::error!("failed to pin to {core_id} core");
+        if !cpu_utils::pinning::pin_current_thread_to_cpuset(core_ids.iter().cloned()) {
+            log::error!("failed to pin to {core_ids:?} cores");
         }
 
         let mut cum_hashrate_ticker =

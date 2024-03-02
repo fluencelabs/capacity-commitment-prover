@@ -14,5 +14,9 @@ doctest = false
 
 [dependencies]
 ccp-randomx.workspace = true
+ccp-shared.workspace = true
 
+config.workspace = true
+eyre.workspace = true
+log.workspace = true
 serde.workspace = true

@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+use crate::config_loader::load_config;
 
-mod config;
-mod config_loader;
-mod defaults;
-mod tests;
-mod unresolved_config;
+#[test]
+fn parse_basic_config() {
+    let config = load_config("/Users/mike/dev/fluence/capacity-commitment/capacity-commitment-prover/crates/config/src/tests/default.toml");
 
-pub use ccp_randomx::RandomXFlags;
-pub use config::*;
-pub use config_loader::load_config;
+    println!("config: {config:?}");
+}

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+mod config;
 pub mod cu_prover;
 mod errors;
 pub(crate) mod proving_thread;
@@ -22,8 +23,8 @@ pub(crate) mod status;
 #[cfg(test)]
 mod tests;
 
+pub use config::CUProverConfig;
 pub(crate) use cu_prover::CUProver;
-pub(crate) use cu_prover::CUProverConfig;
 pub(crate) use errors::CUProverError;
 pub(crate) use errors::ThreadAllocationError;
 
