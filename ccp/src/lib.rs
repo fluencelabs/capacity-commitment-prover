@@ -29,6 +29,7 @@
 mod alignment_roadmap;
 mod cu;
 mod errors;
+mod hashrate;
 mod proof_storage;
 pub mod prover;
 mod state_storage;

@@ -19,6 +19,7 @@ const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
     let enable_msr = false;
+    let report_hashrate = false;
     let config = CCPConfig {
         thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 1.try_into().unwrap(),
@@ -26,14 +27,16 @@ fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
         randomx_flags: RandomXFlags::recommended_full_mem(),
         state_dir,
         enable_msr,
+        report_hashrate,
     };
 
-    CCProver::new(0.into(), config)
+    CCProver::new(0.into(), config).unwrap()
 }
 
 async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
     let enable_msr = false;
+    let report_hashrate = false;
     let config = CCPConfig {
         thread_allocation_policy: ccp_config::ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 1.try_into().unwrap(),
@@ -41,6 +44,7 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         randomx_flags: RandomXFlags::recommended_full_mem(),
         state_dir,
         enable_msr,
+        report_hashrate,
     };
 
     CCProver::from_saved_state(0.into(), config).await.unwrap()

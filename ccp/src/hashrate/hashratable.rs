@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-mod channels_facade;
-mod errors;
-mod local_nonce;
-mod raw_proof;
-mod state;
-mod thread;
-pub(crate) mod to_utility_message;
+use std::time::Duration;
 
-pub(crate) use errors::ProvingThreadSyncFacadeError;
-pub(crate) use thread::ProvingThreadSync;
+pub(crate) trait Hashratable {
+    fn hashrate(hashes_checked: u64, duration: Duration) -> f64;
+}
 
-type STResult<T> = Result<T, errors::ProvingThreadSyncError>;
-pub(crate) type STFResult<T> = Result<T, errors::ProvingThreadSyncFacadeError>;
+pub(crate) struct HashrateCalculator {}
+
+impl Hashratable for HashrateCalculator {
+    fn hashrate(hashes_checked: u64, duration: Duration) -> f64 {
+        if duration.is_zero() {
+            return 0f64;
+        }
+
+        let duration = duration.as_secs_f64();
+        hashes_checked as f64 / duration
+    }
+}

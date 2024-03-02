@@ -66,6 +66,9 @@ struct ProverArgs {
 
     #[arg(long, action = ArgAction::SetTrue)]
     enable_msr: bool,
+
+    #[arg(long, action = ArgAction::SetTrue)]
+    report_hashrate: bool,
 }
 
 fn main() -> eyre::Result<()> {
@@ -140,6 +143,7 @@ async fn build_prover(prover_args: ProverArgs) -> eyre::Result<CCProver> {
         randomx_flags,
         state_dir: prover_args.state_dir,
         enable_msr: prover_args.enable_msr,
+        report_hashrate: prover_args.report_hashrate,
     };
 
     CCProver::from_saved_state(prover_args.utility_core_id.into(), config)
@@ -154,10 +158,12 @@ fn check_writable_dir(path: &Path) -> eyre::Result<()> {
     if !path.is_dir() {
         eyre::bail!("{path:?} is not a directory");
     }
+
     let meta = std::fs::metadata(path)?;
-    let perm = meta.permissions();
-    if perm.readonly() {
+    let permissions = meta.permissions();
+    if permissions.readonly() {
         eyre::bail!("{path:?} is not writable");
     }
+
     Ok(())
 }

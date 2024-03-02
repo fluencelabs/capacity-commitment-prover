@@ -20,12 +20,11 @@ use ccp_randomx::RandomXFlags;
 use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 
-use crate::GlobalNonce;
 use crate::CUID;
 
 #[derive(Debug)]
 pub(crate) struct CreateCache {
-    pub(crate) global_nonce: GlobalNonce,
+    pub(crate) epoch: EpochParameters,
     pub(crate) cu_id: CUID,
     pub(crate) flags: RandomXFlags,
 }
@@ -37,6 +36,7 @@ pub(crate) struct AllocateDataset {
 
 #[derive(Debug)]
 pub(crate) struct InitializeDataset {
+    pub(crate) epoch: EpochParameters,
     pub(crate) cache: CacheHandle,
     pub(crate) dataset: DatasetHandle,
     pub(crate) start_item: u64,
@@ -45,9 +45,9 @@ pub(crate) struct InitializeDataset {
 
 #[derive(Debug)]
 pub(crate) struct NewCCJob {
+    pub(crate) epoch: EpochParameters,
     pub(crate) dataset: DatasetHandle,
     pub(crate) flags: RandomXFlags,
-    pub(crate) epoch: EpochParameters,
     pub(crate) cu_id: CUID,
 }
 
@@ -57,9 +57,9 @@ pub(crate) struct PinThread {
 }
 
 impl CreateCache {
-    pub(crate) fn new(global_nonce: GlobalNonce, cu_id: CUID, flags: RandomXFlags) -> Self {
+    pub(crate) fn new(epoch: EpochParameters, cu_id: CUID, flags: RandomXFlags) -> Self {
         Self {
-            global_nonce,
+            epoch,
             cu_id,
             flags,
         }
@@ -74,12 +74,14 @@ impl AllocateDataset {
 
 impl InitializeDataset {
     pub fn new(
+        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
     ) -> Self {
         Self {
+            epoch,
             cache,
             dataset,
             start_item,
@@ -90,15 +92,15 @@ impl InitializeDataset {
 
 impl NewCCJob {
     pub fn new(
+        epoch: EpochParameters,
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Self {
         Self {
+            epoch,
             dataset,
             flags,
-            epoch,
             cu_id,
         }
     }

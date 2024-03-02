@@ -1,6 +1,6 @@
 From the project root:
 
-1$ RUST_LOG=debug cargo run -p ccp-main -- --bind-address 127.0.0.1:9383 \
+1$ RUST_LOG=debug cargo run --release -p ccp-main -- --bind-address 127.0.0.1:9383 \
      --threads-per-physical-core 1 --dir-to-store-proofs a --dir-to-store-persistent-state b \
      --utility-core-id 8 --tokio-core-id 8
 <lot of logs>

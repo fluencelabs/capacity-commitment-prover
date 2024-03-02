@@ -33,6 +33,7 @@ use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
+use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
 use crate::state_storage::StateStorage;
@@ -94,26 +95,36 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
-    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> Self {
+    pub fn new(utility_core_id: LogicalCoreId, config: CCPConfig) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
-        let utility_thread =
-            UtilityThread::spawn(utility_core_id, ProofIdx::zero(), proof_dir, None);
+        let hashrate_handler =
+            HashrateHandler::new(config.state_dir.clone(), config.report_hashrate)?;
+        let utility_thread = UtilityThread::spawn(
+            utility_core_id,
+            ProofIdx::zero(),
+            proof_dir,
+            None,
+            hashrate_handler,
+        );
+
         let cu_prover_config = CUProverConfig {
             randomx_flags: config.randomx_flags,
             thread_allocation_policy: config.thread_allocation_policy,
             enable_msr: config.enable_msr,
         };
+
         let state_storage = StateStorage::new(config.state_dir);
 
-        Self {
+        let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
             utility_thread,
             proof_drainer,
             state_storage,
-        }
+        };
+        Ok(prover)
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -141,21 +152,16 @@ impl CCProver {
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
-        let state_storage = StateStorage::new(config.state_dir);
+        let state_storage = StateStorage::new(config.state_dir.clone());
 
         let prev_state = state_storage.try_to_load_data().await?;
-
         let start_proof_idx = proof_cleaner
             .validate_proofs(prev_state.as_ref().map(|state| &state.epoch_params))
             .await?;
+
         log::info!("continuing from proof index {start_proof_idx}");
 
-        let cu_prover_config = CUProverConfig {
-            randomx_flags: config.randomx_flags,
-            thread_allocation_policy: config.thread_allocation_policy,
-            enable_msr: config.enable_msr,
-        };
-
+        let hashrate_handler = HashrateHandler::new(config.state_dir, config.report_hashrate)?;
         let utility_thread = UtilityThread::spawn(
             utility_core_id,
             start_proof_idx,
@@ -163,8 +169,14 @@ impl CCProver {
             prev_state
                 .as_ref()
                 .map(|state| state.epoch_params.global_nonce),
+            hashrate_handler,
         );
 
+        let cu_prover_config = CUProverConfig {
+            randomx_flags: config.randomx_flags,
+            thread_allocation_policy: config.thread_allocation_policy,
+            enable_msr: config.enable_msr,
+        };
         let mut self_ = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,

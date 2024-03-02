@@ -86,16 +86,14 @@ impl CUProver {
 
         let thread = &mut self.threads.head;
         let randomx_flags = self.randomx_flags;
-        let cache = thread
-            .create_cache(epoch.global_nonce, cu_id, randomx_flags)
-            .await?;
+        let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
 
         let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
-        self.initialize_dataset(cache_handle, dataset_handle.clone())
+        self.initialize_dataset(epoch, cache_handle, dataset_handle.clone())
             .await?;
 
-        self.run_proving_jobs(dataset_handle, epoch, cu_id).await
+        self.run_proving_jobs(epoch, dataset_handle, cu_id).await
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -145,6 +143,7 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
+        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
     ) -> CUResult<()> {
@@ -161,7 +160,13 @@ impl CUProver {
             let items_count = next_start_item - start_item;
 
             thread
-                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
+                .initialize_dataset(
+                    epoch,
+                    cache.clone(),
+                    dataset.clone(),
+                    start_item,
+                    items_count,
+                )
                 .boxed()
         };
 
@@ -172,8 +177,8 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
-        dataset: DatasetHandle,
         epoch: EpochParameters,
+        dataset: DatasetHandle,
         cu_id: CUID,
     ) -> CUResult<()> {
         use futures::FutureExt;
@@ -181,7 +186,7 @@ impl CUProver {
         let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| {
             thread
-                .run_cc_job(dataset.clone(), randomx_flags, epoch, cu_id)
+                .run_cc_job(epoch, dataset.clone(), randomx_flags, cu_id)
                 .boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;

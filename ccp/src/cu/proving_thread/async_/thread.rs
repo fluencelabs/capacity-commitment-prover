@@ -65,11 +65,11 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
     async fn create_cache(
         &mut self,
-        global_nonce: GlobalNonce,
+        epoch: EpochParameters,
         cu_id: CUID,
         flags: RandomXFlags,
     ) -> Result<Cache, Self::Error> {
-        let message = CreateCache::new(global_nonce, cu_id, flags);
+        let message = CreateCache::new(epoch, cu_id, flags);
         let message = AsyncToSyncMessage::CreateCache(message);
         self.to_sync.send(message).await?;
 
@@ -102,12 +102,13 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
     async fn initialize_dataset(
         &mut self,
+        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
     ) -> Result<(), Self::Error> {
-        let message = InitializeDataset::new(cache, dataset, start_item, items_count);
+        let message = InitializeDataset::new(epoch, cache, dataset, start_item, items_count);
         let message = AsyncToSyncMessage::InitializeDataset(message);
         self.to_sync.send(message).await?;
 
@@ -124,12 +125,12 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
     async fn run_cc_job(
         &self,
+        epoch: EpochParameters,
         dataset: DatasetHandle,
         flags: RandomXFlags,
-        epoch: EpochParameters,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(dataset, flags, epoch, cu_id);
+        let message = NewCCJob::new(epoch, dataset, flags, cu_id);
         let message = AsyncToSyncMessage::NewCCJob(message);
         self.to_sync.send(message).await.map_err(Into::into)
     }

@@ -18,6 +18,8 @@ use tokio::task::JoinError;
 
 use thiserror::Error as ThisError;
 
+use crate::hashrate::HashrateError;
+
 #[derive(ThisError, Debug)]
 pub enum UtilityThreadError {
     #[error(transparent)]
@@ -25,6 +27,9 @@ pub enum UtilityThreadError {
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
+
+    #[error(transparent)]
+    HashrateError(#[from] HashrateError),
 
     #[error("error occurred while trying to shutdown the utility thread")]
     ShutdownError,

@@ -39,3 +39,14 @@ impl RawProof {
         }
     }
 }
+
+use std::fmt;
+
+impl fmt::Display for RawProof {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", self.epoch)?;
+        writeln!(f, "local nonce {:?}", self.local_nonce)?;
+        writeln!(f, "CU id: {:?}", self.cu_id)?;
+        writeln!(f, "result hash: {:?}", self.result_hash)
+    }
+}

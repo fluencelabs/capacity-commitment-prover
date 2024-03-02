@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-mod channels_facade;
-mod errors;
-mod local_nonce;
-mod raw_proof;
-mod state;
-mod thread;
-pub(crate) mod to_utility_message;
+use thiserror::Error as ThisError;
 
-pub(crate) use errors::ProvingThreadSyncFacadeError;
-pub(crate) use thread::ProvingThreadSync;
+#[derive(ThisError, Debug)]
+pub enum HashrateError {
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
 
-type STResult<T> = Result<T, errors::ProvingThreadSyncError>;
-pub(crate) type STFResult<T> = Result<T, errors::ProvingThreadSyncFacadeError>;
+    #[error(transparent)]
+    CSVError(#[from] csv::Error),
+}
