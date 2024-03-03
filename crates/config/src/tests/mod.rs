@@ -14,24 +14,5 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
-
-mod config;
-mod config_loader;
-mod defaults;
-mod tests;
-mod unresolved_config;
-
-pub use ccp_randomx::RandomXFlags;
-pub use config::*;
-pub use config_loader::load_config;
+#[cfg(test)]
+mod tests_;

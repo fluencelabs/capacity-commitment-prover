@@ -78,10 +78,10 @@ fn batch_proof_verification_local(proofs: impl Iterator<Item = RawProof>) -> boo
 fn create_config(cores_count: usize) -> CUProverConfig {
     CUProverConfig {
         randomx_flags: RandomXFlags::recommended_full_mem(),
-        thread_allocation_policy: ThreadsPerCoreAllocationPolicy::Exact {
+        threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(cores_count).unwrap(),
         },
-        enable_msr: false,
+        msr_enabled: false,
     }
 }
 

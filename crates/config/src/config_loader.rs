@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-#![warn(rust_2018_idioms)]
-#![warn(rust_2021_compatibility)]
-#![deny(
-    dead_code,
-    nonstandard_style,
-    unused_imports,
-    unused_mut,
-    unused_variables,
-    unused_unsafe,
-    unreachable_patterns
-)]
+use config::Config;
+use config::File;
+use config::FileFormat;
 
-mod config;
-mod config_loader;
-mod defaults;
-mod tests;
-mod unresolved_config;
+use crate::unresolved_config::UnresolvedCCPConfig;
+use crate::CCPConfig;
 
-pub use ccp_randomx::RandomXFlags;
-pub use config::*;
-pub use config_loader::load_config;
+pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
+    let config_source = File::with_name(path)
+        .required(true)
+        .format(FileFormat::Toml);
+    let config = Config::builder().add_source(config_source).build()?;
+
+    let config: UnresolvedCCPConfig = config.try_deserialize()?;
+    config.resolve()
+}
