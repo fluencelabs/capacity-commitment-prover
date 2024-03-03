@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-// use crate::unresolved_config::LogLevel;
+use crate::unresolved_config::LogLevel;
 
 pub fn default_msr_enabled() -> bool {
-    true
+    false
 }
 
-/*
 pub fn default_log_level() -> LogLevel {
     LogLevel::Off
 }
-
- */
 
 pub fn report_hashrate() -> bool {
     false

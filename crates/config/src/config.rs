@@ -17,7 +17,7 @@
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
     pub http_server: HTTPServer,
     pub optimizations: Optimizations,
@@ -25,32 +25,32 @@ pub struct CCPConfig {
     pub state_dir: std::path::PathBuf,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HTTPServer {
     pub host: String,
     pub port: u16,
     pub utility_cores_ids: Vec<LogicalCoreId>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Optimizations {
     pub randomx_flags: RandomXFlags,
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
     pub msr_enabled: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Logs {
     pub report_hashrate: bool,
     pub log_level: log::LevelFilter,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct State {
     pub state_dir: std::path::PathBuf,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum ThreadsPerCoreAllocationPolicy {
     /// CCP will try to run the optimal amount of threads per core,
     /// trying to utilize all benefits of HT and SMT.

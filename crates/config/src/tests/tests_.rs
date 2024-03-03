@@ -14,11 +14,49 @@
  * limitations under the License.
  */
 
+use crate::{CCPConfig, HTTPServer, Logs, Optimizations, ThreadsPerCoreAllocationPolicy};
+use ccp_randomx::RandomXFlags;
+use std::path::PathBuf;
+
 use crate::config_loader::load_config;
 
 #[test]
 fn parse_basic_config() {
-    let config = load_config("/Users/mike/dev/fluence/capacity-commitment/capacity-commitment-prover/crates/config/src/tests/default.toml");
+    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_path.push("src/tests/default.toml");
 
-    println!("config: {config:?}");
+    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+
+    let http_server = HTTPServer {
+        host: "127.0.0.1".to_string(),
+        port: 9383,
+        utility_cores_ids: vec![1.into(), 2.into()],
+    };
+
+    let mut randomx_flags = RandomXFlags::default();
+    randomx_flags.set(RandomXFlags::HARD_AES, true);
+    randomx_flags.set(RandomXFlags::FULL_MEM, true);
+    randomx_flags.set(RandomXFlags::FLAG_JIT, true);
+    randomx_flags.set(RandomXFlags::FLAG_SECURE, true);
+    randomx_flags.set(RandomXFlags::FLAG_ARGON2, true);
+
+    let optimizations = Optimizations {
+        randomx_flags,
+        threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: 2.try_into().unwrap(),
+        },
+        msr_enabled: true,
+    };
+    let logs = Logs {
+        report_hashrate: true,
+        log_level: log::LevelFilter::Warn,
+    };
+    let expected_config = CCPConfig {
+        http_server,
+        optimizations,
+        logs,
+        state_dir: "../test".into(),
+    };
+
+    assert_eq!(actual_config, expected_config);
 }

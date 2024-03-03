@@ -20,7 +20,7 @@ use serde::Serialize;
 use ccp_randomx::RandomXFlags;
 
 use super::config::Optimizations;
-//use super::defaults::default_log_level;
+use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::report_hashrate;
 use crate::*;
@@ -28,8 +28,8 @@ use crate::*;
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedCCPConfig {
-    #[serde(rename = "http-server")]
     pub http_server: UnresolvedHTTPServer,
     pub optimizations: UnresolvedOptimizations,
     pub logs: UnresolvedLogs,
@@ -37,28 +37,28 @@ pub struct UnresolvedCCPConfig {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedHTTPServer {
     pub host: String,
     pub port: u16,
-    #[serde(rename = "utility-thread-ids")]
     pub utility_thread_ids: Vec<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedOptimizations {
     #[serde(flatten)]
     pub randomx: UnresolvedRandomX,
 
     #[serde(default = "default_msr_enabled")]
-    #[serde(rename = "msr-enabled")]
     pub msr_enabled: bool,
 
-    pub threads_per_core_policy: Option<usize>,
+    pub threads_per_core: Option<usize>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename = "utility-thread-ids")]
 pub struct UnresolvedRandomX {
-    #[serde(rename = "large-pages")]
     pub large_pages: Option<bool>,
     pub hard_aes: Option<bool>,
     pub jit: Option<bool>,
@@ -67,14 +67,12 @@ pub struct UnresolvedRandomX {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedLogs {
     #[serde(default = "report_hashrate")]
-    #[serde(rename = "report-hashrate")]
     pub report_hashrate: bool,
 
-    //#[serde(default = "default_log_level")]
-    #[serde(rename = "log-level")]
-    #[serde(flatten)]
+    #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
 }
 
@@ -84,35 +82,21 @@ pub struct State {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 pub enum Argon2Impl {
-    #[serde(rename = "avx2")]
     AVX2,
-    #[serde(rename = "ssse3")]
     SSSE3,
-    #[serde(rename = "default")]
     Default,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
 pub enum LogLevel {
-    #[serde(rename = "off")]
     Off,
-
-    #[serde(rename = "error")]
     Error,
-
-    #[serde(rename = "warn")]
     Warn,
-
-    #[serde(rename = "info")]
     Info,
-
-    #[serde(rename = "debug")]
     Debug,
-
-    #[serde(rename = "trace")]
     Trace,
 }
 
@@ -156,7 +140,7 @@ impl UnresolvedOptimizations {
     pub fn resolve(self) -> eyre::Result<Optimizations> {
         let randomx_flags = self.randomx.resolve();
         let msr_enabled = self.msr_enabled;
-        let threads_per_core_policy = match self.threads_per_core_policy {
+        let threads_per_core_policy = match self.threads_per_core {
             Some(threads_count) => ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core: threads_count.try_into()?,
             },

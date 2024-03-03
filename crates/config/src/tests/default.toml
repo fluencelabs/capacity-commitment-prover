@@ -1,22 +1,20 @@
 [http-server]
 host = "127.0.0.1"
 port = "9383"
-utility-thread-ids = [1]
+utility-thread-ids = [1,2]
 
 [optimizations]
 large-pages = true
 hard-aes = true
 jit = true
-secure = false
-argon2-sse3 = true
-argon2-avx2 = true
-argon2 = true
-msr = false
-threads-per-physical-core = 2
+secure = true
+argon2 = "default"
+msr-enabled = true
+threads-per-core = 2
 
 [logs]
-report-hashrate = false
-log-level = "off"
+report-hashrate = true
+log-level = "warn"
 
 [state]
 path = "../test"

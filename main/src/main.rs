@@ -28,7 +28,6 @@
 
 use std::path::Path;
 
-use ccp_rpc_server::BackgroundFacade;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tracing_subscriber::EnvFilter;
@@ -36,6 +35,7 @@ use tracing_subscriber::EnvFilter;
 use capacity_commitment_prover::CCProver;
 use ccp_config::load_config;
 use ccp_config::CCPConfig;
+use ccp_rpc_server::BackgroundFacade;
 use ccp_rpc_server::CCPRcpHttpServer;
 
 #[derive(Parser, Debug)]
@@ -52,15 +52,15 @@ fn main() -> eyre::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber)
         .wrap_err("setting global tracing subscriber failed")?;
-    tracing_log::LogTracer::init()?;
 
     let args = Args::parse();
     tracing::info!("{args:?}");
 
     let config = load_config(args.config_path.as_str())?;
+    tracing_log::LogTracer::init_with_filter(config.logs.log_level)?;
 
     check_writable_dir(&config.state_dir)
-        .wrap_err("The --state-dir value should be a writeable directory path")?;
+        .wrap_err("state-dir value in a config should be a writeable directory path")?;
 
     let tokio_cores = config
         .http_server
