@@ -55,7 +55,7 @@ pub(crate) enum CollectorStatus {
 pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
 
 /// Unprocessed cumulative hashrate for a sync thread.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct ThreadHashrateRaw {
     cache_creation: ParameterStatus<Duration>,
     dataset_initialization: ParameterStatus<Duration>,
