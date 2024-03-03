@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
-use crate::{CCPConfig, HTTPServer, Logs, Optimizations, ThreadsPerCoreAllocationPolicy};
-use ccp_randomx::RandomXFlags;
 use std::path::PathBuf;
 
+use ccp_randomx::RandomXFlags;
+
 use crate::config_loader::load_config;
+use crate::CCPConfig;
+use crate::HTTPServer;
+use crate::Logs;
+use crate::Optimizations;
+use crate::ThreadsPerCoreAllocationPolicy;
 
 #[test]
 fn parse_basic_config() {
