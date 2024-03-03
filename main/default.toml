@@ -8,7 +8,7 @@ threads-per-core = 2
 
 [logs]
 report-hashrate = false
-log-level = "trace"
+log-level = "error"
 
 [state]
 path = "../test"

@@ -52,7 +52,7 @@ fn main() -> eyre::Result<()> {
     let filter = EnvFilter::builder()
         .with_env_var("RUST_LOG")
         .with_default_directive(Directive::from(config.logs.log_level))
-        .parse("")?;
+        .from_env_lossy();
     let subscriber = tracing_subscriber::fmt()
         .with_env_filter(filter)
         .with_writer(std::io::stderr)
