@@ -259,8 +259,8 @@ dependencies = [
  "ccp-shared",
  "config",
  "eyre",
- "log",
  "serde",
+ "tracing-subscriber",
 ]
 
 [[package]]

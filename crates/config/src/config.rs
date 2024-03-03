@@ -42,7 +42,7 @@ pub struct Optimizations {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Logs {
     pub report_hashrate: bool,
-    pub log_level: log::LevelFilter,
+    pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,7 +86,7 @@ impl Default for Logs {
     fn default() -> Self {
         Self {
             report_hashrate: false,
-            log_level: log::LevelFilter::Off,
+            log_level: tracing_subscriber::filter::LevelFilter::ERROR,
         }
     }
 }

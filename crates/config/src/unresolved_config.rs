@@ -189,13 +189,15 @@ impl UnresolvedRandomX {
 
 impl UnresolvedLogs {
     pub fn resolve(self) -> Logs {
+        use tracing_subscriber::filter::LevelFilter;
+
         let log_level = match self.log_level {
-            LogLevel::Off => log::LevelFilter::Off,
-            LogLevel::Error => log::LevelFilter::Error,
-            LogLevel::Warn => log::LevelFilter::Warn,
-            LogLevel::Info => log::LevelFilter::Info,
-            LogLevel::Debug => log::LevelFilter::Debug,
-            LogLevel::Trace => log::LevelFilter::Trace,
+            LogLevel::Off => LevelFilter::OFF,
+            LogLevel::Error => LevelFilter::ERROR,
+            LogLevel::Warn => LevelFilter::WARN,
+            LogLevel::Info => LevelFilter::INFO,
+            LogLevel::Debug => LevelFilter::DEBUG,
+            LogLevel::Trace => LevelFilter::TRACE,
         };
 
         Logs {

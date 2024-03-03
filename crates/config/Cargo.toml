@@ -18,5 +18,5 @@ ccp-shared.workspace = true
 
 config.workspace = true
 eyre.workspace = true
-log.workspace = true
+tracing-subscriber.workspace = true
 serde.workspace = true

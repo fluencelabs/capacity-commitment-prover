@@ -30,6 +30,7 @@ use std::path::Path;
 
 use clap::Parser;
 use eyre::WrapErr as _;
+use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
 use capacity_commitment_prover::CCProver;
@@ -40,24 +41,27 @@ use ccp_rpc_server::CCPRcpHttpServer;
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(long)]
+    #[arg(short, long)]
     config_path: String,
 }
 
 fn main() -> eyre::Result<()> {
-    let subscriber = tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
-        .with_thread_ids(true)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .wrap_err("setting global tracing subscriber failed")?;
-
     let args = Args::parse();
     let config = load_config(args.config_path.as_str())?;
 
-    tracing_log::LogTracer::init_with_filter(config.logs.log_level)?;
-    tracing::error!("run with {config:?} config");
+    let filter = EnvFilter::builder()
+        .with_env_var("RUST_LOG")
+        .with_default_directive(Directive::from(config.logs.log_level))
+        .parse("")?;
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .with_thread_ids(true)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .wrap_err("setting global tracing subscriber failed")?;
+    tracing_log::LogTracer::init()?;
 
     check_writable_dir(&config.state_dir)
         .wrap_err("state-dir value in a config should be a writeable directory path")?;
