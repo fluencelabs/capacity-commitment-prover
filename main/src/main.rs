@@ -54,10 +54,10 @@ fn main() -> eyre::Result<()> {
         .wrap_err("setting global tracing subscriber failed")?;
 
     let args = Args::parse();
-    tracing::info!("{args:?}");
-
     let config = load_config(args.config_path.as_str())?;
+
     tracing_log::LogTracer::init_with_filter(config.logs.log_level)?;
+    tracing::error!("run with {config:?} config");
 
     check_writable_dir(&config.state_dir)
         .wrap_err("state-dir value in a config should be a writeable directory path")?;

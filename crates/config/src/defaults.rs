@@ -21,7 +21,7 @@ pub fn default_msr_enabled() -> bool {
 }
 
 pub fn default_log_level() -> LogLevel {
-    LogLevel::Off
+    LogLevel::Error
 }
 
 pub fn report_hashrate() -> bool {

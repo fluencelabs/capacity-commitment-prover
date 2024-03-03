@@ -4,17 +4,11 @@ port = "9383"
 utility-thread-ids = [1,2]
 
 [optimizations]
-large-pages = true
-hard-aes = true
-jit = true
-secure = false
-argon2 = "default"
-msr-enabled = true
 threads-per-core = 2
 
 [logs]
-report-hashrate = true
-log-level = "warn"
+report-hashrate = false
+log-level = "trace"
 
 [state]
 path = "../test"

@@ -57,7 +57,7 @@ pub struct UnresolvedOptimizations {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename = "utility-thread-ids")]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedRandomX {
     pub large_pages: Option<bool>,
     pub hard_aes: Option<bool>,
