@@ -28,7 +28,7 @@ use crate::ThreadsPerCoreAllocationPolicy;
 #[test]
 fn parse_basic_config() {
     let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_path.push("src/tests/default.toml");
+    manifest_path.push("src/tests/test.toml");
 
     let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
 
@@ -39,6 +39,7 @@ fn parse_basic_config() {
     };
 
     let mut randomx_flags = RandomXFlags::default();
+    randomx_flags.set(RandomXFlags::LARGE_PAGES, true);
     randomx_flags.set(RandomXFlags::HARD_AES, true);
     randomx_flags.set(RandomXFlags::FULL_MEM, true);
     randomx_flags.set(RandomXFlags::FLAG_JIT, true);
@@ -54,7 +55,7 @@ fn parse_basic_config() {
     };
     let logs = Logs {
         report_hashrate: true,
-        log_level: log::LevelFilter::Warn,
+        log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
     let expected_config = CCPConfig {
         http_server,

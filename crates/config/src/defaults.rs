@@ -16,14 +16,14 @@
 
 use crate::unresolved_config::LogLevel;
 
-pub fn default_msr_enabled() -> bool {
+pub(crate) fn default_msr_enabled() -> bool {
     false
 }
 
-pub fn default_log_level() -> LogLevel {
+pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
 }
 
-pub fn report_hashrate() -> bool {
+pub(crate) fn default_report_hashrate() -> bool {
     false
 }

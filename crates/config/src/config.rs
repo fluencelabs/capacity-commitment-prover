@@ -17,6 +17,10 @@
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
+use crate::defaults::default_log_level;
+use crate::defaults::default_msr_enabled;
+use crate::defaults::default_report_hashrate;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
     pub http_server: HTTPServer,
@@ -77,7 +81,7 @@ impl Default for Optimizations {
         Self {
             randomx_flags: RandomXFlags::recommended_full_mem(),
             threads_per_core_policy: <_>::default(),
-            msr_enabled: false,
+            msr_enabled: default_msr_enabled(),
         }
     }
 }
@@ -85,8 +89,8 @@ impl Default for Optimizations {
 impl Default for Logs {
     fn default() -> Self {
         Self {
-            report_hashrate: false,
-            log_level: tracing_subscriber::filter::LevelFilter::ERROR,
+            report_hashrate: default_report_hashrate(),
+            log_level: default_log_level().to_tracing_filter(),
         }
     }
 }

@@ -22,7 +22,7 @@ use ccp_randomx::RandomXFlags;
 use super::config::Optimizations;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
-use super::defaults::report_hashrate;
+use super::defaults::default_report_hashrate;
 use crate::*;
 
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
@@ -69,7 +69,7 @@ pub struct UnresolvedRandomX {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedLogs {
-    #[serde(default = "report_hashrate")]
+    #[serde(default = "default_report_hashrate")]
     pub report_hashrate: bool,
 
     #[serde(default = "default_log_level")]
@@ -187,22 +187,26 @@ impl UnresolvedRandomX {
     }
 }
 
-impl UnresolvedLogs {
-    pub fn resolve(self) -> Logs {
+impl LogLevel {
+    pub fn to_tracing_filter(&self) -> tracing_subscriber::filter::LevelFilter {
         use tracing_subscriber::filter::LevelFilter;
 
-        let log_level = match self.log_level {
+        match self {
             LogLevel::Off => LevelFilter::OFF,
             LogLevel::Error => LevelFilter::ERROR,
             LogLevel::Warn => LevelFilter::WARN,
             LogLevel::Info => LevelFilter::INFO,
             LogLevel::Debug => LevelFilter::DEBUG,
             LogLevel::Trace => LevelFilter::TRACE,
-        };
+        }
+    }
+}
 
+impl UnresolvedLogs {
+    pub fn resolve(self) -> Logs {
         Logs {
             report_hashrate: self.report_hashrate,
-            log_level,
+            log_level: self.log_level.to_tracing_filter(),
         }
     }
 }
