@@ -15,10 +15,18 @@
  */
 
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
+use prometheus_client::collector::Collector;
+use prometheus_client::encoding::EncodeMetric;
+use prometheus_client::metrics::counter::ConstCounter;
+use prometheus_client::metrics::gauge::ConstGauge;
+use prometheus_client::registry::Registry;
+use prometheus_client::registry::Unit;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::time::Instant;
@@ -31,6 +39,7 @@ use super::record::ThreadHashrateRecord;
 pub(crate) struct HashrateCollector {
     status: CollectorStatus,
     entries: HashMap<LogicalCoreId, ThreadHashrateRaw>,
+    prometheus_registry: Arc<Mutex<Registry>>,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -46,7 +55,7 @@ pub(crate) enum CollectorStatus {
 pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
 
 /// Unprocessed cumulative hashrate for a sync thread.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default)]
 pub(crate) struct ThreadHashrateRaw {
     cache_creation: ParameterStatus<Duration>,
     dataset_initialization: ParameterStatus<Duration>,
@@ -167,6 +176,28 @@ impl HashrateCollector {
         };
 
         self.entries.clear();
+        *self.prometheus_registry.lock().unwrap() = Registry::default();
+    }
+
+    pub(crate) fn apply_to_registry(&self, registry: &mut Registry) {
+        if let CollectorStatus::Busy { started_time, .. } = &self.status {
+            let now = Instant::now();
+            let epoch_age = ConstGauge::<f64>::new((now - *started_time).as_secs_f64());
+            registry.register_with_unit(
+                "epoch_age",
+                "Time since epoch started",
+                Unit::Seconds,
+                epoch_age,
+            )
+        }
+
+        for (logical_core_id, thread_hashrate) in &self.entries {
+            let subreg = registry.sub_registry_with_label((
+                "logical_core_id".into(),
+                logical_core_id.to_string().into(),
+            ));
+            subreg.register_collector(Box::new(thread_hashrate.clone()) as _);
+        }
     }
 }
 
@@ -184,13 +215,40 @@ impl ThreadHashrateRaw {
             } => {
                 self.cc_job_duration
                     .map(|duration| duration + new_entry.duration);
-                self.checked_hashes_count += hashes_count as u64
+                self.checked_hashes_count += hashes_count as u64;
             }
         }
     }
 
     pub(crate) fn account_proof_found(&mut self) {
         self.found_proofs_count += 1;
+    }
+}
+
+impl Collector for ThreadHashrateRaw {
+    fn encode(
+        &self,
+        mut encoder: prometheus_client::encoding::DescriptorEncoder<'_>,
+    ) -> Result<(), std::fmt::Error> {
+        let checked_hashes_counter = ConstCounter::new(self.checked_hashes_count);
+        let checked_hashes_encoder = encoder.encode_descriptor(
+            "checked_hashes",
+            "Checked hashes",
+            None,
+            checked_hashes_counter.metric_type(),
+        )?;
+        checked_hashes_counter.encode(checked_hashes_encoder)?;
+
+        let found_proofs_counter = ConstCounter::new(self.found_proofs_count);
+        let found_proofs_encoder = encoder.encode_descriptor(
+            "founds_proofs",
+            "Checked hashes",
+            None,
+            found_proofs_counter.metric_type(),
+        )?;
+        found_proofs_counter.encode(found_proofs_encoder)?;
+
+        Ok(())
     }
 }
 

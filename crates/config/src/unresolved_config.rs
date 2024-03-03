@@ -31,6 +31,7 @@ const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedCCPConfig {
     pub http_server: UnresolvedHTTPServer,
+    pub prometheus_endpoint: UnresolvedPrometheusEndpoint,
     pub optimizations: UnresolvedOptimizations,
     pub logs: UnresolvedLogs,
     pub state: State,
@@ -42,6 +43,13 @@ pub struct UnresolvedHTTPServer {
     pub host: String,
     pub port: u16,
     pub utility_thread_ids: Vec<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnresolvedPrometheusEndpoint {
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -103,11 +111,13 @@ pub enum LogLevel {
 impl UnresolvedCCPConfig {
     pub fn resolve(self) -> eyre::Result<CCPConfig> {
         let http_server = self.http_server.resolve();
+        let prometheus_endpoint = self.prometheus_endpoint.resolve();
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
 
         let config = CCPConfig {
             http_server,
+            prometheus_endpoint,
             optimizations: optimization,
             logs,
             state_dir: self.state.path,
@@ -132,6 +142,15 @@ impl UnresolvedHTTPServer {
             host: self.host,
             port: self.port,
             utility_cores_ids: utility_thread_ids,
+        }
+    }
+}
+
+impl UnresolvedPrometheusEndpoint {
+    pub fn resolve(self) -> PrometheusEndpoint {
+        PrometheusEndpoint {
+            host: self.host,
+            port: self.port,
         }
     }
 }

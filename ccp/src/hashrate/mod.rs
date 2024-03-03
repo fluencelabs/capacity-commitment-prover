@@ -18,6 +18,7 @@ mod collector;
 mod errors;
 mod handler;
 mod hashratable;
+pub(crate) mod prometheus;
 mod record;
 mod saver;
 mod sliding_collector;

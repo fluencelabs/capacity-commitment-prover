@@ -75,8 +75,9 @@ where
     ///  The returned handle can be used to maniplate it.
     pub async fn run_server(
         self,
-        bind_address: impl ToSocketAddrs,
+        bind_address: impl ToSocketAddrs + std::fmt::Debug,
     ) -> Result<ServerHandle, std::io::Error> {
+        tracing::info!("starting an RPC server at {bind_address:?}");
         let server = Server::builder().build(bind_address).await?;
 
         let handle = server.start(self.into_rpc());
