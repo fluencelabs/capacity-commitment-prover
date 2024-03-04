@@ -50,7 +50,7 @@ async fn handle_metrics(
         {
             let guard = state.hashrate_collector.lock().map_err(|_| {
                 // TODO use parking_lot mutex
-                log::warn!("Prometehus metrics lock is poisoned");
+                log::error!("Prometehus metrics lock is poisoned");
                 ErrorResponse::from(http::StatusCode::INTERNAL_SERVER_ERROR)
             })?;
 
