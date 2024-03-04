@@ -14,20 +14,5 @@
  * limitations under the License.
  */
 
-mod collector;
-mod errors;
-mod handler;
-mod hashratable;
-pub(crate) mod prometheus;
-mod record;
-mod saver;
-mod sliding_collector;
-
-pub(crate) type HResult<T> = Result<T, HashrateError>;
-
-pub(crate) use collector::HashrateCollector;
-pub(crate) use errors::HashrateError;
-pub(crate) use handler::HashrateHandler;
-pub(crate) use record::ThreadHashrateRecord;
-pub(crate) use saver::HashrateSaver;
-pub(crate) use sliding_collector::SlidingHashrateCollector;
+#[cfg(test)]
+mod tests_;

@@ -14,20 +14,19 @@
  * limitations under the License.
  */
 
-mod collector;
-mod errors;
-mod handler;
-mod hashratable;
-pub(crate) mod prometheus;
-mod record;
-mod saver;
-mod sliding_collector;
+use config::Config;
+use config::File;
+use config::FileFormat;
 
-pub(crate) type HResult<T> = Result<T, HashrateError>;
+use crate::unresolved_config::UnresolvedCCPConfig;
+use crate::CCPConfig;
 
-pub(crate) use collector::HashrateCollector;
-pub(crate) use errors::HashrateError;
-pub(crate) use handler::HashrateHandler;
-pub(crate) use record::ThreadHashrateRecord;
-pub(crate) use saver::HashrateSaver;
-pub(crate) use sliding_collector::SlidingHashrateCollector;
+pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
+    let config_source = File::with_name(path)
+        .required(true)
+        .format(FileFormat::Toml);
+    let config = Config::builder().add_source(config_source).build()?;
+
+    let config: UnresolvedCCPConfig = config.try_deserialize()?;
+    config.resolve()
+}

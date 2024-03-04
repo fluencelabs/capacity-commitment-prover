@@ -42,6 +42,7 @@ core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
 anyhow = "1.0"
 byteorder = "1.5"
 bitflags = "2.4"
+config = { version = "0.14", default-features = false, features = ["toml"] }
 cmake = "0.1"
 clap = { version = "4.5.0", features = ["derive"] }
 crossterm = "0.27"

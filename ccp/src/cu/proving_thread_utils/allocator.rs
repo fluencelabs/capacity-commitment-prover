@@ -35,11 +35,11 @@ pub(crate) struct ThreadAllocator {
 
 impl ThreadAllocator {
     pub(crate) fn new(
-        thread_policy: ThreadsPerCoreAllocationPolicy,
+        policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
         topology: &CPUTopology,
     ) -> CUResult<ThreadAllocator> {
-        let allocation_strategy = Self::create_allocate_strategy(thread_policy, core_id, topology)?;
+        let allocation_strategy = Self::create_allocate_strategy(policy, core_id, topology)?;
 
         Ok(Self {
             allocation_strategy,
@@ -49,13 +49,13 @@ impl ThreadAllocator {
     pub(crate) fn allocate(
         &self,
         to_utility: ToUtilityInlet,
-        enable_msr: bool,
+        msr_enabled: bool,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
             .map(|logical_core| {
-                ProvingThreadAsync::new(*logical_core, to_utility.clone(), enable_msr)
+                ProvingThreadAsync::new(*logical_core, to_utility.clone(), msr_enabled)
             })
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();
@@ -64,7 +64,7 @@ impl ThreadAllocator {
     }
 
     pub(crate) fn create_allocate_strategy(
-        thread_policy: ThreadsPerCoreAllocationPolicy,
+        policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
         topology: &CPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
@@ -74,7 +74,7 @@ impl ThreadAllocator {
             .logical_cores_for_physical(core_id)
             .map_err(ThreadAllocationError::TopologyError)?;
 
-        let threads_count = match thread_policy {
+        let threads_count = match policy {
             ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core,
             } => threads_per_physical_core,
