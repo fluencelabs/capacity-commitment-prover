@@ -39,9 +39,14 @@ use ccp_config::CCPConfig;
 use ccp_rpc_server::BackgroundFacade;
 use ccp_rpc_server::CCPRcpHttpServer;
 
+const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
+
 #[derive(Parser, Debug)]
+#[clap(
+    about = "Run CCP server with a CCP TOML config.  You may override logging settings with `CCP_LOG` env var."
+)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(help = "CCP config file")]
     config_path: String,
 }
 
@@ -50,7 +55,7 @@ fn main() -> eyre::Result<()> {
     let config = load_config(args.config_path.as_str())?;
 
     let filter = EnvFilter::builder()
-        .with_env_var("RUST_LOG")
+        .with_env_var(CCP_LOG_ENV_VAR)
         .with_default_directive(Directive::from(config.logs.log_level))
         .from_env_lossy();
     let subscriber = tracing_subscriber::fmt()
@@ -93,7 +98,7 @@ fn main() -> eyre::Result<()> {
 async fn async_main(config: CCPConfig) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
 
-    tracing::info!("creating prover with config {config:?}");
+    tracing::info!("Creating prover from a saved state");
     let prover = CCProver::from_saved_state(config)
         .await
         .map_err(|e| eyre::eyre!(e.to_string()))?;
