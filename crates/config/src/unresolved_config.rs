@@ -30,7 +30,7 @@ const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedCCPConfig {
-    pub http_server: UnresolvedHTTPServer,
+    pub rpc_endpoint: UnresolvedRpcEndpoint,
     pub prometheus_endpoint: Option<UnresolvedPrometheusEndpoint>,
     pub optimizations: UnresolvedOptimizations,
     pub logs: UnresolvedLogs,
@@ -39,7 +39,7 @@ pub struct UnresolvedCCPConfig {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct UnresolvedHTTPServer {
+pub struct UnresolvedRpcEndpoint {
     pub host: String,
     pub port: u16,
     pub utility_thread_ids: Vec<u32>,
@@ -110,13 +110,13 @@ pub enum LogLevel {
 
 impl UnresolvedCCPConfig {
     pub fn resolve(self) -> eyre::Result<CCPConfig> {
-        let http_server = self.http_server.resolve();
+        let rpc_endpoint = self.rpc_endpoint.resolve();
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
 
         let config = CCPConfig {
-            http_server,
+            rpc_endpoint,
             prometheus_endpoint,
             optimizations: optimization,
             logs,
@@ -126,8 +126,8 @@ impl UnresolvedCCPConfig {
     }
 }
 
-impl UnresolvedHTTPServer {
-    pub fn resolve(self) -> HTTPServer {
+impl UnresolvedRpcEndpoint {
+    pub fn resolve(self) -> RpcEndpoint {
         let mut utility_thread_ids = self.utility_thread_ids;
         if utility_thread_ids.is_empty() {
             utility_thread_ids.push(DEFAULT_UTILITY_THREAD_ID);
@@ -138,7 +138,7 @@ impl UnresolvedHTTPServer {
             .map(Into::into)
             .collect::<Vec<_>>();
 
-        HTTPServer {
+        RpcEndpoint {
             host: self.host,
             port: self.port,
             utility_cores_ids: utility_thread_ids,

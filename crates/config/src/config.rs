@@ -23,7 +23,7 @@ use crate::defaults::default_report_hashrate;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
-    pub http_server: HTTPServer,
+    pub rpc_endpoint: RpcEndpoint,
     pub prometheus_endpoint: Option<PrometheusEndpoint>,
     pub optimizations: Optimizations,
     pub logs: Logs,
@@ -31,7 +31,7 @@ pub struct CCPConfig {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct HTTPServer {
+pub struct RpcEndpoint {
     pub host: String,
     pub port: u16,
     pub utility_cores_ids: Vec<LogicalCoreId>,
@@ -73,7 +73,7 @@ pub enum ThreadsPerCoreAllocationPolicy {
     },
 }
 
-impl Default for HTTPServer {
+impl Default for RpcEndpoint {
     fn default() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
