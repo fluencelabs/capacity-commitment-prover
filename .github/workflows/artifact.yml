@@ -114,7 +114,7 @@ jobs:
         working-directory: docker
         run: |
           for arch in amd64 arm64; do
-            mv binaries/ccp-${arch}/ccp ccp-${arch}
+            mv binaries/ccp-${arch}/capacity-commitment-prover ccp-${arch}
             du -hs ccp-${arch}
           done
 
