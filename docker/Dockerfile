@@ -26,7 +26,7 @@ RUN \
   	/var/tmp/*
 
 # copy binary
-COPY ./binaries/ccp-${TARGETARCH}/nox /usr/bin/ccp
+COPY ./binaries/ccp-${TARGETARCH}/ccp /usr/bin/ccp
 RUN chmod +x /usr/bin/ccp
 # copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
