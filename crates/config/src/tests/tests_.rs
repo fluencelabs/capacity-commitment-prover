@@ -20,9 +20,9 @@ use ccp_randomx::RandomXFlags;
 
 use crate::config_loader::load_config;
 use crate::CCPConfig;
-use crate::HTTPServer;
 use crate::Logs;
 use crate::Optimizations;
+use crate::RpcEndpoint;
 use crate::ThreadsPerCoreAllocationPolicy;
 
 #[test]
@@ -32,7 +32,7 @@ fn parse_basic_config() {
 
     let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
 
-    let http_server = HTTPServer {
+    let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
         utility_cores_ids: vec![1.into(), 2.into()],
@@ -58,7 +58,8 @@ fn parse_basic_config() {
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
     let expected_config = CCPConfig {
-        http_server,
+        rpc_endpoint,
+        prometheus_endpoint: None,
         optimizations,
         logs,
         state_dir: "../test".into(),

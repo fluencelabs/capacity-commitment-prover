@@ -67,7 +67,7 @@ fn main() -> eyre::Result<()> {
         .wrap_err("state-dir value in a config should be a writeable directory path")?;
 
     let tokio_cores = config
-        .http_server
+        .rpc_endpoint
         .utility_cores_ids
         .iter()
         .cloned()
@@ -91,7 +91,7 @@ fn main() -> eyre::Result<()> {
 }
 
 async fn async_main(config: CCPConfig) -> eyre::Result<()> {
-    let bind_address = (config.http_server.host.clone(), config.http_server.port);
+    let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
 
     tracing::info!("creating prover with config {config:?}");
     let prover = CCProver::from_saved_state(config)
@@ -99,15 +99,15 @@ async fn async_main(config: CCPConfig) -> eyre::Result<()> {
         .map_err(|e| eyre::eyre!(e.to_string()))?;
 
     tracing::info!(
-        "starting RPC server on {}:{}",
-        bind_address.0,
-        bind_address.1
+        "starting RPC endpoint on {}:{}",
+        rpc_bind_address.0,
+        rpc_bind_address.1
     );
-    let rpc_server = CCPRcpHttpServer::new(BackgroundFacade::new(prover));
-    let server_handle = rpc_server
-        .run_server(bind_address)
+    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover));
+    let server_handle = rpc_endpoint
+        .run_server(rpc_bind_address)
         .await
-        .wrap_err("starting an RPC server failed")?;
+        .wrap_err("starting an RPC endpoint failed")?;
 
     server_handle.stopped().await; // wait indefinitely
 

@@ -110,7 +110,7 @@ impl CCProver {
             config.logs.report_hashrate,
         )?;
         let utility_thread = UtilityThread::spawn(
-            config.http_server.utility_cores_ids,
+            config.rpc_endpoint.utility_cores_ids,
             ProofIdx::zero(),
             proof_dir,
             None,
@@ -181,7 +181,7 @@ impl CCProver {
             config.logs.report_hashrate,
         )?;
         let utility_thread = UtilityThread::spawn(
-            config.http_server.utility_cores_ids,
+            config.rpc_endpoint.utility_cores_ids,
             start_proof_idx,
             proof_dir,
             prev_state
