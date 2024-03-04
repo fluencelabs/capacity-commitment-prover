@@ -31,7 +31,7 @@ const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedCCPConfig {
     pub http_server: UnresolvedHTTPServer,
-    pub prometheus_endpoint: UnresolvedPrometheusEndpoint,
+    pub prometheus_endpoint: Option<UnresolvedPrometheusEndpoint>,
     pub optimizations: UnresolvedOptimizations,
     pub logs: UnresolvedLogs,
     pub state: State,
@@ -111,7 +111,7 @@ pub enum LogLevel {
 impl UnresolvedCCPConfig {
     pub fn resolve(self) -> eyre::Result<CCPConfig> {
         let http_server = self.http_server.resolve();
-        let prometheus_endpoint = self.prometheus_endpoint.resolve();
+        let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
 

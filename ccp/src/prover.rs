@@ -54,7 +54,7 @@ pub struct CCProver {
     cu_prover_config: CUProverConfig,
     status: CCStatus,
     utility_thread: UtilityThread,
-    prometheus_endpoint: PrometheusEndpoint,
+    prometheus_endpoint: Option<PrometheusEndpoint>,
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
 }
@@ -116,13 +116,12 @@ impl CCProver {
             None,
             hashrate_handler,
         );
-        let prometheus_endpoint = PrometheusEndpoint::new(
-            (
-                config.prometheus_endpoint.host.clone(),
-                config.prometheus_endpoint.port,
-            ),
-            hashrate_collector,
-        );
+        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
+            PrometheusEndpoint::new(
+                (endpoint_cfg.host.clone(), endpoint_cfg.port),
+                hashrate_collector,
+            )
+        });
         let cu_prover_config = config.optimizations.into();
         let state_storage = StateStorage::new(config.state_dir);
 
@@ -156,7 +155,9 @@ impl CCProver {
         // stop background thread
         self.utility_thread.stop().await?;
 
-        self.prometheus_endpoint.stop().await?;
+        if let Some(prometheus_endpoint) = self.prometheus_endpoint {
+            prometheus_endpoint.stop().await?;
+        }
 
         Ok(())
     }
@@ -188,13 +189,12 @@ impl CCProver {
                 .map(|state| state.epoch_params.global_nonce),
             hashrate_handler,
         );
-        let prometheus_endpoint = PrometheusEndpoint::new(
-            (
-                config.prometheus_endpoint.host.clone(),
-                config.prometheus_endpoint.port,
-            ),
-            hashrate_collector,
-        );
+        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
+            PrometheusEndpoint::new(
+                (endpoint_cfg.host.clone(), endpoint_cfg.port),
+                hashrate_collector,
+            )
+        });
 
         let cu_prover_config = config.optimizations.into();
         let mut self_ = Self {
