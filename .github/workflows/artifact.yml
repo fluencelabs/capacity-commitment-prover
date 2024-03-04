@@ -65,6 +65,11 @@ jobs:
       - name: Run cargo build
         run: cargo build --release -p capacity-commitment-prover --target ${{ matrix.target }}
 
+      - run: |
+          ls -alh target
+          ls -alh target/${{ matrix.target }}
+          ls -alh target/${{ matrix.target }}/release
+
       - name: Upload ccp binary
         uses: actions/upload-artifact@v4
         with:
