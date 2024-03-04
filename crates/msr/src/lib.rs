@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 mod cpu_preset;
 mod errors;
 mod msr_item;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 mod msr_linux;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 mod msr_mode;
-
-#[cfg(target_os = "linux")]
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 pub use msr_linux::MSRImpl;
 
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 mod msr_other;
-#[cfg(not(target_os = "linux"))]
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 pub use msr_other::MSRImpl;
 
 use cpu_utils::LogicalCoreId;
