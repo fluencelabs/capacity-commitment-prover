@@ -15,8 +15,6 @@
  */
 
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use ccp_shared::types::EpochParameters;
@@ -39,7 +37,6 @@ use super::record::ThreadHashrateRecord;
 pub(crate) struct HashrateCollector {
     status: CollectorStatus,
     entries: HashMap<LogicalCoreId, ThreadHashrateRaw>,
-    prometheus_registry: Arc<Mutex<Registry>>,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -176,7 +173,6 @@ impl HashrateCollector {
         };
 
         self.entries.clear();
-        *self.prometheus_registry.lock().unwrap() = Registry::default();
     }
 
     pub(crate) fn apply_to_registry(&self, registry: &mut Registry) {
