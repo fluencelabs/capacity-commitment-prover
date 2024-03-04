@@ -66,10 +66,11 @@ jobs:
         run: cargo build --release -p capacity-commitment-prover --target ${{ matrix.target }}
 
       - name: Upload ccp binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ccp-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/ccp
+          path: target/${{ matrix.target }}/release/capacity-commitment-prover
+          if-no-files-found: error
 
   container:
     name: "Build container image"
@@ -105,7 +106,7 @@ jobs:
             kv/docker-registry/basicauth/ci password | DOCKER_PASSWORD
 
       - name: Download binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: docker/binaries
 
