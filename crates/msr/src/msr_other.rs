@@ -22,14 +22,12 @@ use crate::MSR;
 #[derive(Debug)]
 pub struct MSRImpl {}
 
-#[cfg(not(target_os = "linux"))]
 impl MSRImpl {
     pub fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
         Self {}
     }
 }
 
-#[cfg(not(target_os = "linux"))]
 impl MSR for MSRImpl {
     fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
         Ok(())
