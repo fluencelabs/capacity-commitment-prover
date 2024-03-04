@@ -75,7 +75,7 @@ where
     ///  The returned handle can be used to maniplate it.
     pub async fn run_server(
         self,
-        bind_address: impl ToSocketAddrs,
+        bind_address: impl ToSocketAddrs + std::fmt::Debug,
     ) -> Result<ServerHandle, std::io::Error> {
         let server = Server::builder().build(bind_address).await?;
 

@@ -20,6 +20,8 @@ mod tests;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 use ccp_config::CCPConfig;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
@@ -33,6 +35,8 @@ use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
+use crate::hashrate::prometheus::PrometheusEndpoint;
+use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
@@ -50,6 +54,7 @@ pub struct CCProver {
     cu_prover_config: CUProverConfig,
     status: CCStatus,
     utility_thread: UtilityThread,
+    prometheus_endpoint: Option<PrometheusEndpoint>,
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
 }
@@ -98,8 +103,12 @@ impl CCProver {
     pub fn new(config: CCPConfig) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
-        let hashrate_handler =
-            HashrateHandler::new(config.state_dir.clone(), config.logs.report_hashrate)?;
+        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
+        let hashrate_handler = HashrateHandler::new(
+            hashrate_collector.clone(),
+            config.state_dir.clone(),
+            config.logs.report_hashrate,
+        )?;
         let utility_thread = UtilityThread::spawn(
             config.http_server.utility_cores_ids,
             ProofIdx::zero(),
@@ -107,7 +116,12 @@ impl CCProver {
             None,
             hashrate_handler,
         );
-
+        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
+            PrometheusEndpoint::new(
+                (endpoint_cfg.host.clone(), endpoint_cfg.port),
+                hashrate_collector,
+            )
+        });
         let cu_prover_config = config.optimizations.into();
         let state_storage = StateStorage::new(config.state_dir);
 
@@ -116,6 +130,7 @@ impl CCProver {
             cu_prover_config,
             status: CCStatus::Idle,
             utility_thread,
+            prometheus_endpoint,
             proof_drainer,
             state_storage,
         };
@@ -138,7 +153,13 @@ impl CCProver {
         // stop all active provers
         self.on_no_active_commitment().await?;
         // stop background thread
-        self.utility_thread.stop().await.map_err(Into::into)
+        self.utility_thread.stop().await?;
+
+        if let Some(prometheus_endpoint) = self.prometheus_endpoint {
+            prometheus_endpoint.stop().await?;
+        }
+
+        Ok(())
     }
 
     pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
@@ -153,7 +174,12 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
-        let hashrate_handler = HashrateHandler::new(config.state_dir, config.logs.report_hashrate)?;
+        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
+        let hashrate_handler = HashrateHandler::new(
+            hashrate_collector.clone(),
+            config.state_dir.clone(),
+            config.logs.report_hashrate,
+        )?;
         let utility_thread = UtilityThread::spawn(
             config.http_server.utility_cores_ids,
             start_proof_idx,
@@ -163,6 +189,12 @@ impl CCProver {
                 .map(|state| state.epoch_params.global_nonce),
             hashrate_handler,
         );
+        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
+            PrometheusEndpoint::new(
+                (endpoint_cfg.host.clone(), endpoint_cfg.port),
+                hashrate_collector,
+            )
+        });
 
         let cu_prover_config = config.optimizations.into();
         let mut self_ = Self {
@@ -170,6 +202,7 @@ impl CCProver {
             cu_prover_config,
             status: CCStatus::Idle,
             utility_thread,
+            prometheus_endpoint,
             proof_drainer: proof_cleaner,
             state_storage,
         };

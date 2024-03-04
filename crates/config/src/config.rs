@@ -24,6 +24,7 @@ use crate::defaults::default_report_hashrate;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
     pub http_server: HTTPServer,
+    pub prometheus_endpoint: Option<PrometheusEndpoint>,
     pub optimizations: Optimizations,
     pub logs: Logs,
     pub state_dir: std::path::PathBuf,
@@ -34,6 +35,12 @@ pub struct HTTPServer {
     pub host: String,
     pub port: u16,
     pub utility_cores_ids: Vec<LogicalCoreId>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PrometheusEndpoint {
+    pub host: String,
+    pub port: u16,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
