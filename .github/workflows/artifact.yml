@@ -86,7 +86,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: fluencelabs/nox
+          repository: fluencelabs/capacity-commitment-prover
           ref: ${{ inputs.ref }}
 
       - name: Import secrets
