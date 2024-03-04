@@ -67,10 +67,9 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
+        self.save_state(new_epoch, new_allocation.clone()).await?;
         self.apply_cc_parameters(new_epoch, &new_allocation).await?;
-        // Save data only if align_with is successful; otherwise invalid commitment will be stored
-        // and used on restart to fail again.
-        Ok(self.save_state(new_epoch, new_allocation).await?)
+        Ok(())
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
