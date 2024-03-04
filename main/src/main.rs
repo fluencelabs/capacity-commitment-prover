@@ -46,7 +46,7 @@ const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
     about = "Run CCP server with a CCP TOML config.  You may override logging settings with `CCP_LOG` env var."
 )]
 struct Args {
-    #[clap(help = "CCP config file")]
+    #[arg(help = "CCP config file")]
     config_path: String,
 }
 
