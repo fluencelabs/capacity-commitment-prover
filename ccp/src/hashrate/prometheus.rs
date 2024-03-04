@@ -45,7 +45,7 @@ async fn handle_metrics(
     let mut buf = String::new();
 
     {
-        let mut registry = Registry::default();
+        let mut registry = Registry::with_prefix("ccp");
 
         {
             let guard = state.hashrate_collector.lock().map_err(|_| {

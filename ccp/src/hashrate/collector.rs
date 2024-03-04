@@ -191,6 +191,13 @@ impl HashrateCollector {
             )
         }
 
+        let logical_core_allocated = ConstGauge::<i64>::new(self.entries.len() as _);
+        registry.register(
+            "allocated_logical_cores",
+            "Number of allocated logical cores",
+            logical_core_allocated,
+        );
+
         for (logical_core_id, thread_hashrate) in &self.entries {
             let subreg = registry.sub_registry_with_label((
                 "logical_core_id".into(),
