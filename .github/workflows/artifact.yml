@@ -67,6 +67,7 @@ jobs:
 
       - run: |
           ls -alh target
+          ls -alh target/release
           ls -alh target/${{ matrix.target }}
           ls -alh target/${{ matrix.target }}/release
 
