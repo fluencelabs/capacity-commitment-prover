@@ -21,13 +21,14 @@ use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 
+use capacity_commitment_prover::CCProver;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
-use tokio::task::JoinHandle;
 
 /// An façade that handles RPC calls in background.
 pub struct BackgroundFacade<P> {
@@ -66,11 +67,8 @@ enum FacadeMessage {
     OnNoCommitment,
 }
 
-impl<P: NoxCCPApi> NoxCCPApi for BackgroundFacade<P>
-where
-    P: Sync,
-    <P as NoxCCPApi>::Error: Display,
-{
+// implement for specific prover to implement granular state saving
+impl NoxCCPApi for BackgroundFacade<CCProver> {
     type Error = eyre::Error;
 
     async fn on_active_commitment(
@@ -78,6 +76,15 @@ where
         epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
+        // Save state early so that caller is sure it is saved.
+        // Please note that the caller may be still stuck if dataset generation
+        // is in progress and writer lock is held.
+        {
+            let guard = self.prover.read().await;
+            guard
+                .save_state(epoch_parameters, cu_allocation.clone())
+                .await?;
+        }
         self.to_worker
             .try_send(FacadeMessage::OnActiveCommitment(
                 epoch_parameters,
@@ -87,6 +94,13 @@ where
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
+        // Save state early so that caller is sure it is saved.
+        // Please note that the caller may be still stuck if dataset generation
+        // is in progress and writer lock is held.
+        {
+            let guard = self.prover.read().await;
+            guard.save_no_state().await?;
+        }
         self.to_worker
             .send(FacadeMessage::OnNoCommitment)
             .await
