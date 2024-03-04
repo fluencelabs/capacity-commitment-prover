@@ -38,7 +38,8 @@ const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
     let config = CCPConfig {
-        http_server: <_>::default(),
+        rpc_endpoint: <_>::default(),
+        prometheus_endpoint: None,
         optimizations: <_>::default(),
         logs: <_>::default(),
         state_dir,
@@ -50,7 +51,8 @@ fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
 async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
     let config = CCPConfig {
-        http_server: <_>::default(),
+        rpc_endpoint: <_>::default(),
+        prometheus_endpoint: None,
         optimizations: <_>::default(),
         logs: <_>::default(),
         state_dir,
