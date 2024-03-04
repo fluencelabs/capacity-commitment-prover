@@ -67,9 +67,19 @@ impl NoxCCPApi for CCProver {
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        self.save_state(new_epoch, new_allocation.clone()).await?;
-        self.apply_cc_parameters(new_epoch, &new_allocation).await?;
-        Ok(())
+        let apply_resut = self
+            .apply_cc_parameters(new_epoch, &new_allocation)
+            .await
+            .inspect_err(|e| {
+                log::error!("Failed to apply parameters: {e}.  Still trying to save state.");
+            });
+        self.save_state(new_epoch, new_allocation.clone())
+            .await
+            .inspect_err(|e| {
+                log::error!("Failed to save state: {e}");
+            })?;
+
+        apply_resut
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
