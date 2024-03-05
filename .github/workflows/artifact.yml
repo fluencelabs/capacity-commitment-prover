@@ -63,10 +63,10 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Run cargo build
-        run: cargo build --release -p main --target ${{ matrix.target }}
+        run: cargo build --release -p ccp-main --target ${{ matrix.target }}
 
       - name: Setup tmate session
-        if: always()
+        if: failure()
         uses: mxschmitt/action-tmate@v3
 
       - run: |
