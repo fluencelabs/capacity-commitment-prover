@@ -36,7 +36,5 @@ COPY entrypoint.sh /entrypoint.sh
 
 VOLUME /fluence/data
 
-ENV CCP_LOG="info"
-
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/fluence/Config.toml"]

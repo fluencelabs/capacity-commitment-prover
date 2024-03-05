@@ -20,7 +20,7 @@ threads-per-physical-core = 2
 
 [logs]
 report-hashrate = false
-log-level = "none"
+log-level = "info"
 
 [state]
 state-dir = "/fluence/data"
