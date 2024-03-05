@@ -68,8 +68,10 @@ impl MSRConfig {
             original_msr_preset,
         }
     }
+}
 
-    pub fn disabled_msr() -> MSRConfig {
+impl Default for MSRConfig {
+    fn default() -> Self {
         Self {
             msr_enabled: false,
             original_msr_preset: MSRCpuPreset::new(vec![]),

@@ -88,7 +88,7 @@ impl Default for Optimizations {
         Self {
             randomx_flags: RandomXFlags::recommended_full_mem(),
             threads_per_core_policy: <_>::default(),
-            msr_config: MSRConfig::disabled_msr(),
+            msr_config: <_>::default(),
         }
     }
 }

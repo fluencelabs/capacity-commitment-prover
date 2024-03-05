@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use ccp_msr::MSRConfig;
 use tokio::sync::mpsc;
 
 use ccp_randomx::dataset::DatasetHandle;
@@ -45,7 +44,7 @@ impl ThreadInitIngredients {
 
         let (inlet, outlet) = mpsc::channel(1);
 
-        let mut thread = ProvingThreadAsync::new(core_id, inlet, MSRConfig::disabled_msr());
+        let mut thread = ProvingThreadAsync::new(core_id, inlet, <_>::default());
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
@@ -76,7 +75,7 @@ async fn cache_creation_works() {
     let flags = RandomXFlags::recommended();
 
     let (inlet, _outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2.into(), inlet, MSRConfig::disabled_msr());
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet, <_>::default());
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop().await.unwrap();
 
@@ -99,7 +98,7 @@ async fn dataset_creation_works() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2.into(), inlet, MSRConfig::disabled_msr());
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet, <_>::default());
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread
@@ -147,11 +146,7 @@ async fn dataset_creation_works_with_three_threads() {
 
     let mut threads = (0..threads_count)
         .map(|thread_id| {
-            ProvingThreadAsync::new(
-                (2 + thread_id).into(),
-                inlet.clone(),
-                MSRConfig::disabled_msr(),
-            )
+            ProvingThreadAsync::new((2 + thread_id).into(), inlet.clone(), <_>::default())
         })
         .collect::<Vec<_>>();
 

@@ -156,8 +156,6 @@ impl MSR for MSRImpl {
             return Ok(());
         }
 
-        tracing::debug!("Restore MSR state.");
-
         for item in self.original_preset.get_valid_items() {
             self.write(*item, self.core_id)?;
         }

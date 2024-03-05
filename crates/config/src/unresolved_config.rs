@@ -19,7 +19,6 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_log_level;
-use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
 use crate::*;
 
@@ -57,7 +56,6 @@ pub struct UnresolvedOptimizations {
     #[serde(flatten)]
     pub randomx: UnresolvedRandomX,
 
-    #[serde(default = "default_msr_enabled")]
     pub msr_config: MSRConfig,
 
     pub threads_per_core: Option<usize>,
