@@ -110,14 +110,6 @@ jobs:
         with:
           path: docker/binaries
 
-      - name: Move binaries to expected place
-        working-directory: docker
-        run: |
-          for arch in amd64 arm64; do
-            mv binaries/ccp-${arch}/ccp ccp-${arch}
-            du -hs ccp-${arch}
-          done
-
       - name: Set build date
         run: echo "BUILD_DATE=$(date '+%Y-%m-%dT%H:%M:%S%:z')" >> $GITHUB_ENV
 
