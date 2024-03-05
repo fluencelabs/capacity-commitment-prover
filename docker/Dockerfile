@@ -18,7 +18,7 @@ RUN \
     gosu \
     ca-certificates \
   	jq \
-  	curl \
+  	curl && \
   apt-get clean && \
   rm -rf \
   	/tmp/* \
