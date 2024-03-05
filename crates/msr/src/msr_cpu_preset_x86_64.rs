@@ -20,7 +20,7 @@ use once_cell::sync::Lazy;
 
 /// This global is used with Linux x86_64 only to look for the original
 /// MSR state only once.
-static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(|| {
+pub(crate) static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(|| {
     use crate::msr_cpu_preset::get_cpu_preset;
     use crate::msr_item::MSRItem;
     use crate::msr_mode::detect_msr_mode;

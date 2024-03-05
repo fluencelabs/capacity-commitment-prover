@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRConfig;
+
 use crate::unresolved_config::LogLevel;
 
-pub(crate) fn default_msr_enabled() -> bool {
-    false
+pub(crate) fn default_msr_enabled() -> MSRConfig {
+    use ccp_msr::get_original_cpu_msr_preset;
+
+    MSRConfig::new(true, get_original_cpu_msr_preset())
 }
 
 pub(crate) fn default_log_level() -> LogLevel {

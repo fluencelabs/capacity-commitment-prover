@@ -57,21 +57,21 @@ pub type MSRResult<T> = Result<T, MSRError>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MSRConfig {
-    pub enable_msr: bool,
+    pub msr_enabled: bool,
     pub original_msr_preset: MSRCpuPreset,
 }
 
 impl MSRConfig {
-    pub fn new(enable_msr: bool, original_msr_preset: MSRCpuPreset) -> MSRConfig {
+    pub fn new(msr_enabled: bool, original_msr_preset: MSRCpuPreset) -> MSRConfig {
         Self {
-            enable_msr,
+            msr_enabled,
             original_msr_preset,
         }
     }
 
     pub fn disabled_msr() -> MSRConfig {
         Self {
-            enable_msr: false,
+            msr_enabled: false,
             original_msr_preset: MSRCpuPreset::new(vec![]),
         }
     }

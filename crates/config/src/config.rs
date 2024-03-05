@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRConfig;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
 use crate::defaults::default_log_level;
-use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,7 +47,7 @@ pub struct PrometheusEndpoint {
 pub struct Optimizations {
     pub randomx_flags: RandomXFlags,
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
-    pub msr_enabled: bool,
+    pub msr_config: MSRConfig,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -88,7 +88,7 @@ impl Default for Optimizations {
         Self {
             randomx_flags: RandomXFlags::recommended_full_mem(),
             threads_per_core_policy: <_>::default(),
-            msr_enabled: default_msr_enabled(),
+            msr_config: MSRConfig::disabled_msr(),
         }
     }
 }

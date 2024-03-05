@@ -16,6 +16,7 @@
 
 use std::path::PathBuf;
 
+use ccp_msr::MSRConfig;
 use ccp_randomx::RandomXFlags;
 
 use crate::config_loader::load_config;
@@ -51,7 +52,7 @@ fn parse_basic_config() {
         threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: 2.try_into().unwrap(),
         },
-        msr_enabled: true,
+        msr_config: MSRConfig::disabled_msr(),
     };
     let logs = Logs {
         report_hashrate: true,

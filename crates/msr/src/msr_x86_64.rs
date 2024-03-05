@@ -20,7 +20,6 @@ use std::io;
 use crate::msr_cpu_preset::get_cpu_preset;
 use crate::msr_cpu_preset::MSRCpuPreset;
 use crate::msr_item::MSRItem;
-use crate::msr_mode::detect_msr_mode;
 use crate::msr_mode::MSR_MODE;
 use crate::MSRConfig;
 use crate::MSRError;
@@ -28,30 +27,6 @@ use crate::MSRResult;
 use crate::MSR;
 
 use cpu_utils::LogicalCoreId;
-use once_cell::sync::Lazy;
-
-/// This global is used with Linux only to look for the original
-/// MSR state only once.
-static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(|| {
-    let core_id = 0.into();
-    let mode = detect_msr_mode();
-    let preset = get_cpu_preset(mode);
-    let msr_config = MSRConfig::new(true, preset.clone());
-    let msr = MSRImpl::new(msr_config, core_id);
-    let original_items = preset
-        .get_valid_items()
-        .map(|preset_item| {
-            let item = msr.read(preset_item.register_id(), core_id);
-            if let Ok(item) = item {
-                item
-            } else {
-                // Adding an invalid Item to effectively disable the MSR
-                MSRItem::new(0, 0)
-            }
-        })
-        .collect();
-    MSRCpuPreset::new(original_items)
-});
 
 enum MSRFileOpMode {
     MSRRead,
@@ -76,7 +51,9 @@ pub struct MSRImpl {
 
 impl MSRImpl {
     pub fn new(msr_config: MSRConfig, core_id: LogicalCoreId) -> Self {
-        let is_enabled = msr_config.enable_msr;
+        use crate::msr_cpu_preset_x86_64::CPU_MSR_ORIGINAL_PRESET;
+
+        let is_enabled = msr_config.msr_enabled;
         let original_preset = if msr_config.original_msr_preset.is_empty() {
             CPU_MSR_ORIGINAL_PRESET.clone()
         } else {

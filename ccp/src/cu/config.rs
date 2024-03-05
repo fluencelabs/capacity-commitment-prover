@@ -34,7 +34,7 @@ impl From<Optimizations> for CUProverConfig {
         Self {
             randomx_flags: ccp_optimizations.randomx_flags,
             threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
-            msr_enabled: ccp_optimizations.msr_enabled,
+            msr_config: ccp_optimizations.msr_config,
         }
     }
 }

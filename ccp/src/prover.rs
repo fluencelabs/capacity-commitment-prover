@@ -19,7 +19,6 @@ mod tests;
 
 use ccp_msr::get_original_cpu_msr_preset;
 use ccp_msr::MSRConfig;
-use ccp_msr::MSRCpuPreset;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
@@ -175,6 +174,8 @@ impl CCProver {
     }
 
     pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
+        use ccp_config::Optimizations;
+
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
         let state_storage = StateStorage::new(config.state_dir.clone());
@@ -186,19 +187,22 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
-        let original_msr_preset = if config.enable_msr {
-            prev_state
+        let msr_enabled = config.optimizations.msr_config.msr_enabled;
+        let optimizations = if msr_enabled {
+            let original_msr_preset = prev_state
                 .as_ref()
                 .map_or_else(get_original_cpu_msr_preset, |state| {
                     state.msr_config.original_msr_preset.clone()
-                })
-        } else {
-            MSRCpuPreset::empty()
-        };
+                });
 
-        let msr_config = MSRConfig {
-            enable_msr: config.enable_msr,
-            original_msr_preset,
+            let msr_config = MSRConfig::new(msr_enabled, original_msr_preset);
+            Optimizations {
+                randomx_flags: config.optimizations.randomx_flags,
+                threads_per_core_policy: config.optimizations.threads_per_core_policy,
+                msr_config,
+            }
+        } else {
+            config.optimizations
         };
 
         let original_msr_preset = if config.enable_msr {
@@ -238,7 +242,7 @@ impl CCProver {
             )
         });
 
-        let cu_prover_config = config.optimizations.into();
+        let cu_prover_config = optimizations.into();
         let mut self_ = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
