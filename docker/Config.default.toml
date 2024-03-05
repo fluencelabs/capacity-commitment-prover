@@ -1,7 +1,7 @@
 [rpc-endpoint]
 host = "0.0.0.0"
 port = "9383"
-utility-thread-id = 1
+utility-threads-ids = [1]
 
 [prometheus-endpoint]
 host = "0.0.0.0"
