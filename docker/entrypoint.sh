@@ -9,4 +9,4 @@ useradd --uid "$CCP_UID" --gid 100 --no-create-home --shell /usr/sbin/nologin fl
 mkdir -p ${CCP_BASE_DIR}
 chown -R ${CCP_UID}:100 ${CCP_BASE_DIR}
 
-exec gosu fluence ccp ${FLUENCE_CONFIG} "$@"
+exec gosu fluence ccp ${CCP_CONFIG} "$@"
