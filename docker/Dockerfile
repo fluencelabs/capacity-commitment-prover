@@ -29,7 +29,11 @@ RUN \
 # copy binary
 COPY ./binaries/ccp-${TARGETARCH}/ccp /usr/bin/ccp
 RUN chmod +x /usr/bin/ccp
+# copy default ccp config
+COPY Config.default.toml /fluence/Config.toml
 # copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
+VOLUME /fluence/data
 
 ENTRYPOINT ["/entrypoint.sh"]
+CMD ["/fluence/Config.toml"]
