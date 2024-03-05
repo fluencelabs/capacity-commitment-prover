@@ -15,6 +15,7 @@ LABEL org.opencontainers.image.description="ccp runs on the capacity provider to
 RUN \
   apt-get update && \
   apt-get install -y --no-install-recommends \
+    libhwlock-dev \
     gosu \
     ca-certificates \
   	jq \
