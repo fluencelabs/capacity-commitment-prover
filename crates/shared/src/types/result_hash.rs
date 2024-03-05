@@ -67,3 +67,9 @@ impl ToHex for ResultHash {
         ToHex::encode_hex_upper(&self.0)
     }
 }
+
+impl std::fmt::Display for ResultHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.encode_hex::<String>())
+    }
+}
