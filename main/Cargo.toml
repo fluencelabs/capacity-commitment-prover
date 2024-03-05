@@ -8,9 +8,6 @@ license.workspace = true
 repository.workspace = true
 publish = true
 
-[[bin]]
-name = "ccp"
-
 [dependencies]
 capacity-commitment-prover.workspace = true
 ccp-config.workspace = true
