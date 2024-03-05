@@ -37,4 +37,3 @@ COPY entrypoint.sh /entrypoint.sh
 VOLUME /fluence/data
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["${FLUENCE_CONFIG}"]
