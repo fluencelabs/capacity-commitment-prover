@@ -65,6 +65,10 @@ jobs:
       - name: Run cargo build
         run: cargo build --release -p main --target ${{ matrix.target }}
 
+      - name: Setup tmate session
+        if: always()
+        uses: mxschmitt/action-tmate@v3
+
       - run: |
           ls -alh target
           ls -alh target/release
