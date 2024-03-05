@@ -67,3 +67,38 @@ fn parse_basic_config() {
 
     assert_eq!(actual_config, expected_config);
 }
+
+#[test]
+fn parse_config_without_optimiziations() {
+    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_path.push("src/tests/test-no-optimization.toml");
+
+    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+
+    let rpc_endpoint = RpcEndpoint {
+        host: "127.0.0.1".to_string(),
+        port: 9383,
+        utility_cores_ids: vec![1.into(), 2.into()],
+    };
+
+    let randomx_flags = RandomXFlags::recommended_full_mem();
+
+    let optimizations = Optimizations {
+        randomx_flags,
+        threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Optimal,
+        msr_enabled: false,
+    };
+    let logs = Logs {
+        report_hashrate: true,
+        log_level: tracing_subscriber::filter::LevelFilter::WARN,
+    };
+    let expected_config = CCPConfig {
+        rpc_endpoint,
+        prometheus_endpoint: None,
+        optimizations,
+        logs,
+        state_dir: "../test".into(),
+    };
+
+    assert_eq!(actual_config, expected_config);
+}

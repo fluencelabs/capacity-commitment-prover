@@ -1,0 +1,11 @@
+[rpc-endpoint]
+host = "127.0.0.1"
+port = "9383"
+utility-thread-ids = [1,2]
+
+[logs]
+report-hashrate = true
+log-level = "warn"
+
+[state]
+path = "../test"

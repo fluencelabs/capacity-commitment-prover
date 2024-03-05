@@ -32,6 +32,7 @@ const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 pub struct UnresolvedCCPConfig {
     pub rpc_endpoint: UnresolvedRpcEndpoint,
     pub prometheus_endpoint: Option<UnresolvedPrometheusEndpoint>,
+    #[serde(default)]
     pub optimizations: UnresolvedOptimizations,
     pub logs: UnresolvedLogs,
     pub state: State,
@@ -52,7 +53,7 @@ pub struct UnresolvedPrometheusEndpoint {
     pub port: u16,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedOptimizations {
     #[serde(flatten)]
@@ -64,7 +65,7 @@ pub struct UnresolvedOptimizations {
     pub threads_per_core: Option<usize>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedRandomX {
     pub large_pages: Option<bool>,
