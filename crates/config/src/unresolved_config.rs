@@ -53,7 +53,7 @@ pub struct UnresolvedPrometheusEndpoint {
     pub port: u16,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedOptimizations {
     #[serde(flatten)]
@@ -63,6 +63,16 @@ pub struct UnresolvedOptimizations {
     pub msr_enabled: bool,
 
     pub threads_per_core: Option<usize>,
+}
+
+impl Default for UnresolvedOptimizations {
+    fn default() -> Self {
+        Self {
+            randomx: Default::default(),
+            msr_enabled: default_msr_enabled(),
+            threads_per_core: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
