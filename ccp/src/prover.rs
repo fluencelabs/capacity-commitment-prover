@@ -205,21 +205,6 @@ impl CCProver {
             config.optimizations
         };
 
-        let original_msr_preset = if config.enable_msr {
-            prev_state
-                .as_ref()
-                .map_or_else(get_original_cpu_msr_preset, |state| {
-                    state.msr_config.original_msr_preset.clone()
-                })
-        } else {
-            MSRCpuPreset::empty()
-        };
-
-        let msr_config = MSRConfig {
-            enable_msr: config.enable_msr,
-            original_msr_preset,
-        };
-
         let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
