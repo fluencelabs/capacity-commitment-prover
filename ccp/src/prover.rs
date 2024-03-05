@@ -161,13 +161,20 @@ impl CCProver {
     pub async fn stop(mut self) -> CCResult<()> {
         // stop all active provers
         self.on_no_active_commitment().await?;
-        // stop background thread
-        self.utility_thread.stop().await?;
+        self.shutdown().await
+    }
 
-        if let Some(prometheus_endpoint) = self.prometheus_endpoint {
-            prometheus_endpoint.stop().await?;
+    pub async fn shutdown(&mut self) -> CCResult<()> {
+        log::info!("Shutting down prover...");
+        // stop background thread
+        // TODO
+        self.utility_thread.shutdown().await?;
+
+        if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
+            prometheus_endpoint.shutdown().await?;
         }
 
+        log::info!("Shutting down prover done");
         Ok(())
     }
 

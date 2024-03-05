@@ -26,3 +26,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 eyre.workspace = true
 tracing-log.workspace = true
+tokio-util = "0.7.10"
