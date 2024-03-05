@@ -160,3 +160,18 @@ jobs:
             org.opencontainers.image.version=${{ inputs.ref }}
             org.opencontainers.image.created=${{ env.BUILD_DATE }}
             org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Print results to check summary
+        run: |
+          cat <<'SNAPSHOT' >> $GITHUB_STEP_SUMMARY
+          ## ccp
+          ```
+          ${{ steps.artifacts.outputs.image }}
+          ```
+
+          ### Access to Fluence docker registry
+          ```
+          vault read kv/basicauth/dev
+          docker login docker.fluence.dev
+          ```
+          SNAPSHOT
