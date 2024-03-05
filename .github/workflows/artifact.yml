@@ -63,7 +63,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Run cargo build
-        run: cargo build --release -p capacity-commitment-prover --target ${{ matrix.target }}
+        run: cargo build --release -p ccp-main --target ${{ matrix.target }}
 
       - run: |
           ls -alh target
@@ -75,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ccp-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/capacity-commitment-prover
+          path: target/${{ matrix.target }}/release/ccp
           if-no-files-found: error
 
   container:
@@ -120,7 +120,7 @@ jobs:
         working-directory: docker
         run: |
           for arch in amd64 arm64; do
-            mv binaries/ccp-${arch}/capacity-commitment-prover ccp-${arch}
+            mv binaries/ccp-${arch}/ccp ccp-${arch}
             du -hs ccp-${arch}
           done
 
