@@ -17,9 +17,6 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use ccp_randomx::RandomXFlags;
-
-use super::config::Optimizations;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
