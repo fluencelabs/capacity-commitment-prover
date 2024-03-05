@@ -65,16 +65,6 @@ jobs:
       - name: Run cargo build
         run: cargo build --release -p ccp-main --target ${{ matrix.target }}
 
-      - name: Setup tmate session
-        if: failure()
-        uses: mxschmitt/action-tmate@v3
-
-      - run: |
-          ls -alh target
-          ls -alh target/release
-          ls -alh target/${{ matrix.target }}
-          ls -alh target/${{ matrix.target }}/release
-
       - name: Upload ccp binary
         uses: actions/upload-artifact@v4
         with:

@@ -1,11 +1,3 @@
 {
-  "ccp": "0.1.0",
-  "crates/randomx": "0.1.0",
-  "crates/config": "0.1.0",
-  "crates/cpu-utils": "0.1.0",
-  "crates/rpc-client": "0.1.0",
-  "crates/rpc-server": "0.1.0",
-  "crates/shared": "0.1.0",
-  "crates/test-utils": "0.1.0",
-  "crates/utils": "0.1.0"
+  ".": "0.1.0"
 }
