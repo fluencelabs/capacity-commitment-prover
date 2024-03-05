@@ -33,7 +33,10 @@ RUN chmod +x /usr/bin/ccp
 COPY Config.default.toml /fluence/Config.toml
 # copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
+
 VOLUME /fluence/data
+
+ENV CCP_LOG="info"
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/fluence/Config.toml"]
