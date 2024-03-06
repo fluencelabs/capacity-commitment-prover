@@ -135,19 +135,28 @@ impl ProvingThreadSync {
 
         match message {
             AsyncToSyncMessage::CreateCache(params) => {
+                println!("create_cache {core_id}: start");
                 let start = Instant::now();
 
+                println!("create_cache: before global nonce cu");
                 let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(
                     &params.epoch.global_nonce,
                     &params.cu_id,
                 );
-                let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
+                println!("create_cache {core_id}: global nonce cu {global_nonce_cu:?}");
+
+                let cache = Cache::new(global_nonce_cu.as_slice(), params.flags);
+                println!("create_cache {core_id}: cache creation result {cache:?}");
+                let cache = cache?;
                 let duration = start.elapsed();
 
+                println!("create_cache {core_id}: send cache to channel");
                 to_async.send_cache(cache)?;
+                println!("create_cache {core_id}: send hashrate");
                 let hashrate =
                     ThreadHashrateRecord::cache_creation(params.epoch, core_id, duration);
                 to_utility.send_hashrate(hashrate)?;
+                println!("create_cache {core_id}: exit");
 
                 Ok(ThreadState::WaitForMessage)
             }
