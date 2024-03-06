@@ -1,0 +1,36 @@
+name: lint
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  reviewdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Lint actions
+        uses: reviewdog/action-actionlint@v1
+        env:
+          SHELLCHECK_OPTS: "-e SC2086 -e SC2207 -e SC2128"
+        with:
+          reporter: github-pr-check
+          fail_on_error: true
+
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          cat<<EXPL
+          bump-version is added to required checks but only runs when release PR
+          is opened.
+          It is needed to to disallow merging release PR before bump-version job
+          is finished.
+          EXPL
