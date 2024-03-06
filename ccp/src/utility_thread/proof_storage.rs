@@ -15,7 +15,7 @@
  */
 
 use std::borrow::Cow;
-use std::ffi::OsString;
+use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -51,14 +51,12 @@ impl ProofStorage {
 // this is a sync function to avoid possible tokio peculiarities
 pub(crate) fn save_reliably(path: &Path, contents: impl AsRef<[u8]>) -> std::io::Result<()> {
     // we might use random name here.  but if the dir will lock'd, it is not necessary.
-    let extension = add_draft_extension(path);
-    let mut draft_path = path.to_owned();
-    draft_path.set_extension(extension);
-
     let base_dir = path.parent().map(Cow::Borrowed).unwrap_or_default();
-    let base_dir_file = File::open(base_dir)?;
+    let base_dir_file = File::open(&base_dir)?;
 
-    let mut draft_file = File::create(&draft_path)?;
+    let (mut draft_file, draft_path) =
+        gen_draft_file(&base_dir, path.file_name().unwrap_or_default())?;
+
     draft_file.write_all(contents.as_ref())?;
     draft_file.flush()?;
     draft_file.sync_all()?;
@@ -73,9 +71,9 @@ pub(crate) fn save_reliably(path: &Path, contents: impl AsRef<[u8]>) -> std::io:
     Ok(())
 }
 
-fn add_draft_extension(path: &Path) -> OsString {
-    let mut extension = path.extension().unwrap_or_default().to_owned();
-    let os_string = OsString::from(".draft");
-    extension.push(os_string);
-    extension
+fn gen_draft_file(base_dir: &Path, prefix: &OsStr) -> std::io::Result<(File, PathBuf)> {
+    let named_tmp_file = tempfile::Builder::new()
+        .prefix(prefix)
+        .tempfile_in(base_dir)?;
+    Ok(named_tmp_file.keep()?)
 }
