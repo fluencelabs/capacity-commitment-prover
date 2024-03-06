@@ -203,6 +203,10 @@ impl UnresolvedRandomX {
             None => {}
         }
 
+        randomx_flags.set(RandomXFlags::FLAG_ARGON2_AVX2, false);
+        randomx_flags.set(RandomXFlags::FLAG_ARGON2_SSSE3, false);
+        //randomx_flags.set(RandomXFlags::FLAG_ARGON2, false);
+
         randomx_flags
     }
 }
