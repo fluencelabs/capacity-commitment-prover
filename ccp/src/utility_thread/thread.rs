@@ -101,10 +101,6 @@ impl UtilityThreadImpl {
     }
 
     pub(crate) async fn utility_closure(mut self, core_ids: Vec<LogicalCoreId>) {
-        use crossterm::event::EventStream;
-        use futures::FutureExt;
-        use futures::StreamExt;
-
         if !cpu_utils::pinning::pin_current_thread_to_cpuset(core_ids.iter().cloned()) {
             log::error!("failed to pin to {core_ids:?} cores");
         }
@@ -112,13 +108,32 @@ impl UtilityThreadImpl {
         let mut cum_hashrate_ticker =
             time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
 
-        let mut terminal_event_reader = EventStream::new();
+        #[cfg(feature = "crossterm")]
+        let mut terminal_event_reader = crossterm::event::EventStream::new();
 
+        #[cfg(feature = "crossterm")]
+        {
+            use futures::FutureExt;
+            use futures::StreamExt;
+
+            loop {
+                tokio::select! {
+                Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
+                _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
+                maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
+                _ = &mut self.shutdown_out => {
+                    log::info!("utility thread was shutdown");
+                    return;
+                }
+            }
+            }
+        }
+
+        #[cfg(not(feature = "crossterm"))]
         loop {
             tokio::select! {
                 Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
-                maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = &mut self.shutdown_out => {
                     log::info!("utility thread was shutdown");
                     return;
@@ -155,6 +170,7 @@ impl UtilityThreadImpl {
         }
     }
 
+    #[cfg(feature = "crossterm")]
     async fn handle_terminal_event(
         &mut self,
         maybe_event: Option<Result<crossterm::event::Event, std::io::Error>>,

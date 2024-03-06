@@ -83,6 +83,7 @@ impl HashrateHandler {
         self.saver.save_hashrate_current(hashrate)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn sliding_hashrate(&self) -> &SlidingHashrate {
         self.sliding_collector.hashrate()
     }

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::time::Duration;
