@@ -56,7 +56,7 @@ pub(crate) fn write_msr(register_id: u32, value: u64, core_id: PhysicalCoreId) -
     Ok(())
 }
 
-pub(crate) fn open_msr(core_id: PhysicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
+fn open_msr(core_id: PhysicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
     use std::fs::OpenOptions;
 
     let path = format!("/dev/cpu/{}/msr", core_id);
