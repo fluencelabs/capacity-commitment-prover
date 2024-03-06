@@ -44,7 +44,7 @@ impl ThreadInitIngredients {
 
         let (inlet, outlet) = mpsc::channel(1);
 
-        let mut thread = ProvingThreadAsync::new(core_id, inlet, <_>::default());
+        let mut thread = ProvingThreadAsync::new(core_id, inlet);
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
@@ -75,7 +75,7 @@ async fn cache_creation_works() {
     let flags = RandomXFlags::recommended();
 
     let (inlet, _outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2.into(), inlet, <_>::default());
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop().await.unwrap();
 
@@ -98,7 +98,7 @@ async fn dataset_creation_works() {
     let flags = RandomXFlags::recommended_full_mem();
 
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut thread = ProvingThreadAsync::new(2.into(), inlet, <_>::default());
+    let mut thread = ProvingThreadAsync::new(2.into(), inlet);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread
@@ -145,9 +145,7 @@ async fn dataset_creation_works_with_three_threads() {
     let threads_count = 3u32;
 
     let mut threads = (0..threads_count)
-        .map(|thread_id| {
-            ProvingThreadAsync::new((2 + thread_id).into(), inlet.clone(), <_>::default())
-        })
+        .map(|thread_id| ProvingThreadAsync::new((2 + thread_id).into(), inlet.clone()))
         .collect::<Vec<_>>();
 
     let thread_1 = &mut threads[0];

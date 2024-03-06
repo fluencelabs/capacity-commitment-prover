@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::EpochParameters;
@@ -81,7 +82,6 @@ fn create_config(cores_count: usize) -> CUProverConfig {
         threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(cores_count).unwrap(),
         },
-        msr_enabled: <_>::default(),
     }
 }
 
@@ -91,7 +91,10 @@ async fn idle_cu_prover_can_be_stopped() {
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     let config = create_config(1);
-    let prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Idle);
@@ -109,7 +112,10 @@ async fn cu_prover_can_be_stopped() {
 
     let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     let epoch = test::generate_epoch_params(1, 0xFF);
@@ -132,7 +138,10 @@ async fn cu_prover_can_be_paused() {
 
     let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
 
     let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
 
@@ -190,7 +199,10 @@ async fn cu_prover_produces_correct_proofs() {
 
     let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
 
     let epoch_1 = test::generate_epoch_params(1, 0x80);
     let cu_id_1 = test::generate_cu_id(1);
@@ -227,7 +239,10 @@ async fn cu_prover_produces_correct_proofs() {
 async fn cu_prover_works_with_odd_threads_number() {
     let config = create_config(5);
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
@@ -261,7 +276,10 @@ async fn cu_prover_changes_epoch_correctly() {
 
     let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
-    let mut prover = CUProver::create(config, inlet, 3.into()).await.unwrap();
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+        .await
+        .unwrap();
 
     let epochs_count = 3usize;
 

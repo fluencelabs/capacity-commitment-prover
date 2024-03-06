@@ -88,7 +88,7 @@ impl MSREnforce for MSRModeEnforcer {
         }
 
         for item in self.original_preset.items() {
-            write(*item, self.core_id)?;
+            write(*item, core_id)?;
         }
         Ok(())
     }
