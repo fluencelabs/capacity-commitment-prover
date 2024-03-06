@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Dataset;
@@ -40,6 +41,7 @@ pub struct CUProver {
     randomx_flags: RandomXFlags,
     cpu_topology: CPUTopology,
     dataset: Dataset,
+    msr_enforcer: MSRModeEnforcer,
     status: CUStatus,
 }
 
@@ -47,6 +49,7 @@ impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
         to_utility: ToUtilityInlet,
+        msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
@@ -62,6 +65,7 @@ impl CUProver {
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
             dataset,
+            msr_enforcer,
             status: CUStatus::Idle,
         };
         Ok(prover)

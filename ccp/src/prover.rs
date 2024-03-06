@@ -25,6 +25,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use ccp_config::CCPConfig;
+use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
@@ -113,44 +114,35 @@ impl ToCCStatus for CCProver {
 
 impl CCProver {
     pub fn new(config: CCPConfig) -> CCResult<Self> {
-        Self::create_prover(config, None, config.optimizations.into())
+        let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+        Self::create_prover(config, None, msr_enforcer)
     }
 
     pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
-        use ccp_config::Optimizations;
-
         let state_storage = StateStorage::new(config.state_dir.clone());
         let prev_state = match state_storage.try_to_load_data().await? {
             Some(prev_state) => prev_state,
             None => return Self::new(config),
         };
 
-        let msr_enabled = config.optimizations.msr_enabled;
-        MSRModeEnforcer::from_preset(
+        let epoch = Some(prev_state.epoch_params);
+        let msr_enforcer = MSRModeEnforcer::from_preset(
             config.optimizations.msr_enabled,
             prev_state.msr_state.msr_preset,
         );
-        let optimizations = if msr_enabled {
-            let msr_preset = prev_state.msr_state;
-            let msr_config = MSRConfig::new(msr_enabled, msr_preset);
-        } else {
-            config.optimizations
-        };
-
-        let epoch = Some(prev_state.epoch_params);
-        let cu_prover_config = optimizations.into();
-        let mut prover = Self::create_prover(config, epoch, cu_prover_config).await?;
+        let mut prover = Self::create_prover(config, epoch, msr_enforcer).await?;
 
         prover
             .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
             .await?;
+
         Ok(prover)
     }
 
     async fn create_prover(
         config: CCPConfig,
         epoch: Option<EpochParameters>,
-        cu_prover_config: CUProverConfig,
+        msr_enforcer: MSRModeEnforcer,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
@@ -189,6 +181,7 @@ impl CCProver {
             prometheus_endpoint,
             proof_drainer,
             state_storage,
+            msr_enforcer,
         };
 
         Ok(prover)
@@ -224,12 +217,13 @@ impl CCProver {
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
-        let msr_config = self.cu_prover_config.msr_enabled.clone();
+        let original_msr_preset = self.msr_enforcer.preset();
+        let msr_state = MSRState::new(original_msr_preset.clone());
 
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
-            msr_state: msr_config,
+            msr_state,
         };
         self.state_storage.save_state(Some(&state)).await
     }
