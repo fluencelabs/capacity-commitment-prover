@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-use ccp_msr::{MSREnforce, MSRModeEnforcer};
+use ccp_msr::MSREnforce;
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Dataset;
