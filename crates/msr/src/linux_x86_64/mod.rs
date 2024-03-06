@@ -18,6 +18,7 @@ mod cpu_preset_values;
 mod errors;
 mod msr_mode;
 mod msr_x86_64;
+mod utils;
 
 pub use errors::MSRError;
 pub use msr_x86_64::MSRModeEnforcer;

@@ -19,7 +19,6 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use ccp_msr::MSRError;
 use ccp_randomx::errors::RandomXError;
 use cpu_utils::LogicalCoreId;
 
@@ -32,9 +31,6 @@ pub enum ProvingThreadSyncError {
 
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
-
-    #[error(transparent)]
-    MSRError(#[from] MSRError),
 
     #[error("thread pinning to logical core {core_id} failed")]
     ThreadPinFailed { core_id: LogicalCoreId },
@@ -53,10 +49,6 @@ pub enum ProvingThreadSyncFacadeError {
 impl ProvingThreadSyncError {
     pub fn channel_error(error_message: impl ToString) -> Self {
         Self::ChannelError(anyhow::anyhow!(error_message.to_string()))
-    }
-
-    pub fn msr_error(msr_error: MSRError) -> Self {
-        Self::MSRError(msr_error)
     }
 
     pub fn pinning_failed(core_id: LogicalCoreId) -> Self {

@@ -19,17 +19,17 @@
 /// For everything else it's a no-op.
 /// Please note there are number of globals that are accessed in the main code.
 
-#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
+#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 #[path = "linux_x86_64/mod.rs"]
 mod msr_impl;
 
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
 #[path = "other/mod.rs"]
 mod msr_impl;
 
 pub mod state;
 
-use ccp_shared::types::LogicalCoreId;
+use ccp_shared::types::PhysicalCoreId;
 
 pub use msr_impl::*;
 
@@ -37,8 +37,8 @@ pub type MSRResult<T> = Result<T, MSRError>;
 
 pub trait MSREnforce {
     /// Applies chosen MSR policy to current core.
-    fn enforce(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
+    fn enforce(&mut self, core_id: PhysicalCoreId) -> MSRResult<()>;
 
     /// Cease applied policy to original presets.
-    fn cease(&self, core_id: LogicalCoreId) -> MSRResult<()>;
+    fn cease(&self, core_id: PhysicalCoreId) -> MSRResult<()>;
 }

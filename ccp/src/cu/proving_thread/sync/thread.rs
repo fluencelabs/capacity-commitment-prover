@@ -17,8 +17,6 @@
 use std::thread;
 use std::time::Instant;
 
-use ccp_msr::MSREnforce;
-use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::Cache;
 use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
@@ -51,11 +49,9 @@ impl ProvingThreadSync {
         core_id: LogicalCoreId,
         from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
-        msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
     ) -> Self {
-        let thread_closure =
-            Self::proving_closure(core_id, from_async, to_async, msr_enforcer, to_utility);
+        let thread_closure = Self::proving_closure(core_id, from_async, to_async, to_utility);
         let handle = thread::spawn(thread_closure);
 
         Self { handle }
@@ -71,7 +67,6 @@ impl ProvingThreadSync {
         core_id: LogicalCoreId,
         mut from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
-        mut msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
     ) -> Box<dyn FnMut() -> STFResult<()> + Send + 'static> {
         let to_utility_outer = to_utility.clone();
@@ -82,10 +77,7 @@ impl ProvingThreadSync {
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
             if !cpu_utils::pinning::pin_current_thread_to(core_id) {
                 to_utility.send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
-            } else if let Err(e) = msr_enforcer.enforce(core_id) {
-                to_utility.send_error(core_id, ProvingThreadSyncError::msr_error(e))?;
             }
-
             let mut thread_state = ThreadState::WaitForMessage;
 
             loop {
@@ -111,13 +103,9 @@ impl ProvingThreadSync {
                             Err(e) => Err(e)?,
                         }
                     }
-                    ThreadState::NewMessage { message } => Self::handle_message(
-                        core_id,
-                        message,
-                        &to_async,
-                        &mut msr_enforcer,
-                        &to_utility,
-                    )?,
+                    ThreadState::NewMessage { message } => {
+                        Self::handle_message(core_id, message, &to_async, &to_utility)?
+                    }
                     ThreadState::Stop => {
                         return Ok(());
                     }
@@ -140,7 +128,6 @@ impl ProvingThreadSync {
         core_id: LogicalCoreId,
         message: AsyncToSyncMessage,
         to_async: &ToAsync,
-        msr_enforcer: &mut MSRModeEnforcer,
         to_utility: &ToUtility,
     ) -> STResult<ThreadState> {
         log::trace!("proving_thread_sync: handle message from CUProver: {message:?}");
@@ -198,17 +185,11 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::PinThread(params) => {
-                if let Err(e) = msr_enforcer.cease(core_id) {
-                    to_utility.send_error(core_id, ProvingThreadSyncError::msr_error(e))?;
-                }
-
                 if !cpu_utils::pinning::pin_current_thread_to(params.core_id) {
                     to_utility.send_error(
                         core_id,
                         ProvingThreadSyncError::pinning_failed(params.core_id),
                     )?;
-                } else if let Err(e) = msr_enforcer.enforce(params.core_id) {
-                    to_utility.send_error(core_id, ProvingThreadSyncError::msr_error(e))?;
                 }
 
                 Ok(ThreadState::WaitForMessage)
@@ -219,13 +200,7 @@ impl ProvingThreadSync {
                 Ok(ThreadState::WaitForMessage)
             }
 
-            AsyncToSyncMessage::Stop => {
-                if let Err(e) = msr_enforcer.cease(core_id) {
-                    to_utility.send_error(core_id, ProvingThreadSyncError::msr_error(e))?;
-                }
-
-                Ok(ThreadState::Stop)
-            }
+            AsyncToSyncMessage::Stop => Ok(ThreadState::Stop),
         }
     }
 }

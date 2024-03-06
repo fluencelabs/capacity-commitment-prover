@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use ccp_msr::MSRModeEnforcer;
+use ccp_msr::{MSREnforce, MSRModeEnforcer};
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Dataset;
@@ -37,10 +37,11 @@ use crate::utility_thread::message::ToUtilityInlet;
 #[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
-    pinned_core_id: PhysicalCoreId,
+    running_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
     cpu_topology: CPUTopology,
     dataset: Dataset,
+    msr_enforcer: MSRModeEnforcer,
     status: CUStatus,
 }
 
@@ -48,22 +49,27 @@ impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
         to_utility: ToUtilityInlet,
-        msr_enforcer: MSRModeEnforcer,
+        mut msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(to_utility, msr_enforcer)?;
+            .allocate(to_utility)?;
+
+        if let Err(error) = msr_enforcer.enforce(core_id) {
+            log::error!("MSR enforce error: {error}");
+        }
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
 
         let prover = Self {
             threads,
-            pinned_core_id: core_id,
+            running_core_id: core_id,
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
             dataset,
+            msr_enforcer,
             status: CUStatus::Idle,
         };
         Ok(prover)
@@ -94,6 +100,10 @@ impl CUProver {
 
         use futures::FutureExt;
 
+        if let Err(error) = self.msr_enforcer.cease(self.running_core_id) {
+            log::error!("{}: MSR cease failed with {error}", self.running_core_id);
+        }
+
         let logical_cores = self.cpu_topology.logical_cores_for_physical(core_id)?;
         let distributor = RoundRobinDistributor {};
 
@@ -102,6 +112,10 @@ impl CUProver {
             thread.pin(core_id).boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;
+
+        if let Err(error) = self.msr_enforcer.enforce(core_id) {
+            log::error!("{}: MSR cease failed with {error}", core_id);
+        }
 
         Ok(())
     }
@@ -121,14 +135,18 @@ impl CUProver {
     pub(crate) async fn stop(self) -> CUResult<()> {
         use futures::FutureExt;
 
+        if let Err(error) = self.msr_enforcer.cease(self.running_core_id) {
+            log::error!("{}: MSR cease failed with {error}", self.running_core_id);
+        }
+
         let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
         run_unordered(self.threads.into_iter(), closure).await?;
 
         Ok(())
     }
 
-    pub(crate) fn pinned_core_id(&self) -> PhysicalCoreId {
-        self.pinned_core_id
+    pub(crate) fn running_core_id(&self) -> PhysicalCoreId {
+        self.running_core_id
     }
 
     #[allow(clippy::needless_lifetimes)]
