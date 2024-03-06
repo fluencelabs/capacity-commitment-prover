@@ -19,7 +19,6 @@ mod tests;
 
 use futures::future;
 use futures::FutureExt;
-use itertools::Itertools;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -113,16 +112,17 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
-    pub fn new(config: CCPConfig) -> CCResult<Self> {
+    pub async fn new(config: CCPConfig) -> CCResult<Self> {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
-        Self::create_prover(config, None, msr_enforcer)
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        Self::create_prover(config, None, msr_enforcer, state_storage).await
     }
 
     pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
         let state_storage = StateStorage::new(config.state_dir.clone());
         let prev_state = match state_storage.try_to_load_data().await? {
             Some(prev_state) => prev_state,
-            None => return Self::new(config),
+            None => return Self::new(config).await,
         };
 
         let epoch = Some(prev_state.epoch_params);
@@ -130,7 +130,7 @@ impl CCProver {
             config.optimizations.msr_enabled,
             prev_state.msr_state.msr_preset,
         );
-        let mut prover = Self::create_prover(config, epoch, msr_enforcer).await?;
+        let mut prover = Self::create_prover(config, epoch, msr_enforcer, state_storage).await?;
 
         prover
             .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
@@ -143,6 +143,7 @@ impl CCProver {
         config: CCPConfig,
         epoch: Option<EpochParameters>,
         msr_enforcer: MSRModeEnforcer,
+        state_storage: StateStorage,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
@@ -173,6 +174,7 @@ impl CCProver {
             )
         });
 
+        let cu_prover_config = config.optimizations.into();
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
@@ -217,7 +219,7 @@ impl CCProver {
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
-        let original_msr_preset = self.msr_enforcer.preset();
+        let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
         let state = CCPState {
@@ -324,9 +326,12 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
+        let msr_enforcer = self.msr_enforcer.clone();
 
         async move {
-            let mut prover = CUProver::create(prover_config, to_utility, state.new_core_id).await?;
+            let mut prover =
+                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
+                    .await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))

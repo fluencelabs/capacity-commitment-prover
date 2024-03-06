@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-use ccp_msr::MSRConfig;
 use nonempty::NonEmpty;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use cpu_utils::CPUTopology;
@@ -50,13 +50,13 @@ impl ThreadAllocator {
     pub(crate) fn allocate(
         &self,
         to_utility: ToUtilityInlet,
-        msr_config: MSRConfig,
+        msr_enforcer: MSRModeEnforcer,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
             .map(|logical_core| {
-                ProvingThreadAsync::new(*logical_core, to_utility.clone(), msr_config.clone())
+                ProvingThreadAsync::new(*logical_core, to_utility.clone(), msr_enforcer.clone())
             })
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();

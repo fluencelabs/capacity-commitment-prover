@@ -16,8 +16,8 @@
 
 use once_cell::sync::Lazy;
 
-use crate::config::MSRCpuPreset;
-use crate::config::MSRItem;
+use crate::state::MSRCpuPreset;
+use crate::state::MSRPresetItem;
 
 /// This is a set of MSR items that are used to disable CPU cache for
 /// a variety of CPU models.
@@ -27,26 +27,26 @@ pub(crate) static CPU_MSR_PRESETS: Lazy<Vec<MSRCpuPreset>> = Lazy::new(|| {
         MSRCpuPreset::new(vec![]),
         // ModRyzen17h
         MSRCpuPreset::new(vec![
-            MSRItem::new(0xc0011020, 0),
-            MSRItem::with_mask(0xc0011021, 0x40, !0x20),
-            MSRItem::new(0xc0011022, 0x1510000),
-            MSRItem::new(0xc001102b, 0x2000cc16),
+            MSRPresetItem::new(0xc0011020, 0),
+            MSRPresetItem::with_mask(0xc0011021, 0x40, !0x20),
+            MSRPresetItem::new(0xc0011022, 0x1510000),
+            MSRPresetItem::new(0xc001102b, 0x2000cc16),
         ]),
         // ModRyzen19h
         MSRCpuPreset::new(vec![
-            MSRItem::new(0xc0011020, 0x0004480000000000),
-            MSRItem::with_mask(0xc0011021, 0x001c000200000040, !0x20),
-            MSRItem::new(0xc0011022, 0xc000000401570000),
-            MSRItem::new(0xc001102b, 0x2000cc10),
+            MSRPresetItem::new(0xc0011020, 0x0004480000000000),
+            MSRPresetItem::with_mask(0xc0011021, 0x001c000200000040, !0x20),
+            MSRPresetItem::new(0xc0011022, 0xc000000401570000),
+            MSRPresetItem::new(0xc001102b, 0x2000cc10),
         ]),
         // Ryzen19hZen4
         MSRCpuPreset::new(vec![
-            MSRItem::new(0xc0011020, 0x0004400000000000),
-            MSRItem::with_mask(0xc0011021, 0x0004000000000040, !0x20),
-            MSRItem::new(0xc0011022, 0x8680000401570000),
-            MSRItem::new(0xc001102b, 0x2040cc10),
+            MSRPresetItem::new(0xc0011020, 0x0004400000000000),
+            MSRPresetItem::with_mask(0xc0011021, 0x0004000000000040, !0x20),
+            MSRPresetItem::new(0xc0011022, 0x8680000401570000),
+            MSRPresetItem::new(0xc001102b, 0x2040cc10),
         ]),
         // Intel
-        MSRCpuPreset::new(vec![MSRItem::new(0x1a4, 0xf)]),
+        MSRCpuPreset::new(vec![MSRPresetItem::new(0x1a4, 0xf)]),
     ]
 });

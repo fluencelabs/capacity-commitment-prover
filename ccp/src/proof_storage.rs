@@ -113,7 +113,9 @@ impl ProofStorageDrainer {
                 }
                 Ok(None) => {
                     // We should return an idx that utility thread can use, i.e. new one.
-                    max_proof_idx.as_mut().map(|idx| idx.increment());
+                    if let Some(idx) = max_proof_idx.as_mut() {
+                        idx.increment()
+                    }
                     return Ok(max_proof_idx.unwrap_or_default());
                 }
                 Err(e) => return Err(e),

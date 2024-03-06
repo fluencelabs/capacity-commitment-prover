@@ -37,7 +37,7 @@ impl MSRModeEnforcer {
         Self { preset }
     }
 
-    pub fn preset(&self) -> &MSRCpuPreset {
+    pub fn original_preset(&self) -> &MSRCpuPreset {
         &self.preset
     }
 }
@@ -47,7 +47,7 @@ impl MSREnforce for MSRModeEnforcer {
         Ok(())
     }
 
-    fn cease(self, _core_id: LogicalCoreId) -> MSRResult<()> {
+    fn cease(&self, _core_id: LogicalCoreId) -> MSRResult<()> {
         Ok(())
     }
 }

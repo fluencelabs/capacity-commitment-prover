@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-mod cpu_preset;
 mod cpu_preset_values;
 mod errors;
 mod msr_mode;
 mod msr_x86_64;
+
+pub use errors::MSRError;
+pub use msr_x86_64::MSRModeEnforcer;

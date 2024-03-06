@@ -17,7 +17,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MSRCpuPreset {
     items: Vec<MSRPresetItem>,
 }
@@ -76,11 +76,5 @@ impl MSRPresetItem {
 
     pub fn masked_value(old_value: u64, new_value: u64, mask: u64) -> u64 {
         (new_value & mask) | (old_value & !mask)
-    }
-}
-
-impl Default for MSRCpuPreset {
-    fn default() -> Self {
-        Self { items: vec![] }
     }
 }

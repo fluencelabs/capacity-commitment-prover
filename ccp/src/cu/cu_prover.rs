@@ -41,7 +41,6 @@ pub struct CUProver {
     randomx_flags: RandomXFlags,
     cpu_topology: CPUTopology,
     dataset: Dataset,
-    msr_enforcer: MSRModeEnforcer,
     status: CUStatus,
 }
 
@@ -54,7 +53,7 @@ impl CUProver {
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(to_utility, config.msr_enabled)?;
+            .allocate(to_utility, msr_enforcer)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -65,7 +64,6 @@ impl CUProver {
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
             dataset,
-            msr_enforcer,
             status: CUStatus::Idle,
         };
         Ok(prover)

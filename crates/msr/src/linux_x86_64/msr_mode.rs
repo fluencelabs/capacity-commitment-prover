@@ -19,7 +19,7 @@ use raw_cpuid::CpuIdReaderNative;
 
 use once_cell::sync::Lazy;
 
-use crate::config::MSRCpuPreset;
+use crate::state::MSRCpuPreset;
 
 pub static MSR_MODE: Lazy<MSRMode> = Lazy::new(MSRMode::detect);
 
@@ -46,11 +46,11 @@ impl MSRMode {
         }
     }
 
-    pub fn get_cpu_preset(self) -> &'static MSRCpuPreset {
+    pub fn get_optimal_cpu_preset(&self) -> &'static MSRCpuPreset {
         use super::cpu_preset_values::CPU_MSR_PRESETS;
         use MSRMode::*;
 
-        match mode {
+        match self {
             MSRModNone => &CPU_MSR_PRESETS[0],
             MSRModRyzen17h => &CPU_MSR_PRESETS[1],
             MSRModRyzen19h => &CPU_MSR_PRESETS[2],
