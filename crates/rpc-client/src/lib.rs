@@ -31,6 +31,7 @@ mod or_hex;
 use std::collections::HashMap;
 
 use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
@@ -46,6 +47,9 @@ pub use crate::or_hex::OrHex;
 // n.b.: the rpc macro also defines CcpRpcClient type which is a working async JSON RPC client.
 #[rpc(server, client, namespace = "ccp")]
 pub trait CCPRpc {
+    #[method(name = "realloc_utility_core", param_kind = map)]
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
+
     #[method(name = "on_active_commitment", param_kind = map)]
     async fn on_active_commitment(
         &self,
@@ -70,13 +74,17 @@ pub struct CCPRpcHttpClient {
 }
 
 impl CCPRpcHttpClient {
-    pub async fn new(
-        endpoint_url: String,
-        _client_cpu_id: PhysicalCoreId,
-    ) -> Result<Self, ClientError> {
+    pub async fn new(endpoint_url: String) -> Result<Self, ClientError> {
         let inner = jsonrpsee::http_client::HttpClientBuilder::default().build(endpoint_url)?;
 
         Ok(Self { inner })
+    }
+
+    pub async fn realloc_utility_core(
+        &self,
+        utility_core_ids: Vec<LogicalCoreId>,
+    ) -> Result<(), ClientError> {
+        CCPRpcClient::realloc_utility_cores(&self.inner, utility_core_ids).await
     }
 
     pub async fn on_active_commitment(

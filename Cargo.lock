@@ -291,6 +291,7 @@ dependencies = [
  "log",
  "maplit",
  "nonempty",
+ "parking_lot",
  "prometheus-client",
  "rand 0.8.5",
  "serde",
