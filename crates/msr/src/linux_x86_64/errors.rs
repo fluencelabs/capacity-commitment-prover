@@ -17,13 +17,13 @@
 use nix::errno::Errno;
 use thiserror::Error as ThisError;
 
-use ccp_shared::types::LogicalCoreId;
+use ccp_shared::types::PhysicalCoreId;
 
 #[derive(ThisError, Debug)]
 pub enum MSRError {
     #[error("opening MSR file '/dev/cpu/{core_id:}/msr' for read there is an error: {io_error:?}")]
     OpenForRead {
-        core_id: LogicalCoreId,
+        core_id: PhysicalCoreId,
         io_error: std::io::Error,
     },
 
@@ -31,7 +31,7 @@ pub enum MSRError {
         "opening MSR file '/dev/cpu/{core_id:}/msr' for write there is an error: {io_error:?}"
     )]
     OpenForWrite {
-        core_id: LogicalCoreId,
+        core_id: PhysicalCoreId,
         io_error: std::io::Error,
     },
 
@@ -40,7 +40,7 @@ pub enum MSRError {
     )]
     ReadWNoErr {
         register_id: u32,
-        core_id: LogicalCoreId,
+        core_id: PhysicalCoreId,
         errno: Errno,
     },
 
@@ -50,21 +50,21 @@ pub enum MSRError {
     WriteWNoErr {
         value: u64,
         register_id: u32,
-        core_id: LogicalCoreId,
+        core_id: PhysicalCoreId,
         errno: Errno,
     },
 }
 
 impl MSRError {
-    pub(crate) fn open_for_read(core_id: LogicalCoreId, io_error: std::io::Error) -> Self {
+    pub(crate) fn open_for_read(core_id: PhysicalCoreId, io_error: std::io::Error) -> Self {
         Self::OpenForRead { core_id, io_error }
     }
 
-    pub(crate) fn open_for_write(core_id: LogicalCoreId, io_error: std::io::Error) -> Self {
+    pub(crate) fn open_for_write(core_id: PhysicalCoreId, io_error: std::io::Error) -> Self {
         Self::OpenForWrite { core_id, io_error }
     }
 
-    pub(crate) fn read_w_no_err(register_id: u32, core_id: LogicalCoreId, errno: Errno) -> Self {
+    pub(crate) fn read_w_no_err(register_id: u32, core_id: PhysicalCoreId, errno: Errno) -> Self {
         Self::ReadWNoErr {
             register_id,
             core_id,
@@ -75,7 +75,7 @@ impl MSRError {
     pub(crate) fn write_w_no_err(
         value: u64,
         register_id: u32,
-        core_id: LogicalCoreId,
+        core_id: PhysicalCoreId,
         errno: Errno,
     ) -> Self {
         Self::WriteWNoErr {
