@@ -15,14 +15,13 @@
  */
 
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
 
-use crate::msr_mode::MSRMode;
-use crate::MSRItem;
+use crate::config::MSRCpuPreset;
+use crate::config::MSRItem;
 
 /// This is a set of MSR items that are used to disable CPU cache for
 /// a variety of CPU models.
-static CPU_MSR_PRESETS: Lazy<Vec<MSRCpuPreset>> = Lazy::new(|| {
+pub(crate) static CPU_MSR_PRESETS: Lazy<Vec<MSRCpuPreset>> = Lazy::new(|| {
     vec![
         // No-op
         MSRCpuPreset::new(vec![]),
@@ -51,36 +50,3 @@ static CPU_MSR_PRESETS: Lazy<Vec<MSRCpuPreset>> = Lazy::new(|| {
         MSRCpuPreset::new(vec![MSRItem::new(0x1a4, 0xf)]),
     ]
 });
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MSRCpuPreset {
-    items: Vec<MSRItem>,
-}
-
-impl MSRCpuPreset {
-    pub fn new(items: Vec<MSRItem>) -> MSRCpuPreset {
-        Self { items }
-    }
-
-    pub fn empty() -> MSRCpuPreset {
-        Self { items: vec![] }
-    }
-
-    pub(crate) fn get_valid_items(&self) -> impl Iterator<Item = &MSRItem> {
-        self.items.iter().filter(|item| item.is_valid())
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-}
-
-pub fn get_cpu_preset(mode: MSRMode) -> &'static MSRCpuPreset {
-    match mode {
-        MSRMode::MSRModNone => &CPU_MSR_PRESETS[0],
-        MSRMode::MSRModRyzen17h => &CPU_MSR_PRESETS[1],
-        MSRMode::MSRModRyzen19h => &CPU_MSR_PRESETS[2],
-        MSRMode::MSRModRyzen19hZen4 => &CPU_MSR_PRESETS[3],
-        MSRMode::MSRModIntel => &CPU_MSR_PRESETS[4],
-    }
-}

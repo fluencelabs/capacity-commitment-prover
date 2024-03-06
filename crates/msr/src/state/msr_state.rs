@@ -14,16 +14,26 @@
  * limitations under the License.
  */
 
-use crate::unresolved_config::LogLevel;
+use serde::Deserialize;
+use serde::Serialize;
 
-pub(crate) fn default_log_level() -> LogLevel {
-    LogLevel::Error
+use super::MSRCpuPreset;
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRState {
+    pub msr_preset: MSRCpuPreset,
 }
 
-pub(crate) fn default_report_hashrate() -> bool {
-    false
+impl MSRState {
+    pub fn new(msr_preset: MSRCpuPreset) -> MSRState {
+        Self { msr_preset }
+    }
 }
 
-pub(crate) fn default_msr_config() -> bool {
-    false
+impl Default for MSRState {
+    fn default() -> Self {
+        Self {
+            msr_preset: MSRCpuPreset::new(vec![]),
+        }
+    }
 }

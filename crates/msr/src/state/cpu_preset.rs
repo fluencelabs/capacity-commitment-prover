@@ -14,16 +14,36 @@
  * limitations under the License.
  */
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRCpuPreset {
+    items: Vec<MSRPresetItem>,
+}
+
+impl MSRCpuPreset {
+    pub fn new(items: Vec<MSRPresetItem>) -> MSRCpuPreset {
+        Self { items }
+    }
+
+    pub fn items(&self) -> impl Iterator<Item = &MSRPresetItem> {
+        self.items.iter()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MSRItem {
+pub struct MSRPresetItem {
     register_id: u32,
     value: u64,
     mask: u64,
 }
 
-impl MSRItem {
+impl MSRPresetItem {
     pub const NO_MASK: u64 = u64::MAX;
 
     pub fn new(register_id: u32, value: u64) -> Self {
@@ -40,10 +60,6 @@ impl MSRItem {
             value,
             mask,
         }
-    }
-
-    pub fn is_valid(&self) -> bool {
-        self.register_id > 0
     }
 
     pub fn register_id(&self) -> u32 {
@@ -63,8 +79,8 @@ impl MSRItem {
     }
 }
 
-impl Default for MSRItem {
+impl Default for MSRCpuPreset {
     fn default() -> Self {
-        Self::new(0, 0)
+        Self { items: vec![] }
     }
 }

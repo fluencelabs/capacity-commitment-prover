@@ -14,16 +14,8 @@
  * limitations under the License.
  */
 
-use crate::unresolved_config::LogLevel;
-
-pub(crate) fn default_log_level() -> LogLevel {
-    LogLevel::Error
-}
-
-pub(crate) fn default_report_hashrate() -> bool {
-    false
-}
-
-pub(crate) fn default_msr_config() -> bool {
-    false
-}
+mod cpu_preset;
+mod cpu_preset_values;
+mod errors;
+mod msr_mode;
+mod msr_x86_64;

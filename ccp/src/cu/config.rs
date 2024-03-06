@@ -17,7 +17,6 @@
 use ccp_config::Optimizations;
 use ccp_config::RandomXFlags;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
-use ccp_msr::MSRConfig;
 
 #[derive(Clone, Debug)]
 pub struct CUProverConfig {
@@ -25,8 +24,6 @@ pub struct CUProverConfig {
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
-    /// Controls MSR-based performance optimization state and stores original MSR registers values.
-    pub msr_config: MSRConfig,
 }
 
 impl From<Optimizations> for CUProverConfig {
@@ -34,7 +31,6 @@ impl From<Optimizations> for CUProverConfig {
         Self {
             randomx_flags: ccp_optimizations.randomx_flags,
             threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
-            msr_config: ccp_optimizations.msr_config,
         }
     }
 }

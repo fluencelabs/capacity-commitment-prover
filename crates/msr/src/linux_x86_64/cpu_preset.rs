@@ -14,38 +14,35 @@
  * limitations under the License.
  */
 
-use crate::msr_cpu_preset::MSRCpuPreset;
-
+use ccp_shared::types::LogicalCoreId;
 use once_cell::sync::Lazy;
+
+use super::msr_x86_64::MSRModeEnforcer;
+use crate::state::MSRCpuPreset;
+
+const DEFAULT_CORE_TO_READ_MSR: LogicalCoreId = LogicalCoreId(0);
 
 /// This global is used with Linux x86_64 only to look for the original
 /// MSR state only once.
-pub(crate) static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(|| {
-    use crate::msr_cpu_preset::get_cpu_preset;
-    use crate::msr_item::MSRItem;
-    use crate::msr_mode::detect_msr_mode;
-    use crate::MSRConfig;
+static CPU_MSR_ORIGINAL_PRESET: Lazy<MSRCpuPreset> = Lazy::new(get_cpu_preset_);
+
+fn get_cpu_preset_() -> MSRCpuPreset {
+    use crate::config::MSRConfig;
+    use crate::linux_x86_64::msr_mode::MSRMode;
     use crate::MSRImpl;
 
-    let core_id = 0.into();
-    let mode = detect_msr_mode();
-    let preset = get_cpu_preset(mode);
+    let mode = MSRMode::detect();
+    let preset = mode.get_cpu_preset();
     let msr_config = MSRConfig::new(true, preset.clone());
-    let msr = MSRImpl::new(msr_config, core_id);
+    let msr = MSRModeEnforcer::new(msr_config, core_id);
+
     let original_items = preset
-        .get_valid_items()
-        .map(|preset_item| {
-            let item = msr.read(preset_item.register_id(), core_id);
-            if let Ok(item) = item {
-                item
-            } else {
-                // Adding an invalid Item to effectively disable the MSR
-                MSRItem::new(0, 0)
-            }
-        })
+        .items()
+        .filter_map(|item| msr.read(item.register_id(), core_id).ok())
         .collect();
+
     MSRCpuPreset::new(original_items)
-});
+}
 
 pub fn get_original_cpu_msr_preset() -> MSRCpuPreset {
     CPU_MSR_ORIGINAL_PRESET.clone()

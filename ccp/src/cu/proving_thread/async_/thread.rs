@@ -17,8 +17,8 @@
 use ccp_msr::MSRConfig;
 use tokio::sync::mpsc;
 
+use ccp_msr::MSREnforce;
 use ccp_msr::MSRImpl;
-use ccp_msr::MSR;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Cache;

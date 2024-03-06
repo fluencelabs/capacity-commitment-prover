@@ -100,7 +100,7 @@ async fn prover_on_active_commitment() {
     let expected_state: Option<CCPState> = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
-        msr_config: <_>::default(),
+        msr_state: <_>::default(),
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -386,7 +386,7 @@ async fn prover_on_active_change_epoch() {
     let expected_state = Some(CCPState {
         epoch_params: epoch_params_second,
         cu_allocation: cu_allocation.clone(),
-        msr_config: <_>::default(),
+        msr_state: <_>::default(),
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -433,7 +433,7 @@ async fn prover_restore_from_state_with_no_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
-        msr_config: <_>::default(),
+        msr_state: <_>::default(),
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await
@@ -498,7 +498,7 @@ async fn prover_restore_from_state_with_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
-        msr_config: <_>::default(),
+        msr_state: <_>::default(),
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await

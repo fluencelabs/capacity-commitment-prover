@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-use ccp_msr::MSRConfig;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_log_level;
+use super::defaults::default_msr_config;
 use super::defaults::default_report_hashrate;
 use crate::*;
 
@@ -56,7 +56,8 @@ pub struct UnresolvedOptimizations {
     #[serde(flatten)]
     pub randomx: UnresolvedRandomX,
 
-    pub msr_config: MSRConfig,
+    #[serde(default = "default_msr_config")]
+    pub msr_enabled: bool,
 
     pub threads_per_core: Option<usize>,
 }
@@ -155,7 +156,7 @@ impl UnresolvedPrometheusEndpoint {
 impl UnresolvedOptimizations {
     pub fn resolve(self) -> eyre::Result<Optimizations> {
         let randomx_flags = self.randomx.resolve();
-        let msr_config = self.msr_config;
+        let msr_config = self.msr_enabled;
         let threads_per_core_policy = match self.threads_per_core {
             Some(threads_count) => ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core: threads_count.try_into()?,
@@ -165,7 +166,7 @@ impl UnresolvedOptimizations {
 
         let opt = Optimizations {
             randomx_flags,
-            msr_config,
+            msr_enabled: msr_config,
             threads_per_core_policy,
         };
         Ok(opt)

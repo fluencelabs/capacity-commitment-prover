@@ -81,7 +81,7 @@ fn create_config(cores_count: usize) -> CUProverConfig {
         threads_per_core_policy: ThreadsPerCoreAllocationPolicy::Exact {
             threads_per_physical_core: std::num::NonZeroUsize::new(cores_count).unwrap(),
         },
-        msr_config: <_>::default(),
+        msr_enabled: <_>::default(),
     }
 }
 

@@ -17,45 +17,36 @@
 use std::fs::File;
 use std::io;
 
+use cpu_utils::LogicalCoreId;
+
+use crate::config::MSRConfig;
+use crate::linux_x86_64::msr_mode::MSR_MODE;
 use crate::msr_cpu_preset::get_cpu_preset;
 use crate::msr_cpu_preset::MSRCpuPreset;
 use crate::msr_item::MSRItem;
-use crate::msr_mode::MSR_MODE;
-use crate::MSRConfig;
+use crate::MSREnforce;
 use crate::MSRError;
 use crate::MSRResult;
-use crate::MSR;
-
-use cpu_utils::LogicalCoreId;
 
 enum MSRFileOpMode {
     MSRRead,
     MSRWrite,
 }
 
-fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
-    use std::fs::OpenOptions;
-    let path = format!("/dev/cpu/{}/msr", core_id);
-    match mode {
-        MSRFileOpMode::MSRRead => OpenOptions::new().read(true).open(path),
-        MSRFileOpMode::MSRWrite => OpenOptions::new().write(true).open(path),
-    }
-}
-
-#[derive(Debug)]
-pub struct MSRImpl {
+#[derive(Clone, Debug)]
+pub struct MSRModeEnforcer {
     is_enabled: bool,
     original_preset: MSRCpuPreset,
     core_id: LogicalCoreId,
 }
 
-impl MSRImpl {
+impl MSRModeEnforcer {
     pub fn new(msr_config: MSRConfig, core_id: LogicalCoreId) -> Self {
-        use crate::msr_cpu_preset_x86_64::CPU_MSR_ORIGINAL_PRESET;
+        use crate::linux_x86_64::cpu_preset::get_original_cpu_msr_preset;
 
         let is_enabled = msr_config.msr_enabled;
         let original_preset = if msr_config.original_msr_preset.is_empty() {
-            CPU_MSR_ORIGINAL_PRESET.clone()
+            get_original_cpu_msr_preset
         } else {
             msr_config.original_msr_preset
         };
@@ -64,6 +55,28 @@ impl MSRImpl {
             original_preset,
             core_id,
         }
+    }
+
+    pub fn read(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<MSRItem> {
+        let value = self.rdmsr(register_id, core_id)?;
+        Ok(MSRItem::new(register_id, value))
+    }
+
+    pub fn write(&self, item: MSRItem, core_id: LogicalCoreId) -> MSRResult<()> {
+        let value_to_write = if item.mask() != MSRItem::NO_MASK {
+            let old_value = self.rdmsr(item.register_id(), core_id)?;
+            MSRItem::masked_value(old_value, item.value(), item.mask())
+        } else {
+            item.value()
+        };
+
+        tracing::debug!(
+            "Write MSR register_id {:?} value {:} at logical CPU {}  ",
+            item.register_id(),
+            value_to_write,
+            core_id
+        );
+        self.wrmsr(item.register_id(), value_to_write, core_id)
     }
 
     fn rdmsr(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<u64> {
@@ -75,8 +88,14 @@ impl MSRImpl {
 
         pread(file, &mut value, register_id as i64)
             .map_err(|errno| MSRError::read_w_no_err(register_id, core_id, errno))?;
-
         let result = u64::from_le_bytes(value);
+
+        tracing::debug!(
+            "Read MSR register_id {:?} value {:} at logical CPU {}  ",
+            item.register_id(),
+            value_to_write,
+            core_id
+        );
 
         Ok(result)
     }
@@ -93,40 +112,27 @@ impl MSRImpl {
 
         Ok(())
     }
+}
 
-    pub fn read(&self, register_id: u32, core_id: LogicalCoreId) -> MSRResult<MSRItem> {
-        let value = self.rdmsr(register_id, core_id)?;
-        Ok(MSRItem::new(register_id, value))
-    }
+fn msr_open(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
+    use std::fs::OpenOptions;
 
-    pub fn write(&self, item: MSRItem, core_id: LogicalCoreId) -> MSRResult<()> {
-        let value_to_write = if item.mask() != MSRItem::NO_MASK {
-            let old_value = self.rdmsr(item.register_id(), core_id)?;
-            MSRItem::masked_value(old_value, item.value(), item.mask())
-        } else {
-            item.value()
-        };
-        tracing::debug!(
-            "Write MSR register_id {:?} value {:} at logical CPU {}  ",
-            item.register_id(),
-            value_to_write,
-            core_id
-        );
-
-        self.wrmsr(item.register_id(), value_to_write, core_id)
+    let path = format!("/dev/cpu/{}/msr", core_id);
+    match mode {
+        MSRFileOpMode::MSRRead => OpenOptions::new().read(true).open(path),
+        MSRFileOpMode::MSRWrite => OpenOptions::new().write(true).open(path),
     }
 }
 
-impl MSR for MSRImpl {
-    fn write_preset(&mut self) -> MSRResult<()> {
+impl MSREnforce for MSRModeEnforcer {
+    fn enforce(&mut self) -> MSRResult<()> {
         if !self.is_enabled {
-            tracing::debug!("MSR is disabled.");
             return Ok(());
         }
 
         let mode = *MSR_MODE;
         let preset = get_cpu_preset(mode);
-        tracing::debug!("MSR mode: mode:{:?}.", mode);
+        tracing::debug!("Global MSR mode: mode:{:?}.", mode);
 
         for item in preset.get_valid_items() {
             // TODO Check for errors here and rollback/clean the stored state
@@ -136,23 +142,8 @@ impl MSR for MSRImpl {
         Ok(())
     }
 
-    fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()> {
+    fn cease(self) -> MSRResult<()> {
         if !self.is_enabled {
-            tracing::debug!("MSR is disabled.");
-            return Ok(());
-        }
-
-        for item in self.original_preset.get_valid_items() {
-            self.write(*item, self.core_id)?;
-        }
-
-        self.core_id = core_id;
-        self.write_preset()
-    }
-
-    fn restore(self) -> MSRResult<()> {
-        if !self.is_enabled {
-            tracing::debug!("MSR is disabled.");
             return Ok(());
         }
 

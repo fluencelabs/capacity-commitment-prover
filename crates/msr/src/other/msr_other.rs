@@ -15,42 +15,39 @@
  */
 
 /// This module is no-op implementation to allow the code to compile on non-x86_64 archs.
-use cpu_utils::LogicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
+use crate::state::MSRCpuPreset;
+use crate::MSREnforce;
 use crate::MSRResult;
-use crate::MSR;
 
-#[derive(Debug)]
-pub struct MSRImpl {}
+#[derive(Clone, Debug)]
+pub struct MSRModeEnforcer {
+    preset: MSRCpuPreset,
+}
 
-impl MSRImpl {
-    pub fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
-        Self {}
+impl MSRModeEnforcer {
+    pub fn from_os(_is_enabled: bool) -> Self {
+        Self {
+            preset: MSRCpuPreset::default(),
+        }
+    }
+
+    pub fn from_preset(_is_enabled: bool, preset: MSRCpuPreset) -> Self {
+        Self { preset }
+    }
+
+    pub fn preset(&self) -> &MSRCpuPreset {
+        &self.preset
     }
 }
 
-impl MSR for MSRImpl {
-    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
+impl MSREnforce for MSRModeEnforcer {
+    fn enforce(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
         Ok(())
     }
 
-    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
+    fn cease(self, _core_id: LogicalCoreId) -> MSRResult<()> {
         Ok(())
     }
-
-    fn restore(self) -> MSRResult<()> {
-        Ok(())
-    }
-}
-
-pub fn detect_msr_mode() -> MSRMode {
-    MSRModNone
-}
-
-pub fn get_original_cpu_msr_preset() -> MSRCpuPreset {
-    use crate::msr_cpu_preset::CPU_MSR_PRESETS;
-    use msr_mode::MSRMode;
-
-    let mode = MSRMode::MSRModNone;
-    get_cpu_preset(mode).clone()
 }

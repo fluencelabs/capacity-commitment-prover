@@ -313,7 +313,6 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 name = "ccp-config"
 version = "0.1.0"
 dependencies = [
- "ccp-msr",
  "ccp-randomx",
  "ccp-shared",
  "config",
@@ -344,7 +343,8 @@ dependencies = [
 name = "ccp-msr"
 version = "0.1.0"
 dependencies = [
- "cpu-utils",
+ "ccp-config",
+ "ccp-shared",
  "nix",
  "once_cell",
  "raw-cpuid",
