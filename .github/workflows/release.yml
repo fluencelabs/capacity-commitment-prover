@@ -145,9 +145,6 @@ jobs:
         with:
           path: docker/binaries
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Calculate SHA256
         id: sha
         working-directory: docker
