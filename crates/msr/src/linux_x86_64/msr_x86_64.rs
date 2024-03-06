@@ -23,7 +23,7 @@ use crate::state::MSRPresetItem;
 use crate::MSREnforce;
 use crate::MSRResult;
 
-const DEFAULT_CORE_TO_READ_MSR: PhysicalCoreId = PhysicalCoreId::from(0);
+const DEFAULT_CORE_TO_READ_MSR: PhysicalCoreId = PhysicalCoreId::new(0);
 
 #[derive(Clone, Debug)]
 pub struct MSRModeEnforcer {
