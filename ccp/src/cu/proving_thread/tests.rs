@@ -97,7 +97,7 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (inlet, mut outlet) = mpsc::channel(3);
     let mut thread = ProvingThreadAsync::new(2.into(), inlet, false);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
