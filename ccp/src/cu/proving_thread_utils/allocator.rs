@@ -17,6 +17,7 @@
 use nonempty::NonEmpty;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use cpu_utils::CPUTopology;
@@ -48,12 +49,15 @@ impl ThreadAllocator {
 
     pub(crate) fn allocate(
         &self,
+        msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
-            .map(|logical_core| ProvingThreadAsync::new(*logical_core, to_utility.clone()))
+            .map(|logical_core| {
+                ProvingThreadAsync::new(*logical_core, msr_enforcer.clone(), to_utility.clone())
+            })
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();
 

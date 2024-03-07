@@ -24,6 +24,6 @@ pub(crate) fn default_report_hashrate() -> bool {
     false
 }
 
-pub(crate) fn default_msr_config() -> bool {
+pub(crate) fn default_msr_enabled() -> bool {
     false
 }

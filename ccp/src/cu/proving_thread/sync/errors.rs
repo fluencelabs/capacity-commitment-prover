@@ -19,6 +19,7 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
+use ccp_msr::MSRError;
 use ccp_randomx::errors::RandomXError;
 use cpu_utils::LogicalCoreId;
 
@@ -28,6 +29,9 @@ use cpu_utils::LogicalCoreId;
 pub enum ProvingThreadSyncError {
     #[error(transparent)]
     RandomXError(#[from] RandomXError),
+
+    #[error(transparent)]
+    MSRError(#[from] MSRError),
 
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),

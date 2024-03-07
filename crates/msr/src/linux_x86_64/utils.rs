@@ -17,7 +17,7 @@
 use std::fs::File;
 use std::io;
 
-use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
 use super::errors::MSRError;
 use crate::MSRResult;
@@ -27,7 +27,7 @@ enum MSRFileOpMode {
     MSRWrite,
 }
 
-pub(crate) fn read_msr(register_id: u32, core_id: PhysicalCoreId) -> MSRResult<u64> {
+pub(crate) fn read_msr(register_id: u32, core_id: LogicalCoreId) -> MSRResult<u64> {
     use nix::sys::uio::pread;
 
     let file = open_msr(core_id, MSRFileOpMode::MSRRead)
@@ -43,7 +43,7 @@ pub(crate) fn read_msr(register_id: u32, core_id: PhysicalCoreId) -> MSRResult<u
     Ok(result)
 }
 
-pub(crate) fn write_msr(register_id: u32, value: u64, core_id: PhysicalCoreId) -> MSRResult<()> {
+pub(crate) fn write_msr(register_id: u32, value: u64, core_id: LogicalCoreId) -> MSRResult<()> {
     use nix::sys::uio::pwrite;
 
     let file = open_msr(core_id, MSRFileOpMode::MSRWrite)
@@ -56,7 +56,7 @@ pub(crate) fn write_msr(register_id: u32, value: u64, core_id: PhysicalCoreId) -
     Ok(())
 }
 
-fn open_msr(core_id: PhysicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
+fn open_msr(core_id: LogicalCoreId, mode: MSRFileOpMode) -> io::Result<File> {
     use std::fs::OpenOptions;
 
     let path = format!("/dev/cpu/{}/msr", core_id);

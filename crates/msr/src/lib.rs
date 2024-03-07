@@ -29,7 +29,7 @@ mod msr_impl;
 
 pub mod state;
 
-use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
 pub use msr_impl::*;
 
@@ -37,8 +37,8 @@ pub type MSRResult<T> = Result<T, MSRError>;
 
 pub trait MSREnforce {
     /// Applies chosen MSR policy to current core.
-    fn enforce(&mut self, core_id: PhysicalCoreId) -> MSRResult<()>;
+    fn enforce(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
 
     /// Cease applied policy to original presets.
-    fn cease(&self, core_id: PhysicalCoreId) -> MSRResult<()>;
+    fn cease(&self, core_id: LogicalCoreId) -> MSRResult<()>;
 }

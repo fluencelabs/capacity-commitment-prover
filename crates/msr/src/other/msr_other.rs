@@ -15,7 +15,7 @@
  */
 
 /// This module is no-op implementation to allow the code to compile on non-x86_64 archs.
-use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
 use crate::state::MSRCpuPreset;
 use crate::MSREnforce;
@@ -43,11 +43,11 @@ impl MSRModeEnforcer {
 }
 
 impl MSREnforce for MSRModeEnforcer {
-    fn enforce(&mut self, _core_id: PhysicalCoreId) -> MSRResult<()> {
+    fn enforce(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
         Ok(())
     }
 
-    fn cease(&self, _core_id: PhysicalCoreId) -> MSRResult<()> {
+    fn cease(&self, _core_id: LogicalCoreId) -> MSRResult<()> {
         Ok(())
     }
 }

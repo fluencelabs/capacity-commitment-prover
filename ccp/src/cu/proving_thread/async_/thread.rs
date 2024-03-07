@@ -16,6 +16,7 @@
 
 use tokio::sync::mpsc;
 
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Cache;
@@ -37,10 +38,15 @@ pub(crate) struct ProvingThreadAsync {
 }
 
 impl ProvingThreadAsync {
-    pub(crate) fn new(core_id: LogicalCoreId, to_utility: ToUtilityInlet) -> Self {
+    pub(crate) fn new(
+        core_id: LogicalCoreId,
+        msr_enforcer: MSRModeEnforcer,
+        to_utility: ToUtilityInlet,
+    ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
-        let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
+        let sync_thread =
+            ProvingThreadSync::spawn(core_id, msr_enforcer, from_async, to_async, to_utility);
 
         Self {
             to_sync,

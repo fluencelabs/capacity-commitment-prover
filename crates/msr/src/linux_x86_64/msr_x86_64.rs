@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
 use super::msr_mode::MSRMode;
 use super::utils;
@@ -23,7 +23,7 @@ use crate::state::MSRPresetItem;
 use crate::MSREnforce;
 use crate::MSRResult;
 
-const DEFAULT_CORE_TO_READ_MSR: PhysicalCoreId = PhysicalCoreId::new(0);
+const DEFAULT_CORE_TO_READ_MSR: LogicalCoreId = LogicalCoreId::new(0);
 
 #[derive(Clone, Debug)]
 pub struct MSRModeEnforcer {
@@ -63,7 +63,7 @@ impl MSRModeEnforcer {
 }
 
 impl MSREnforce for MSRModeEnforcer {
-    fn enforce(&mut self, core_id: PhysicalCoreId) -> MSRResult<()> {
+    fn enforce(&mut self, core_id: LogicalCoreId) -> MSRResult<()> {
         use super::msr_mode::MSR_MODE;
 
         if !self.is_enabled {
@@ -82,7 +82,7 @@ impl MSREnforce for MSRModeEnforcer {
         Ok(())
     }
 
-    fn cease(&self, core_id: PhysicalCoreId) -> MSRResult<()> {
+    fn cease(&self, core_id: LogicalCoreId) -> MSRResult<()> {
         if !self.is_enabled {
             return Ok(());
         }
@@ -94,7 +94,7 @@ impl MSREnforce for MSRModeEnforcer {
     }
 }
 
-pub fn write(item: MSRPresetItem, core_id: PhysicalCoreId) -> MSRResult<()> {
+pub fn write(item: MSRPresetItem, core_id: LogicalCoreId) -> MSRResult<()> {
     let value_to_write = if item.mask() != MSRPresetItem::NO_MASK {
         let old_value = utils::read_msr(item.register_id(), core_id)?;
         MSRPresetItem::masked_value(old_value, item.value(), item.mask())
