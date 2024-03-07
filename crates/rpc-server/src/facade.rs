@@ -111,7 +111,7 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
         let guard = match self.prover.try_read() {
             Ok(g) => g,
             Err(_) => {
-                tracing::warn!(
+                tracing::debug!(
                     "failed to get the prover lock: probably on_active_commitment in progress.\
  Return an empty list.",
                 );
