@@ -1,0 +1,260 @@
+name: "release-please"
+
+on:
+  push:
+    branches:
+      - "main"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+
+    outputs:
+      release-created: ${{ steps.release.outputs.release_created }}
+      pr: ${{ steps.release.outputs['pr'] }}
+      tag-name: ${{ steps.release.outputs['tag_name'] }}
+      version: ${{ steps.release.outputs['version'] }}
+
+    steps:
+      - name: Run release-please
+        id: release
+        uses: google-github-actions/release-please-action@v4
+        with:
+          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
+          config-file: .github/release-please/config.json
+          manifest-file: .github/release-please/manifest.json
+
+      - name: Show output from release-please
+        if: steps.release.outputs.release_created
+        env:
+          RELEASE_PLEASE_OUTPUT: ${{ toJSON(steps.release.outputs) }}
+        run: echo "${RELEASE_PLEASE_OUTPUT}" | jq
+
+  bump-version:
+    if: needs.release-please.outputs.pr != null
+    runs-on: ubuntu-latest
+    needs:
+      - release-please
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ fromJson(needs.release-please.outputs.pr).headBranchName }}
+          token: ${{ secrets.FLUENCEBOT_RELEASE_PLEASE_PAT }}
+
+      - name: Setup Rust toolchain
+        uses: dsherret/rust-toolchain-file@v1
+
+      - name: Install cargo-workspaces
+        uses: baptiste0928/cargo-install@v3.0.0
+        with:
+          crate: cargo-workspaces
+
+      - name: Get version version
+        id: version
+        run: |
+          version="$(jq -r '.[]' .github/release-please/manifest.json)"
+          echo "version=${version}" >> $GITHUB_OUTPUT
+
+      - name: Set versions
+        run: cargo workspaces version -a -y --no-git-commit custom ${{ steps.version.outputs.version }}
+
+      - name: Commit version bump
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: Bump version to ${{ steps.version.outputs.version }}"
+          branch: ${{ fromJson(needs.release-please.outputs.pr).headBranchName }}
+          commit_user_name: fluencebot
+          commit_user_email: devops@fluence.one
+          commit_author: fluencebot <devops@fluence.one>
+
+  crates:
+    if: needs.release-please.outputs.release-created
+    runs-on: ubuntu-latest
+    needs:
+      - release-please
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Import secrets
+        uses: hashicorp/vault-action@v2.7.3
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          exportToken: false
+          secrets: |
+            kv/crates.io/fluencebot token | CARGO_REGISTRY_TOKEN
+
+      - name: Setup Rust toolchain
+        uses: dsherret/rust-toolchain-file@v1
+
+      - name: Install cargo-workspaces
+        uses: baptiste0928/cargo-install@v3.0.0
+        with:
+          crate: cargo-workspaces
+
+      - name: Publish to crates.io
+        run: |
+          cargo ws publish \
+            --no-git-commit \
+            --allow-dirty \
+            --from-git \
+            --yes
+
+  ccp:
+    if: needs.release-please.outputs.release-created
+    needs: release-please
+    uses: ./.github/workflows/artifact.yml
+    with:
+      ref: ${{ needs.release-please.outputs.tag-name }}
+      image: "fluencelabs/ccp"
+
+  publish:
+    if: needs.release-please.outputs.release-created
+    name: "Release"
+    runs-on: ubuntu-latest
+
+    needs:
+      - release-please
+      - ccp
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: docker/binaries
+
+      - name: Calculate SHA256
+        id: sha
+        working-directory: docker
+        run: |
+          # Calculate sha256
+          for arch in amd64 arm64; do
+            cp binaries/ccp-${arch}/ccp ccp-${arch}
+            du -hs ccp-${arch}
+            sha256sum ccp-${arch} | tee >> ccp_SHA256_SUMS
+            sha=($(sha256sum ccp-${arch}))
+            echo "sha256_${arch}=${sha}" >> $GITHUB_OUTPUT
+          done
+
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ./docker/ccp-amd64
+            ./docker/ccp-arm64
+            ./docker/ccp_SHA256_SUMS
+          tag_name: ${{ needs.release-please.outputs.tag-name }}
+
+      - name: Import secrets
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          secrets: |
+            kv/hub.docker.com/fluencebot username | DOCKER_HUB_USERNAME ;
+            kv/hub.docker.com/fluencebot password | DOCKER_HUB_PASSWORD ;
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+
+      - name: Add latest tag to container image
+        uses: shrink/actions-docker-registry-tag@v4
+        with:
+          registry: index.docker.io
+          repository: fluencelabs/ccp
+          token: ${{ env.DOCKER_HUB_PASSWORD }}
+          target: ${{ needs.release-please.outputs.version }}
+          tags: latest
+
+      - name: Update release notes
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag-name }}
+          append_body: true
+          body: |
+
+            ## Docker tags
+
+            ```
+            fluencelabs/ccp:latest
+            fluencelabs/ccp:${{ needs.release-please.outputs.version }}
+
+            ```
+
+  slack:
+    if: always()
+    name: "Notify"
+    runs-on: ubuntu-latest
+
+    needs:
+      - release-please
+      - crates
+      - ccp
+      - publish
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: lwhiteley/dependent-jobs-result-check@v1
+        id: status
+        with:
+          statuses: failure
+          dependencies: ${{ toJSON(needs) }}
+
+      - name: Log output
+        run: |
+          echo "statuses:" "${{ steps.status.outputs.statuses }}"
+          echo "jobs:" "${{ steps.status.outputs.jobs }}"
+          echo "found any?:" "${{ steps.status.outputs.found }}"
+
+      - name: Import secrets
+        uses: hashicorp/vault-action@v2.7.3
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          exportToken: false
+          secrets: |
+            kv/slack/release-please webhook | SLACK_WEBHOOK_URL
+
+      - uses: ravsamhq/notify-slack-action@v2
+        if: steps.status.outputs.found == 'true'
+        with:
+          status: "failure"
+          notification_title: "*{workflow}* has {status_message}"
+          message_format: "${{ steps.status.outputs.jobs }} {status_message} in <{repo_url}|{repo}>"
+          footer: "<{run_url}>"

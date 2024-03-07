@@ -1,0 +1,11 @@
+{
+  "bootstrap-sha": "2b712b5b716d677baeebdbe6d0cea7adc0be3343",
+  "release-type": "simple",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "packages": {
+    ".": {
+      "component": "ccp"
+    }
+  }
+}
