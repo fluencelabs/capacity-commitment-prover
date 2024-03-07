@@ -23,22 +23,22 @@ use crate::MSRResult;
 
 #[derive(Clone, Debug)]
 pub struct MSRModeEnforcer {
-    preset: MSRCpuPreset,
+    original_preset: MSRCpuPreset,
 }
 
 impl MSRModeEnforcer {
     pub fn from_os(_is_enabled: bool) -> Self {
         Self {
-            preset: MSRCpuPreset::default(),
+            original_preset: MSRCpuPreset::default(),
         }
     }
 
-    pub fn from_preset(_is_enabled: bool, preset: MSRCpuPreset) -> Self {
-        Self { preset }
+    pub fn from_preset(_is_enabled: bool, original_preset: MSRCpuPreset) -> Self {
+        Self { original_preset }
     }
 
     pub fn original_preset(&self) -> &MSRCpuPreset {
-        &self.preset
+        &self.original_preset
     }
 }
 

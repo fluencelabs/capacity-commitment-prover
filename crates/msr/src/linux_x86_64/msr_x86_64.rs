@@ -60,6 +60,10 @@ impl MSRModeEnforcer {
             original_preset,
         }
     }
+
+    pub fn original_preset(&self) -> &MSRCpuPreset {
+        &self.original_preset
+    }
 }
 
 impl MSREnforce for MSRModeEnforcer {
