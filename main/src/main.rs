@@ -26,9 +26,11 @@
     unreachable_patterns
 )]
 
+use std::cell::Cell;
 use std::path::Path;
 use std::sync::Arc;
 
+use capacity_commitment_prover::cpuids_handle::CpuIdsHandle;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::RwLock;
@@ -73,31 +75,50 @@ fn main() -> eyre::Result<()> {
     check_writable_dir(&config.state_dir)
         .wrap_err("state-dir value in a config should be a writeable directory path")?;
 
-    let tokio_cores = config
-        .rpc_endpoint
-        .utility_cores_ids
-        .iter()
-        .cloned()
-        .map(Into::into)
-        .collect::<Vec<_>>();
+    let tokio_cores = config.rpc_endpoint.utility_cores_ids.clone();
+
+    let tokio_core_ids_state_start = CpuIdsHandle::new(tokio_cores);
+    let tokio_core_ids_state_unpark = tokio_core_ids_state_start.clone();
+    let tokio_core_ids_state_async = tokio_core_ids_state_start.clone();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(2)
         .on_thread_start(move || {
             let pid = std::thread::current().id();
+            let tokio_cores = tokio_core_ids_state_start.get_cores();
             tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
-            if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.iter().copied()) {
+            if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
                 tracing::error!("Tokio thread pinning failed");
+            }
+        })
+        .on_thread_unpark(move || {
+            thread_local! {
+                static LAST_SEEN_REPIN_VERSION: Cell<u32> = 0.into();
+            }
+
+            // unparking is implemented with a system-level sync primitives, and they always
+            // impose "happens after" relation; thus relaxed load is OK
+            //
+            // even if it is not correct, it will eventually sync
+            let version = tokio_core_ids_state_unpark.get_version_relaxed();
+            if LAST_SEEN_REPIN_VERSION.get() != version {
+                let pid = std::thread::current().id();
+                let tokio_cores = tokio_core_ids_state_unpark.get_cores();
+                tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
+                if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
+                    tracing::error!("Tokio thread repinning failed");
+                }
+                LAST_SEEN_REPIN_VERSION.set(version);
             }
         })
         .build()
         .wrap_err("failed to build tokio runtime")?;
 
-    runtime.block_on(async_main(config))
+    runtime.block_on(async_main(config, tokio_core_ids_state_async))
 }
 
-async fn async_main(config: CCPConfig) -> eyre::Result<()> {
+async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
 
     tracing::info!("Creating prover from a saved state");
@@ -111,7 +132,8 @@ async fn async_main(config: CCPConfig) -> eyre::Result<()> {
         rpc_bind_address.1
     );
     let prover = Arc::new(RwLock::new(prover));
-    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone()));
+    let rpc_endpoint =
+        CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone()), tokio_core_ids_state);
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await

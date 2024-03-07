@@ -31,6 +31,7 @@ mod or_hex;
 use std::collections::HashMap;
 
 use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
@@ -63,6 +64,9 @@ pub trait CCPRpc {
         proof_idx: ProofIdx,
         limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned>;
+
+    #[method(name = "realloc_utility_core", param_kind = map)]
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
 }
 
 pub struct CCPRpcHttpClient {
@@ -70,10 +74,7 @@ pub struct CCPRpcHttpClient {
 }
 
 impl CCPRpcHttpClient {
-    pub async fn new(
-        endpoint_url: String,
-        _client_cpu_id: PhysicalCoreId,
-    ) -> Result<Self, ClientError> {
+    pub async fn new(endpoint_url: String) -> Result<Self, ClientError> {
         let inner = jsonrpsee::http_client::HttpClientBuilder::default().build(endpoint_url)?;
 
         Ok(Self { inner })
@@ -104,5 +105,12 @@ impl CCPRpcHttpClient {
         limit: usize,
     ) -> Result<Vec<CCProof>, ClientError> {
         CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
+    }
+
+    pub async fn realloc_utility_core(
+        &self,
+        utility_core_ids: Vec<LogicalCoreId>,
+    ) -> Result<(), ClientError> {
+        CCPRpcClient::realloc_utility_cores(&self.inner, utility_core_ids).await
     }
 }

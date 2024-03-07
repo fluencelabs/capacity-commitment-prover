@@ -31,6 +31,8 @@ mod facade;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use capacity_commitment_prover::cpuids_handle::CpuIdsHandle;
+use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
 use jsonrpsee::server::ServerHandle;
@@ -55,12 +57,14 @@ pub use crate::facade::BackgroundFacade;
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<P>>,
+    tokio_core_ids_handler: CpuIdsHandle,
 }
 
 impl<P> CCPRcpHttpServer<P> {
-    pub fn new(cc_prover: P) -> Self {
+    pub fn new(cc_prover: P, utility_core_ids_handler: CpuIdsHandle) -> Self {
         Self {
             cc_prover: Arc::new(Mutex::new(cc_prover)),
+            tokio_core_ids_handler: utility_core_ids_handler,
         }
     }
 }
@@ -153,5 +157,18 @@ where
         }
         proofs.sort_unstable_by_key(|p| p.id.idx);
         Ok(proofs)
+    }
+
+    #[instrument(skip(self))]
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
+        // optimization: schedule current Tokio thread immediately, not waiting
+        // for it to park-unpark
+        let pid = std::thread::current().id();
+        tracing::info!("Instantly Repinning tokio thread {pid:?} to cores {utility_core_ids:?}");
+        if !cpu_utils::pinning::pin_current_thread_to_cpuset(utility_core_ids.clone().into_iter()) {
+            tracing::error!("Tokio thread repinning failed");
+        }
+
+        self.tokio_core_ids_handler.set_cores(utility_core_ids);
     }
 }
