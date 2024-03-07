@@ -37,7 +37,7 @@ use crate::utility_thread::message::ToUtilityInlet;
 #[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
-    running_core_id: PhysicalCoreId,
+    pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
     cpu_topology: CPUTopology,
     dataset: Dataset,
@@ -60,7 +60,7 @@ impl CUProver {
 
         let prover = Self {
             threads,
-            running_core_id: core_id,
+            pinned_core_id: core_id,
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
             dataset,
@@ -127,8 +127,8 @@ impl CUProver {
         Ok(())
     }
 
-    pub(crate) fn running_core_id(&self) -> PhysicalCoreId {
-        self.running_core_id
+    pub(crate) fn pinned_core_id(&self) -> PhysicalCoreId {
+        self.pinned_core_id
     }
 
     #[allow(clippy::needless_lifetimes)]

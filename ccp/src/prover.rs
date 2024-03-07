@@ -299,7 +299,7 @@ impl RoadmapAlignable for CCProver {
             .into_iter()
             .map(Result::unwrap)
             .flat_map(|prover_post_action| match prover_post_action {
-                AlignmentPostAction::KeepProver(prover) => Some((prover.running_core_id(), prover)),
+                AlignmentPostAction::KeepProver(prover) => Some((prover.pinned_core_id(), prover)),
                 AlignmentPostAction::Nothing => None,
             })
             .collect::<Vec<_>>();
