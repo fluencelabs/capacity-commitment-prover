@@ -101,7 +101,6 @@ impl UtilityThreadImpl {
     }
 
     pub(crate) async fn utility_closure(mut self, core_ids: Vec<LogicalCoreId>) {
-        use crossterm::event::EventStream;
         use futures::FutureExt;
         use futures::StreamExt;
 
@@ -112,7 +111,11 @@ impl UtilityThreadImpl {
         let mut cum_hashrate_ticker =
             time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
 
-        let mut terminal_event_reader = EventStream::new();
+        #[cfg(feature = "crossterm")]
+        let mut terminal_event_reader = crossterm::event::EventStream::new();
+
+        #[cfg(not(feature = "crossterm"))]
+        let mut terminal_event_reader = futures::stream::pending::<()>();
 
         loop {
             tokio::select! {
@@ -155,6 +158,7 @@ impl UtilityThreadImpl {
         }
     }
 
+    #[cfg(feature = "crossterm")]
     async fn handle_terminal_event(
         &mut self,
         maybe_event: Option<Result<crossterm::event::Event, std::io::Error>>,
@@ -191,6 +195,9 @@ impl UtilityThreadImpl {
             }
         }
     }
+
+    #[cfg(not(feature = "crossterm"))]
+    async fn handle_terminal_event(&mut self, _maybe_event: Option<()>) {}
 }
 
 struct NewProofHandler {

@@ -108,10 +108,12 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
         let guard = match self.prover.try_read() {
             Ok(g) => g,
-            Err(e) => {
-                return Err(e).context(
-                    "failed to get prover lock: probably on_active_commitment in progress",
+            Err(_) => {
+                tracing::debug!(
+                    "failed to get the prover lock: probably on_active_commitment in progress.\
+ Return an empty list.",
                 );
+                return Ok(vec![]);
             }
         };
         guard

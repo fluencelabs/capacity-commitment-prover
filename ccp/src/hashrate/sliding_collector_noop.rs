@@ -14,24 +14,22 @@
  * limitations under the License.
  */
 
-mod collector;
-mod errors;
-mod handler;
-mod hashratable;
-pub(crate) mod prometheus;
-mod record;
-mod saver;
-#[cfg(feature = "crossterm")]
-mod sliding_collector;
-#[cfg(not(feature = "crossterm"))]
-#[path = "sliding_collector_noop.rs"]
-mod sliding_collector;
+use super::ThreadHashrateRecord;
 
-pub(crate) type HResult<T> = Result<T, HashrateError>;
+pub(crate) type SlidingHashrate = ();
 
-pub(crate) use collector::HashrateCollector;
-pub(crate) use errors::HashrateError;
-pub(crate) use handler::HashrateHandler;
-pub(crate) use record::ThreadHashrateRecord;
-pub(crate) use saver::HashrateSaver;
-pub(crate) use sliding_collector::SlidingHashrateCollector;
+/// Replacement of SlidingHashrateCollector which does nothing to make the crossterm dep optional.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct SlidingHashrateCollector {}
+
+impl SlidingHashrateCollector {
+    pub(crate) fn new() -> Self {
+        Self::default()
+    }
+
+    pub(crate) fn account_record(&mut self, _record: ThreadHashrateRecord) {}
+
+    pub(crate) fn hashrate(&self) -> &SlidingHashrate {
+        &()
+    }
+}
