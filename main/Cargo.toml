@@ -8,6 +8,10 @@ license.workspace = true
 repository.workspace = true
 publish = true
 
+[[bin]]
+name = "ccp"
+path = "src/main.rs"
+
 [dependencies]
 capacity-commitment-prover.workspace = true
 ccp-config.workspace = true
