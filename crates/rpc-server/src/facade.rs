@@ -42,9 +42,7 @@ where
     P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
 {
-    pub fn new(prover: P) -> Self {
-        let prover = Arc::new(RwLock::new(prover));
-
+    pub fn new(prover: Arc<RwLock<P>>) -> Self {
         let (to_worker, from_facade) = mpsc::channel(100);
 
         let worker = tokio::task::spawn(facade_loop(prover.clone(), from_facade));
@@ -110,10 +108,12 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
         let guard = match self.prover.try_read() {
             Ok(g) => g,
-            Err(e) => {
-                return Err(e).context(
-                    "failed to get prover lock: probably on_active_commitment in progress",
+            Err(_) => {
+                tracing::debug!(
+                    "failed to get the prover lock: probably on_active_commitment in progress.\
+ Return an empty list.",
                 );
+                return Ok(vec![]);
             }
         };
         guard

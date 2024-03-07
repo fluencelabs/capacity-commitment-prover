@@ -126,8 +126,9 @@ impl PrometheusEndpoint {
         }
     }
 
-    pub(crate) async fn stop(self) -> tokio::io::Result<()> {
+    pub(crate) async fn shutdown(&mut self) -> tokio::io::Result<()> {
+        log::info!("Shutting down Prometheus endpoint");
         self.cancellation.cancel();
-        self.handle.await?
+        (&mut self.handle).await?
     }
 }

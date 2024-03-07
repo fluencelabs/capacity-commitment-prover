@@ -27,9 +27,11 @@
 )]
 
 use std::path::Path;
+use std::sync::Arc;
 
 use clap::Parser;
 use eyre::WrapErr as _;
+use tokio::sync::RwLock;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
@@ -108,13 +110,42 @@ async fn async_main(config: CCPConfig) -> eyre::Result<()> {
         rpc_bind_address.0,
         rpc_bind_address.1
     );
-    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover));
+    let prover = Arc::new(RwLock::new(prover));
+    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone()));
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await
         .wrap_err("starting an RPC endpoint failed")?;
 
-    server_handle.stopped().await; // wait indefinitely
+    use tokio::select;
+    use tokio::signal::unix as signal;
+    let mut sig_int = signal::signal(signal::SignalKind::interrupt())?;
+    let mut sig_term = signal::signal(signal::SignalKind::terminate())?;
+
+    // wait for interruption
+    select! {
+        _ = sig_int.recv() => {
+            tracing::info!("Iterrupted, exiting...");
+        }
+        _ = sig_term.recv() => {
+            tracing::info!("Terminated, exiting...");
+        }
+    }
+
+    // and then shutdown
+    tracing::info!("Shuttting down RPC server");
+    match server_handle.stop() {
+        Ok(()) => {
+            server_handle.stopped().await;
+        }
+        Err(e) => {
+            tracing::warn!("failed to stop RPC server: {e}; ignoring");
+        }
+    };
+    prover.write().await.shutdown().await.map_err(|e| {
+        tracing::error!("error during prover shutdown: {e}");
+        eyre::eyre!(e.to_string())
+    })?;
 
     Ok(())
 }
