@@ -106,6 +106,7 @@ where
             .clone()
             .unhex()
             .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty)))?;
+
         let mut cu_allocation_real = HashMap::<_, CUID>::new();
         for (id, cuid) in cu_allocation {
             cu_allocation_real.insert(
