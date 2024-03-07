@@ -96,11 +96,6 @@ where
     <P as NoxCCPApi>::Error: ToString,
 {
     #[instrument(skip(self))]
-    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
-        self.tokio_core_ids_handler.set(utility_core_ids);
-    }
-
-    #[instrument(skip(self))]
     async fn on_active_commitment(
         &self,
         global_nonce: OrHex<GlobalNonce>,
@@ -161,5 +156,18 @@ where
         }
         proofs.sort_unstable_by_key(|p| p.id.idx);
         Ok(proofs)
+    }
+
+    #[instrument(skip(self))]
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
+        // optimization: schedule current Tokio thread immediately, not waiting
+        // for it to park-unpark
+        let pid = std::thread::current().id();
+        tracing::info!("Instantly Repinning tokio thread {pid:?} to cores {utility_core_ids:?}");
+        if !cpu_utils::pinning::pin_current_thread_to_cpuset(utility_core_ids.clone().into_iter()) {
+            tracing::error!("Tokio thread repinning failed");
+        }
+
+        self.tokio_core_ids_handler.set_cores(utility_core_ids);
     }
 }

@@ -75,16 +75,16 @@ fn main() -> eyre::Result<()> {
 
     let tokio_cores = config.rpc_endpoint.utility_cores_ids.clone();
 
-    let tokio_core_ids_state = CpuIdsHandle::new(tokio_cores);
-    let tokio_core_ids_state2 = tokio_core_ids_state.clone();
-    let tokio_core_ids_state3 = tokio_core_ids_state.clone();
+    let tokio_core_ids_state_start = CpuIdsHandle::new(tokio_cores);
+    let tokio_core_ids_state_unpark = tokio_core_ids_state_start.clone();
+    let tokio_core_ids_state_async = tokio_core_ids_state_start.clone();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .worker_threads(2)
         .on_thread_start(move || {
             let pid = std::thread::current().id();
-            let tokio_cores = tokio_core_ids_state.get();
+            let tokio_cores = tokio_core_ids_state_start.get_cores();
             tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
             if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
                 tracing::error!("Tokio thread pinning failed");
@@ -92,28 +92,28 @@ fn main() -> eyre::Result<()> {
         })
         .on_thread_unpark(move || {
             thread_local! {
-                static LAST_EPOCH: Cell<u32> = 0.into();
+                static LAST_SEEN_REPIN_VERSION: Cell<u32> = 0.into();
             }
 
             // unparking is implemented with a system-level sync primitives, and they always
             // impose "happens after" relation; thus relaxed load is OK
             //
             // even if it is not correct, it will eventually sync
-            let epoch = tokio_core_ids_state2.get_epoch_relaxed();
-            if LAST_EPOCH.get() != epoch {
+            let version = tokio_core_ids_state_unpark.get_version_relaxed();
+            if LAST_SEEN_REPIN_VERSION.get() != version {
                 let pid = std::thread::current().id();
-                let tokio_cores = tokio_core_ids_state2.get();
+                let tokio_cores = tokio_core_ids_state_unpark.get_cores();
                 tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
                 if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
                     tracing::error!("Tokio thread repinning failed");
                 }
-                LAST_EPOCH.set(epoch);
+                LAST_SEEN_REPIN_VERSION.set(version);
             }
         })
         .build()
         .wrap_err("failed to build tokio runtime")?;
 
-    runtime.block_on(async_main(config, tokio_core_ids_state3))
+    runtime.block_on(async_main(config, tokio_core_ids_state_async))
 }
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {

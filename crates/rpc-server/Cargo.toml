@@ -16,6 +16,7 @@ doctest = false
 capacity-commitment-prover.workspace = true
 ccp-rpc-client.workspace = true
 ccp-shared.workspace = true
+cpu-utils.workspace = true
 
 async-trait.workspace = true
 jsonrpsee.workspace = true

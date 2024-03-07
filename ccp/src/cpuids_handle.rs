@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::AtomicU32;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
-use cpu_utils::LogicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 use parking_lot::Mutex;
 
 #[derive(Clone)]
@@ -27,27 +28,27 @@ impl CpuIdsHandle {
     pub fn new(initial_state: Vec<LogicalCoreId>) -> Self {
         Self(Arc::new(CpuIdsHandleInner {
             cpu_ids: Mutex::new(initial_state),
-            epoch: AtomicU32::new(0),
+            version: AtomicU32::new(0),
         }))
     }
 
-    pub fn get(&self) -> Vec<LogicalCoreId> {
+    pub fn get_cores(&self) -> Vec<LogicalCoreId> {
         let guard = self.0.cpu_ids.lock();
         (*guard).clone()
     }
 
-    pub fn set(&self, new_state: Vec<LogicalCoreId>) {
+    pub fn set_cores(&self, new_state: Vec<LogicalCoreId>) {
         let mut guard = self.0.cpu_ids.lock();
-        self.0.epoch.fetch_add(1, Ordering::Relaxed);
+        self.0.version.fetch_add(1, Ordering::Relaxed);
         *guard = new_state;
     }
 
-    pub fn get_epoch_relaxed(&self) -> u32 {
-        self.0.epoch.load(Ordering::Relaxed)
+    pub fn get_version_relaxed(&self) -> u32 {
+        self.0.version.load(Ordering::Relaxed)
     }
 }
 
 struct CpuIdsHandleInner {
     cpu_ids: Mutex<Vec<LogicalCoreId>>,
-    epoch: AtomicU32,
+    version: AtomicU32,
 }
