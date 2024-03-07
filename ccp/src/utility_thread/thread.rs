@@ -16,7 +16,6 @@
 
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 use tokio::time;
 
 use ccp_shared::proof::CCProof;
@@ -24,21 +23,18 @@ use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::GlobalNonce;
 use cpu_utils::LogicalCoreId;
+use tokio_util::sync::CancellationToken;
 
 use super::message::*;
 use super::UTResult;
 use crate::hashrate::HashrateHandler;
 use crate::utility_thread::proof_storage::ProofStorage;
-use crate::utility_thread::UtilityThreadError;
-
-type ThreadShutdownInlet = oneshot::Sender<()>;
-type ThreadShutdownOutlet = oneshot::Receiver<()>;
 
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
 
 pub(crate) struct UtilityThread {
     to_utility: ToUtilityInlet,
-    shutdown_in: ThreadShutdownInlet,
+    cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
@@ -51,26 +47,30 @@ impl UtilityThread {
         hashrate_handler: HashrateHandler,
     ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(100);
-        let (shutdown_in, shutdown_out) = oneshot::channel();
+
+        let cancellation = CancellationToken::new();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
-        let ut_impl =
-            UtilityThreadImpl::new(from_utility, shutdown_out, proofs_handler, hashrate_handler);
+        let ut_impl = UtilityThreadImpl::new(
+            from_utility,
+            cancellation.clone(),
+            proofs_handler,
+            hashrate_handler,
+        );
 
         let handle = tokio::spawn(ut_impl.utility_closure(core_ids));
         Self {
             to_utility,
-            shutdown_in,
+            cancellation,
             handle,
         }
     }
 
-    pub(crate) async fn stop(self) -> UTResult<()> {
-        self.shutdown_in
-            .send(())
-            .map_err(|_| UtilityThreadError::ShutdownError)?;
-        Ok(self.handle.await?)
+    pub(crate) async fn shutdown(&mut self) -> UTResult<()> {
+        log::info!("Shutting down utility thread");
+        self.cancellation.cancel();
+        Ok((&mut self.handle).await?)
     }
 
     pub(crate) fn get_to_utility_channel(&self) -> ToUtilityInlet {
@@ -80,7 +80,7 @@ impl UtilityThread {
 
 struct UtilityThreadImpl {
     to_utility: ToUtilityOutlet,
-    shutdown_out: ThreadShutdownOutlet,
+    cancellation: CancellationToken,
     proofs_handler: NewProofHandler,
     hashrate_handler: HashrateHandler,
 }
@@ -88,20 +88,19 @@ struct UtilityThreadImpl {
 impl UtilityThreadImpl {
     pub(crate) fn new(
         to_utility: ToUtilityOutlet,
-        shutdown_out: ThreadShutdownOutlet,
+        cancellation: CancellationToken,
         proofs_handler: NewProofHandler,
         hashrate_handler: HashrateHandler,
     ) -> Self {
         Self {
             to_utility,
-            shutdown_out,
+            cancellation,
             proofs_handler,
             hashrate_handler,
         }
     }
 
     pub(crate) async fn utility_closure(mut self, core_ids: Vec<LogicalCoreId>) {
-        use crossterm::event::EventStream;
         use futures::FutureExt;
         use futures::StreamExt;
 
@@ -112,15 +111,19 @@ impl UtilityThreadImpl {
         let mut cum_hashrate_ticker =
             time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
 
-        let mut terminal_event_reader = EventStream::new();
+        #[cfg(feature = "crossterm")]
+        let mut terminal_event_reader = crossterm::event::EventStream::new();
+
+        #[cfg(not(feature = "crossterm"))]
+        let mut terminal_event_reader = futures::stream::pending::<()>();
 
         loop {
             tokio::select! {
                 Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
                 maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
-                _ = &mut self.shutdown_out => {
-                    log::info!("utility thread was shutdown");
+                _ = self.cancellation.cancelled() => {
+                    log::info!("The utility thread was shutdown");
                     return;
                 }
             }
@@ -155,6 +158,7 @@ impl UtilityThreadImpl {
         }
     }
 
+    #[cfg(feature = "crossterm")]
     async fn handle_terminal_event(
         &mut self,
         maybe_event: Option<Result<crossterm::event::Event, std::io::Error>>,
@@ -191,6 +195,9 @@ impl UtilityThreadImpl {
             }
         }
     }
+
+    #[cfg(not(feature = "crossterm"))]
+    async fn handle_terminal_event(&mut self, _maybe_event: Option<()>) {}
 }
 
 struct NewProofHandler {

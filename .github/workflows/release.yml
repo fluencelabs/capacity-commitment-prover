@@ -141,7 +141,7 @@ jobs:
 
     steps:
       - name: Download binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: docker/binaries
 
@@ -167,11 +167,31 @@ jobs:
             ./docker/ccp_SHA256_SUMS
           tag_name: ${{ needs.release-please.outputs.tag-name }}
 
+      - name: Import secrets
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          secrets: |
+            kv/hub.docker.com/fluencebot username | DOCKER_HUB_USERNAME ;
+            kv/hub.docker.com/fluencebot password | DOCKER_HUB_PASSWORD ;
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+
       - name: Add latest tag to container image
         uses: shrink/actions-docker-registry-tag@v4
         with:
-          registry: docker.io
+          registry: index.docker.io
           repository: fluencelabs/ccp
+          token: ${{ env.DOCKER_HUB_PASSWORD }}
           target: ${{ needs.release-please.outputs.version }}
           tags: latest
 
@@ -186,7 +206,7 @@ jobs:
 
             ```
             fluencelabs/ccp:latest
-            fluencelabs/ccp: ${{ needs.release-please.outputs.version }}
+            fluencelabs/ccp:${{ needs.release-please.outputs.version }}
 
             ```
 
