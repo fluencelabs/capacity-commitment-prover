@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 pub type CUIDInner = [u8; 32];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default, PartialOrd, Ord)]
 #[serde(transparent)]
 #[repr(transparent)]
 pub struct CUID(CUIDInner);
