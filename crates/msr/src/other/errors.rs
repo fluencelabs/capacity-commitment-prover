@@ -14,22 +14,7 @@
  * limitations under the License.
  */
 
-use std::path::PathBuf;
+use thiserror::Error as ThisError;
 
-use crate::unresolved_config::LogLevel;
-
-pub(crate) fn default_log_level() -> LogLevel {
-    LogLevel::Error
-}
-
-pub(crate) fn default_report_hashrate() -> bool {
-    false
-}
-
-pub(crate) fn default_state_path() -> PathBuf {
-    PathBuf::from("./state")
-}
-
-pub(crate) fn default_msr_enabled() -> bool {
-    false
-}
+#[derive(ThisError, Debug)]
+pub enum MSRError {}

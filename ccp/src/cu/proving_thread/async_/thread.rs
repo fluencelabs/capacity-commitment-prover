@@ -16,8 +16,7 @@
 
 use tokio::sync::mpsc;
 
-use ccp_msr::MSRImpl;
-use ccp_msr::MSR;
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Cache;
@@ -36,26 +35,23 @@ pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
-    msr: MSRImpl,
 }
 
 impl ProvingThreadAsync {
     pub(crate) fn new(
         core_id: LogicalCoreId,
+        msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
-        msr_enabled: bool,
     ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
-        let sync_thread = ProvingThreadSync::spawn(core_id, from_async, to_async, to_utility);
-        let mut msr = MSRImpl::new(msr_enabled, core_id);
-        let _ = msr.write_preset(true);
+        let sync_thread =
+            ProvingThreadSync::spawn(core_id, msr_enforcer, from_async, to_async, to_utility);
 
         Self {
             to_sync,
             from_sync,
             sync_thread,
-            msr,
         }
     }
 }
@@ -136,8 +132,6 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     }
 
     async fn pin(&mut self, core_id: LogicalCoreId) -> Result<(), Self::Error> {
-        self.msr.repin(core_id)?;
-
         let message = AsyncToSyncMessage::PinThread(PinThread { core_id });
         self.to_sync.send(message).await.map_err(Into::into)
     }
@@ -158,7 +152,6 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     }
 
     async fn stop(self) -> Result<(), Self::Error> {
-        self.msr.restore()?;
         let message = AsyncToSyncMessage::Stop;
         self.to_sync.send(message).await?;
         Ok(self.sync_thread.join()?)

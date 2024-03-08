@@ -81,14 +81,9 @@ impl ProofStorageDrainer {
 
     pub async fn validate_proofs(
         &mut self,
-        epoch_params: Option<&EpochParameters>,
+        epoch: &Option<EpochParameters>,
     ) -> tokio::io::Result<ProofIdx> {
         let mut max_proof_idx = None;
-
-        let global_nonce = epoch_params.map(|params| &params.global_nonce);
-        let difficulty = epoch_params.map(|params| &params.difficulty);
-        log::debug!("using GN {global_nonce:?} and difficulty {difficulty:?}");
-
         ensure_dir(&self.proof_directory).await?;
 
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
@@ -101,9 +96,8 @@ impl ProofStorageDrainer {
 
                         log::debug!("loaded proof {entry_proof_id}: {proof:?}");
 
-                        if Some(&proof.id.global_nonce) == global_nonce
-                            && Some(&proof.id.difficulty) == difficulty
-                        {
+                        let found_epoch: EpochParameters = proof.id.into();
+                        if &Some(found_epoch) == epoch {
                             max_proof_idx = Some(std::cmp::max(
                                 max_proof_idx.unwrap_or_default(),
                                 entry_proof_id,
@@ -118,9 +112,9 @@ impl ProofStorageDrainer {
                     }
                 }
                 Ok(None) => {
-                    if let Some(proof_idx) = max_proof_idx.as_mut() {
-                        // We should return an idx that utility thread can use, i.e. new one.
-                        proof_idx.increment();
+                    // We should return an idx that utility thread can use, i.e. new one.
+                    if let Some(idx) = max_proof_idx.as_mut() {
+                        idx.increment()
                     }
                     return Ok(max_proof_idx.unwrap_or_default());
                 }

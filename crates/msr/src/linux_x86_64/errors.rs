@@ -17,7 +17,7 @@
 use nix::errno::Errno;
 use thiserror::Error as ThisError;
 
-use cpu_utils::LogicalCoreId;
+use ccp_shared::types::LogicalCoreId;
 
 #[derive(ThisError, Debug)]
 pub enum MSRError {
@@ -55,7 +55,6 @@ pub enum MSRError {
     },
 }
 
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
 impl MSRError {
     pub(crate) fn open_for_read(core_id: LogicalCoreId, io_error: std::io::Error) -> Self {
         Self::OpenForRead { core_id, io_error }

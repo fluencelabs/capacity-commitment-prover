@@ -14,31 +14,31 @@
  * limitations under the License.
  */
 
+/// This crate is MSR control framework for the archs that have ways to control CPU cache
+/// via MSR registers manipulation, e.g. Linux on x86_64.
+/// For everything else it's a no-op.
+/// Please note there are number of globals that are accessed in the main code.
+
 #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-mod cpu_preset;
-mod errors;
-mod msr_item;
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-mod msr_linux;
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-mod msr_mode;
-#[cfg(all(target_arch = "x86_64", target_os = "linux"))]
-pub use msr_linux::MSRImpl;
+#[path = "linux_x86_64/mod.rs"]
+mod msr_impl;
 
 #[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-mod msr_other;
-#[cfg(not(all(target_arch = "x86_64", target_os = "linux")))]
-pub use msr_other::MSRImpl;
+#[path = "other/mod.rs"]
+mod msr_impl;
 
-use cpu_utils::LogicalCoreId;
+pub mod state;
 
-pub use errors::MSRError;
-pub use msr_item::MSRItem;
+use ccp_shared::types::LogicalCoreId;
+
+pub use msr_impl::*;
 
 pub type MSRResult<T> = Result<T, MSRError>;
 
-pub trait MSR {
-    fn write_preset(&mut self, store_state: bool) -> MSRResult<()>;
-    fn repin(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
-    fn restore(self) -> MSRResult<()>;
+pub trait MSREnforce {
+    /// Applies auto-chosen MSR preset to current core.
+    fn enforce(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
+
+    /// Cease applied policy to original presets.
+    fn cease(&self, core_id: LogicalCoreId) -> MSRResult<()>;
 }

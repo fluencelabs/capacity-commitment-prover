@@ -13,10 +13,13 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-cpu-utils.workspace = true
+ccp-config.workspace = true
+ccp-shared.workspace = true
 
 thiserror.workspace = true
 nix.workspace = true
 once_cell.workspace = true
 raw-cpuid.workspace = true
 tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
