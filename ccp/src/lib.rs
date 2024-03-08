@@ -27,6 +27,7 @@
 )]
 
 mod alignment_roadmap;
+pub mod cpuids_handle;
 mod cu;
 mod errors;
 mod hashrate;
