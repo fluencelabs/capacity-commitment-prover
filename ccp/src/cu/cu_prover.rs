@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::Dataset;
@@ -47,11 +48,12 @@ impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
         to_utility: ToUtilityInlet,
+        msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(to_utility, config.msr_enabled)?;
+            .allocate(msr_enforcer, to_utility)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;

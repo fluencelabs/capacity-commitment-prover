@@ -166,7 +166,7 @@ impl UnresolvedPrometheusEndpoint {
 impl UnresolvedOptimizations {
     pub fn resolve(self) -> eyre::Result<Optimizations> {
         let randomx_flags = self.randomx.resolve();
-        let msr_enabled = self.msr_enabled;
+        let msr_config = self.msr_enabled;
         let threads_per_core_policy = match self.threads_per_core {
             Some(threads_count) => ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core: threads_count.try_into()?,
@@ -176,7 +176,7 @@ impl UnresolvedOptimizations {
 
         let opt = Optimizations {
             randomx_flags,
-            msr_enabled,
+            msr_enabled: msr_config,
             threads_per_core_policy,
         };
         Ok(opt)

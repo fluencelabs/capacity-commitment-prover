@@ -14,16 +14,7 @@
  * limitations under the License.
  */
 
-use crate::unresolved_config::LogLevel;
+use thiserror::Error as ThisError;
 
-pub(crate) fn default_log_level() -> LogLevel {
-    LogLevel::Error
-}
-
-pub(crate) fn default_report_hashrate() -> bool {
-    false
-}
-
-pub(crate) fn default_msr_enabled() -> bool {
-    false
-}
+#[derive(ThisError, Debug)]
+pub enum MSRError {}

@@ -14,23 +14,26 @@
  * limitations under the License.
  */
 
-use ccp_config::Optimizations;
-use ccp_config::RandomXFlags;
-use ccp_config::ThreadsPerCoreAllocationPolicy;
+use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Clone, Debug)]
-pub struct CUProverConfig {
-    pub randomx_flags: RandomXFlags,
-    /// Defines how many threads will be assigned to a specific physical core,
-    /// aims to utilize benefits of hyper-threading.
-    pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
+use super::MSRCpuPreset;
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRState {
+    pub msr_preset: MSRCpuPreset,
 }
 
-impl From<Optimizations> for CUProverConfig {
-    fn from(ccp_optimizations: Optimizations) -> Self {
+impl MSRState {
+    pub fn new(msr_preset: MSRCpuPreset) -> MSRState {
+        Self { msr_preset }
+    }
+}
+
+impl Default for MSRState {
+    fn default() -> Self {
         Self {
-            randomx_flags: ccp_optimizations.randomx_flags,
-            threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
+            msr_preset: MSRCpuPreset::new(vec![]),
         }
     }
 }

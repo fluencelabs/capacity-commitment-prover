@@ -346,10 +346,13 @@ dependencies = [
 name = "ccp-msr"
 version = "0.3.0"
 dependencies = [
- "cpu-utils",
+ "ccp-config",
+ "ccp-shared",
  "nix",
  "once_cell",
  "raw-cpuid",
+ "serde",
+ "serde_json",
  "thiserror",
  "tracing",
 ]

@@ -24,6 +24,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use ccp_config::CCPConfig;
+use ccp_msr::state::MSRState;
+use ccp_msr::{MSREnforce, MSRModeEnforcer};
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -57,6 +59,7 @@ pub struct CCProver {
     prometheus_endpoint: Option<PrometheusEndpoint>,
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
+    msr_enforcer: MSRModeEnforcer,
 }
 
 impl NoxCCPApi for CCProver {
@@ -109,31 +112,75 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
-    pub fn new(config: CCPConfig) -> CCResult<Self> {
+    pub async fn new(config: CCPConfig) -> CCResult<Self> {
+        let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        Self::create_prover(config, None, msr_enforcer, state_storage).await
+    }
+
+    pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        let prev_state = match state_storage.try_to_load_data().await? {
+            Some(prev_state) => prev_state,
+            None => return Self::new(config).await,
+        };
+
+        // if there is a state, then it means that CCP crashed without setting back
+        // possibly changed original MSR state, so, let's set it back
+        if !config.optimizations.msr_enabled {
+            cease_prev_msr_policy(&prev_state);
+        }
+
+        let epoch = Some(prev_state.epoch_params);
+        let msr_enforcer = MSRModeEnforcer::from_preset(
+            config.optimizations.msr_enabled,
+            prev_state.msr_state.msr_preset,
+        );
+        let mut prover = Self::create_prover(config, epoch, msr_enforcer, state_storage).await?;
+
+        prover
+            .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+            .await?;
+
+        Ok(prover)
+    }
+
+    async fn create_prover(
+        config: CCPConfig,
+        epoch: Option<EpochParameters>,
+        msr_enforcer: MSRModeEnforcer,
+        state_storage: StateStorage,
+    ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
-        let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let start_proof_idx = proof_drainer.validate_proofs(&epoch).await?;
+
+        log::info!("continuing from proof index {start_proof_idx}");
+
         let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
             config.state_dir.clone(),
             config.logs.report_hashrate,
         )?;
+
+        let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
         let utility_thread = UtilityThread::spawn(
             config.rpc_endpoint.utility_cores_ids,
-            ProofIdx::zero(),
+            start_proof_idx,
             proof_dir,
-            None,
+            prev_global_nonce,
             hashrate_handler,
         );
+
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
             PrometheusEndpoint::new(
                 (endpoint_cfg.host.clone(), endpoint_cfg.port),
                 hashrate_collector,
             )
         });
-        let cu_prover_config = config.optimizations.into();
-        let state_storage = StateStorage::new(config.state_dir);
 
+        let cu_prover_config = config.optimizations.into();
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
@@ -142,7 +189,9 @@ impl CCProver {
             prometheus_endpoint,
             proof_drainer,
             state_storage,
+            msr_enforcer,
         };
+
         Ok(prover)
     }
 
@@ -178,68 +227,18 @@ impl CCProver {
         Ok(())
     }
 
-    pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
-        let proof_dir = config.state_dir.join(PROOF_DIR);
-        let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
-        let state_storage = StateStorage::new(config.state_dir.clone());
-
-        let prev_state = state_storage.try_to_load_data().await?;
-        let start_proof_idx = proof_cleaner
-            .validate_proofs(prev_state.as_ref().map(|state| &state.epoch_params))
-            .await?;
-
-        log::info!("continuing from proof index {start_proof_idx}");
-
-        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
-        let hashrate_handler = HashrateHandler::new(
-            hashrate_collector.clone(),
-            config.state_dir.clone(),
-            config.logs.report_hashrate,
-        )?;
-        let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids,
-            start_proof_idx,
-            proof_dir,
-            prev_state
-                .as_ref()
-                .map(|state| state.epoch_params.global_nonce),
-            hashrate_handler,
-        );
-        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
-            PrometheusEndpoint::new(
-                (endpoint_cfg.host.clone(), endpoint_cfg.port),
-                hashrate_collector,
-            )
-        });
-
-        let cu_prover_config = config.optimizations.into();
-        let mut self_ = Self {
-            cu_provers: HashMap::new(),
-            cu_prover_config,
-            status: CCStatus::Idle,
-            utility_thread,
-            prometheus_endpoint,
-            proof_drainer: proof_cleaner,
-            state_storage,
-        };
-
-        if let Some(prev_state) = prev_state {
-            self_
-                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
-                .await?;
-        }
-
-        Ok(self_)
-    }
-
     pub async fn save_state(
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
+        let original_msr_preset = self.msr_enforcer.original_preset();
+        let msr_state = MSRState::new(original_msr_preset.clone());
+
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
+            msr_state,
         };
         self.state_storage.save_state(Some(&state)).await
     }
@@ -340,9 +339,12 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
+        let msr_enforcer = self.msr_enforcer.clone();
 
         async move {
-            let mut prover = CUProver::create(prover_config, to_utility, state.new_core_id).await?;
+            let mut prover =
+                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
+                    .await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))
@@ -387,5 +389,19 @@ impl CCProver {
             Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
+    }
+}
+
+fn cease_prev_msr_policy(prev_state: &CCPState) {
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, prev_state.msr_state.msr_preset.clone());
+
+    for (&physical_core_id, _) in prev_state.cu_allocation.iter() {
+        let core_id: u32 = physical_core_id.into();
+        let logical_core_id = core_id.into();
+        if let Err(error) = msr_enforcer.cease(logical_core_id) {
+            log::error!(
+                "{logical_core_id}: failed to cease MSR policy from previous state with {error}"
+            );
+        }
     }
 }

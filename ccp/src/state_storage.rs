@@ -35,6 +35,7 @@ pub(crate) struct StateStorage {
 pub(crate) struct CCPState {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,
+    pub(crate) msr_state: ccp_msr::state::MSRState,
 }
 
 impl StateStorage {

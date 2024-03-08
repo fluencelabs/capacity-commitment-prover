@@ -14,30 +14,11 @@
  * limitations under the License.
  */
 
-use cpu_utils::LogicalCoreId;
+mod cpu_preset_values;
+mod errors;
+mod msr_mode;
+mod msr_x86_64;
+mod utils;
 
-use crate::MSRResult;
-use crate::MSR;
-
-#[derive(Debug)]
-pub struct MSRImpl {}
-
-impl MSRImpl {
-    pub fn new(_is_enabled: bool, _core_id: LogicalCoreId) -> Self {
-        Self {}
-    }
-}
-
-impl MSR for MSRImpl {
-    fn write_preset(&mut self, _store_state: bool) -> MSRResult<()> {
-        Ok(())
-    }
-
-    fn repin(&mut self, _core_id: LogicalCoreId) -> MSRResult<()> {
-        Ok(())
-    }
-
-    fn restore(self) -> MSRResult<()> {
-        Ok(())
-    }
-}
+pub use errors::MSRError;
+pub use msr_x86_64::MSRModeEnforcer;

@@ -17,6 +17,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::proof::CCProofId;
 use crate::types::Difficulty;
 use crate::types::GlobalNonce;
 
@@ -32,6 +33,15 @@ impl EpochParameters {
         Self {
             global_nonce,
             difficulty,
+        }
+    }
+}
+
+impl From<CCProofId> for EpochParameters {
+    fn from(id: CCProofId) -> Self {
+        Self {
+            global_nonce: id.global_nonce,
+            difficulty: id.difficulty,
         }
     }
 }
