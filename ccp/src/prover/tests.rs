@@ -240,7 +240,7 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
     cu_allocation.clear();
 
     prover
-        .on_active_commitment(get_epoch_params(), cu_allocation)
+        .on_active_commitment(generate_epoch_params(2, 25), cu_allocation)
         .await
         .unwrap();
 
@@ -248,7 +248,7 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
         .get_proofs_after("0".parse().unwrap())
         .await
         .expect("reading proofs");
-    assert!(proofs_after.is_empty());
+    assert!(proofs_after.is_empty(), "{:?}", proofs_after);
 
     prover.stop().await.unwrap();
 }
