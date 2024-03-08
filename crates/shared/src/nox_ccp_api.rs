@@ -55,4 +55,10 @@ pub trait NoxCCPApi: Send {
         &self,
         proof_idx: ProofIdx,
     ) -> impl std::future::Future<Output = Result<Vec<CCProof>, Self::Error>> + Send;
+
+    /// Set utility
+    fn realloc_utility_cores(
+        &self,
+        utility_core_ids: Vec<LogicalCoreId>,
+    ) -> impl std::future::Future<Output = ()> + Send;
 }

@@ -31,6 +31,7 @@ use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
+use crate::cpuids_handle::CpuIdsHandle;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
@@ -57,6 +58,7 @@ pub struct CCProver {
     prometheus_endpoint: Option<PrometheusEndpoint>,
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
+    utility_core_ids_handle: CpuIdsHandle,
 }
 
 impl NoxCCPApi for CCProver {
@@ -100,6 +102,10 @@ impl NoxCCPApi for CCProver {
             .await
             .map_err(Into::into)
     }
+
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
+        self.utility_core_ids_handle.set_cores(utility_core_ids);
+    }
 }
 
 impl ToCCStatus for CCProver {
@@ -119,7 +125,7 @@ impl CCProver {
             config.logs.report_hashrate,
         )?;
         let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids,
+            config.rpc_endpoint.utility_cores_ids.clone(),
             ProofIdx::zero(),
             proof_dir,
             None,
@@ -134,6 +140,8 @@ impl CCProver {
         let cu_prover_config = config.optimizations.into();
         let state_storage = StateStorage::new(config.state_dir);
 
+        let utility_core_ids_handle = CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids);
+
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
@@ -142,6 +150,7 @@ impl CCProver {
             prometheus_endpoint,
             proof_drainer,
             state_storage,
+            utility_core_ids_handle,
         };
         Ok(prover)
     }
@@ -178,7 +187,10 @@ impl CCProver {
         Ok(())
     }
 
-    pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
+    pub async fn from_saved_state(
+        config: CCPConfig,
+        utility_core_ids_handle: CpuIdsHandle,
+    ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
         let state_storage = StateStorage::new(config.state_dir.clone());
@@ -212,6 +224,10 @@ impl CCProver {
             )
         });
 
+        if let Some(prev_state) = prev_state.as_ref() {
+            utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+        }
+
         let cu_prover_config = config.optimizations.into();
         let mut self_ = Self {
             cu_provers: HashMap::new(),
@@ -221,6 +237,7 @@ impl CCProver {
             prometheus_endpoint,
             proof_drainer: proof_cleaner,
             state_storage,
+            utility_core_ids_handle,
         };
 
         if let Some(prev_state) = prev_state {
@@ -237,9 +254,11 @@ impl CCProver {
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
+        let utility_cores = self.utility_core_ids_handle.get_cores();
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
+            utility_cores,
         };
         self.state_storage.save_state(Some(&state)).await
     }

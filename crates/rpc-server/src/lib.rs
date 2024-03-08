@@ -31,7 +31,6 @@ mod facade;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use capacity_commitment_prover::cpuids_handle::CpuIdsHandle;
 use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
@@ -57,14 +56,12 @@ pub use crate::facade::BackgroundFacade;
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<Mutex<P>>,
-    tokio_core_ids_handler: CpuIdsHandle,
 }
 
 impl<P> CCPRcpHttpServer<P> {
-    pub fn new(cc_prover: P, utility_core_ids_handler: CpuIdsHandle) -> Self {
+    pub fn new(cc_prover: P) -> Self {
         Self {
             cc_prover: Arc::new(Mutex::new(cc_prover)),
-            tokio_core_ids_handler: utility_core_ids_handler,
         }
     }
 }
@@ -169,6 +166,7 @@ where
             tracing::error!("Tokio thread repinning failed");
         }
 
-        self.tokio_core_ids_handler.set_cores(utility_core_ids);
+        let guard = self.cc_prover.lock().await;
+        guard.realloc_utility_cores(utility_core_ids).await;
     }
 }
