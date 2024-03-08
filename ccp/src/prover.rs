@@ -25,7 +25,7 @@ use std::sync::Mutex;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
-use ccp_msr::MSRModeEnforcer;
+use ccp_msr::{MSREnforce, MSRModeEnforcer};
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -124,6 +124,12 @@ impl CCProver {
             Some(prev_state) => prev_state,
             None => return Self::new(config).await,
         };
+
+        // if there is a state, then it means that CCP crashed without setting back
+        // possibly changed original MSR state, so, let's set it back
+        if !config.optimizations.msr_enabled {
+            cease_prev_msr_policy(&prev_state);
+        }
 
         let epoch = Some(prev_state.epoch_params);
         let msr_enforcer = MSRModeEnforcer::from_preset(
@@ -376,5 +382,19 @@ impl CCProver {
             Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
+    }
+}
+
+fn cease_prev_msr_policy(prev_state: &CCPState) {
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, prev_state.msr_state.msr_preset.clone());
+
+    for (&physical_core_id, _) in prev_state.cu_allocation.iter() {
+        let core_id: u32 = physical_core_id.into();
+        let logical_core_id = core_id.into();
+        if let Err(error) = msr_enforcer.cease(logical_core_id) {
+            log::error!(
+                "{logical_core_id}: failed to cease MSR policy from previous state with {error}"
+            );
+        }
     }
 }
