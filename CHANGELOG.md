@@ -1,26 +1,5 @@
 # Changelog
 
-## [0.3.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.2.0...ccp-v0.3.0) (2024-03-07)
-
-
-### ⚠ BREAKING CHANGES
-
-* **rpc:** add realloc_utility_cores RPC method ([#69](https://github.com/fluencelabs/capacity-commitment-prover/issues/69))
-* **ccp,main:** Graceful shutdown ([#77](https://github.com/fluencelabs/capacity-commitment-prover/issues/77))
-* **core:** make crossterm optional ([#71](https://github.com/fluencelabs/capacity-commitment-prover/issues/71))
-
-### Features
-
-* **ccp,main:** Graceful shutdown ([#77](https://github.com/fluencelabs/capacity-commitment-prover/issues/77)) ([6b2c6f8](https://github.com/fluencelabs/capacity-commitment-prover/commit/6b2c6f85819ad44d70560a95181b68bdf1323eb5))
-* **core:** make crossterm optional ([#71](https://github.com/fluencelabs/capacity-commitment-prover/issues/71)) ([b8d18fc](https://github.com/fluencelabs/capacity-commitment-prover/commit/b8d18fcc7dc82e72c9e7cfacc1ac41e14e95f4a5))
-* **rpc:** add realloc_utility_cores RPC method ([#69](https://github.com/fluencelabs/capacity-commitment-prover/issues/69)) ([a35fc11](https://github.com/fluencelabs/capacity-commitment-prover/commit/a35fc11e205cda2d6cd36b871b760dcac7ddf666))
-
-
-### Bug Fixes
-
-* **ccp:** use random temporary file name ([#78](https://github.com/fluencelabs/capacity-commitment-prover/issues/78)) ([f8dd6b4](https://github.com/fluencelabs/capacity-commitment-prover/commit/f8dd6b458033476ced2fb00b3ca59c6310e88998))
-* **rpc:** get_proofs_after returns empty list on busy lock ([#81](https://github.com/fluencelabs/capacity-commitment-prover/issues/81)) ([84b8e95](https://github.com/fluencelabs/capacity-commitment-prover/commit/84b8e956dca1e946d35598605c2c27330a2ceb54))
-
 ## [0.2.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.1.0...ccp-v0.2.0) (2024-03-06)
 
 
