@@ -270,7 +270,7 @@ checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
 name = "capacity-commitment-prover"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -291,11 +291,13 @@ dependencies = [
  "log",
  "maplit",
  "nonempty",
+ "parking_lot",
  "prometheus-client",
  "rand 0.8.5",
  "serde",
  "serde_json",
  "tempdir",
+ "tempfile",
  "test-log",
  "thiserror",
  "tokio",
@@ -311,7 +313,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp-config"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -323,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "capacity-commitment-prover",
  "ccp-config",
@@ -334,6 +336,7 @@ dependencies = [
  "cpu-utils",
  "eyre",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -341,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -356,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "bitflags 2.4.2",
  "ccp-shared",
@@ -370,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -381,12 +384,13 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "capacity-commitment-prover",
  "ccp-rpc-client",
  "ccp-shared",
+ "cpu-utils",
  "eyre",
  "jsonrpsee",
  "tokio",
@@ -395,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "hex",
  "newtype_derive",
@@ -405,7 +409,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -413,7 +417,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -546,7 +550,7 @@ dependencies = [
 
 [[package]]
 name = "cpu-utils"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "ccp-shared",
  "core_affinity",
@@ -758,6 +762,12 @@ dependencies = [
  "indenter",
  "once_cell",
 ]
+
+[[package]]
+name = "fastrand"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
 name = "fnv"
@@ -2396,6 +2406,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tempfile"
+version = "3.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "85b77fafb263dd9d05cbeac119526425676db3784113aa9295c88498cbf8bff1"
+dependencies = [
+ "cfg-if",
+ "fastrand",
+ "rustix",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "termcolor"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2492,6 +2514,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.48.0",
