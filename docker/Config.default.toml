@@ -12,15 +12,13 @@ port = "9384"
 # hard-aes = true
 # jit = true
 # secure = false
-# argon2-sse3 = true
-# argon2-avx2 = true
 # argon2 = true
 # msr = false
-# threads-per-physical-core = 2
+# threads-per-core = 2
 
 [logs]
 report-hashrate = false
 log-level = "info"
 
 [state]
-path = "/fluence/data"
+path = "./state"
