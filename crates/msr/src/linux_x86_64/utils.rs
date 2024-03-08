@@ -38,7 +38,7 @@ pub(crate) fn read_msr(register_id: u32, core_id: LogicalCoreId) -> MSRResult<u6
         .map_err(|errno| MSRError::read_w_no_err(register_id, core_id, errno))?;
     let result = u64::from_le_bytes(value);
 
-    tracing::debug!("Read MSR register_id {register_id:?} value {value:?} at core id {core_id}",);
+    tracing::debug!("Read MSR register_id {register_id} value {value:#X} at core id {core_id}",);
 
     Ok(result)
 }

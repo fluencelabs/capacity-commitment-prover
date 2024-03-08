@@ -35,6 +35,13 @@ impl MSRModeEnforcer {
     /// Initialize enforces by reading the original values from OS,
     /// this method should typically be called only once in CCP.
     pub fn from_os(is_enabled: bool) -> Self {
+        if !is_enabled {
+            return Self {
+                is_enabled,
+                original_preset: <_>::default(),
+            };
+        }
+
         let mode = MSRMode::detect();
         let preset = mode.get_optimal_cpu_preset();
 
@@ -107,7 +114,7 @@ pub fn write(item: MSRPresetItem, core_id: LogicalCoreId) -> MSRResult<()> {
     };
 
     tracing::debug!(
-        "Write MSR register_id {:?} value {:} at logical CPU {}  ",
+        "Write MSR register_id {} value {:#X} at logical CPU {}  ",
         item.register_id(),
         value_to_write,
         core_id

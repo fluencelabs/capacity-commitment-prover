@@ -36,7 +36,7 @@ pub use msr_impl::*;
 pub type MSRResult<T> = Result<T, MSRError>;
 
 pub trait MSREnforce {
-    /// Applies chosen MSR policy to current core.
+    /// Applies auto-chosen MSR preset to current core.
     fn enforce(&mut self, core_id: LogicalCoreId) -> MSRResult<()>;
 
     /// Cease applied policy to original presets.
