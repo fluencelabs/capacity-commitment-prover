@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.3.0...ccp-v0.4.0) (2024-03-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* **msr, persistence:** refactor msr ([#79](https://github.com/fluencelabs/capacity-commitment-prover/issues/79))
+
+### Features
+
+* **msr, persistence:** refactor msr ([#79](https://github.com/fluencelabs/capacity-commitment-prover/issues/79)) ([8510ac7](https://github.com/fluencelabs/capacity-commitment-prover/commit/8510ac78bb63f5959832c8e1bcb8047f8a4be2c6))
+
+
+### Bug Fixes
+
+* **config:** fix default config field names, add state dir defaults, create state dir ([#89](https://github.com/fluencelabs/capacity-commitment-prover/issues/89)) ([2684980](https://github.com/fluencelabs/capacity-commitment-prover/commit/2684980ec691c5ee278f1317075bb22d2bc5f057))
+
 ## [0.3.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.2.0...ccp-v0.3.0) (2024-03-08)
 
 
