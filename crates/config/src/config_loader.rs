@@ -28,5 +28,5 @@ pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
     let config = Config::builder().add_source(config_source).build()?;
 
     let config: UnresolvedCCPConfig = config.try_deserialize()?;
-    config.resolve()
+    config.resolve(path)
 }

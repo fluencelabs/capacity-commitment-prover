@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
+use std::path::Path;
+
+use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
+use super::defaults::default_state_path;
 use crate::*;
 
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
@@ -94,6 +98,7 @@ pub struct UnresolvedLogs {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
+    #[serde(default = "default_state_path")]
     pub path: std::path::PathBuf,
 }
 
@@ -117,7 +122,14 @@ pub enum LogLevel {
 }
 
 impl UnresolvedCCPConfig {
-    pub fn resolve(self) -> eyre::Result<CCPConfig> {
+    pub fn resolve(self, config_path: impl AsRef<Path>) -> eyre::Result<CCPConfig> {
+        let config_dir = config_path.as_ref().parent().ok_or_else(|| {
+            eyre!(
+                "config resolver was provided with invalid config path: {}",
+                config_path.as_ref().display()
+            )
+        })?;
+
         let rpc_endpoint = self.rpc_endpoint.resolve();
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
@@ -128,7 +140,7 @@ impl UnresolvedCCPConfig {
             prometheus_endpoint,
             optimizations: optimization,
             logs,
-            state_dir: self.state.path,
+            state_dir: config_dir.join(self.state.path),
         };
         Ok(config)
     }

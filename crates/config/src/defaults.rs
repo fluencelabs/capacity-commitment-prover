@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::path::PathBuf;
+
 use crate::unresolved_config::LogLevel;
 
 pub(crate) fn default_log_level() -> LogLevel {
@@ -22,6 +24,10 @@ pub(crate) fn default_log_level() -> LogLevel {
 
 pub(crate) fn default_report_hashrate() -> bool {
     false
+}
+
+pub(crate) fn default_state_path() -> PathBuf {
+    PathBuf::from("./state")
 }
 
 pub(crate) fn default_msr_enabled() -> bool {
