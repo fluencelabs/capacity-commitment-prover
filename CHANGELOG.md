@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.0...ccp-v0.4.1) (2024-03-09)
+
+
+### Features
+
+* **ccp-shared:** add Ord to CUID type ([#90](https://github.com/fluencelabs/capacity-commitment-prover/issues/90)) ([2beb3b0](https://github.com/fluencelabs/capacity-commitment-prover/commit/2beb3b065c58e0e792a742e3378a685b275b53e9))
+
+
+### Bug Fixes
+
+* **config:** default config for logs and state ([#92](https://github.com/fluencelabs/capacity-commitment-prover/issues/92)) ([7f062fc](https://github.com/fluencelabs/capacity-commitment-prover/commit/7f062fc528dea52b0a502d6d7b6fbfb89e773620))
+
 ## [0.4.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.3.0...ccp-v0.4.0) (2024-03-08)
 
 
