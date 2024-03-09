@@ -35,7 +35,9 @@ pub struct UnresolvedCCPConfig {
     pub prometheus_endpoint: Option<UnresolvedPrometheusEndpoint>,
     #[serde(default)]
     pub optimizations: UnresolvedOptimizations,
+    #[serde(default)]
     pub logs: UnresolvedLogs,
+    #[serde(default)]
     pub state: State,
 }
 
@@ -96,10 +98,25 @@ pub struct UnresolvedLogs {
     pub log_level: LogLevel,
 }
 
+impl Default for UnresolvedLogs {
+    fn default() -> Self {
+        UnresolvedLogs {
+            report_hashrate: default_report_hashrate(),
+            log_level: default_log_level()
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
     #[serde(default = "default_state_path")]
     pub path: std::path::PathBuf,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State { path: default_state_path() }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
