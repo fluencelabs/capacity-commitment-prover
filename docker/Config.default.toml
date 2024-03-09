@@ -17,10 +17,10 @@ argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
 # threads-per-core = 2
 
 [logs]
-report-hashrate = true
+report-hashrate = false
 log-level = "info"
 
-#[state]
-## relative path will be resolved relative to Config.toml
-## absolute path will work as is
-#path = "./state"
+[state]
+# relative path will be resolved relative to Config.toml
+# absolute path will work as is
+path = "./state"
