@@ -3,24 +3,24 @@ host = "0.0.0.0"
 port = "9383"
 utility-thread-ids = [1]
 
-[prometheus-endpoint]
-host = "0.0.0.0"
-port = "9384"
+#[prometheus-endpoint]
+#host = "0.0.0.0"
+#port = "9384"
 
-[optimizations]
+#[optimizations]
 # large-pages = true
 # hard-aes = true
 # jit = true
 # secure = false
-argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
+#argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
 # msr = false
 # threads-per-core = 2
 
-[logs]
-report-hashrate = false
-log-level = "info"
+#[logs]
+#report-hashrate = true
+#log-level = "info"
 
-[state]
-# relative path will be resolved relative to Config.toml
-# absolute path will work as is
-path = "./state"
+#[state]
+## relative path will be resolved relative to Config.toml
+## absolute path will work as is
+#path = "./state"
