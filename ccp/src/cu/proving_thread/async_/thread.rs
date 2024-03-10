@@ -34,7 +34,6 @@ use crate::cu::proving_thread::sync::ProvingThreadSync;
 pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
-    #[allow(unused)]
     sync_thread: ProvingThreadSync,
 }
 
