@@ -227,7 +227,6 @@ impl CCProver {
             move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.join().boxed();
 
         run_unordered(self.cu_provers.drain(), join_closure).await?;
-
         Ok(())
     }
 
