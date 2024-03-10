@@ -85,11 +85,10 @@ impl NoxCCPApi for CCProver {
         apply_resut
     }
 
-    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        let closure =
-            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.stop().boxed();
+    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
+        self.stop_provers_nonblocking().await?;
+        self.join_provers().await?;
 
-        run_unordered(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
 
         self.save_no_state().await?;
@@ -211,6 +210,24 @@ impl CCProver {
         // stop all active provers
         self.on_no_active_commitment().await?;
         self.shutdown().await
+    }
+
+    async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
+        let nonblocking_closure =
+            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
+                prover.stop_nonblocking().boxed()
+            };
+
+        run_unordered(self.cu_provers.iter(), nonblocking_closure).await?;
+        Ok(())
+    }
+
+    async fn join_provers(&mut self) -> CCResult<()> {
+        let join_closure =
+            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.join().boxed();
+
+        run_unordered(self.cu_provers.drain(), join_closure).await?;
+        Ok(())
     }
 
     pub async fn shutdown(&mut self) -> CCResult<()> {
@@ -358,7 +375,7 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover.stop().await?;
+            prover.stop_join().await?;
             Ok(AlignmentPostAction::Nothing)
         }
         .boxed()
