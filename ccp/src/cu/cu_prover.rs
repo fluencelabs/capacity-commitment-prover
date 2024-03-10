@@ -119,11 +119,12 @@ impl CUProver {
     }
 
     pub(crate) async fn stop(self) -> CUResult<()> {
+        log::error!("Stopping thread on {}", self.pinned_core_id);
         use futures::FutureExt;
 
         let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
         run_unordered(self.threads.into_iter(), closure).await?;
-
+        log::error!("Stopped thread on {}", self.pinned_core_id);
         Ok(())
     }
 

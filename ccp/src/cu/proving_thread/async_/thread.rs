@@ -34,6 +34,7 @@ use crate::cu::proving_thread::sync::ProvingThreadSync;
 pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
+    #[allow(unused)]
     sync_thread: ProvingThreadSync,
 }
 
@@ -154,6 +155,7 @@ impl ProvingThreadFacade for ProvingThreadAsync {
     async fn stop(self) -> Result<(), Self::Error> {
         let message = AsyncToSyncMessage::Stop;
         self.to_sync.send(message).await?;
-        Ok(self.sync_thread.join()?)
+        Ok(())
+        //Ok(self.sync_thread.join()?)
     }
 }

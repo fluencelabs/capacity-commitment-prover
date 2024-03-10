@@ -61,6 +61,7 @@ impl ProvingThreadSyncError {
 }
 
 impl ProvingThreadSyncFacadeError {
+    #[allow(unused)]
     pub(crate) fn join_error(error: Box<dyn Any + Send>) -> Self {
         Self::JoinError(error)
     }

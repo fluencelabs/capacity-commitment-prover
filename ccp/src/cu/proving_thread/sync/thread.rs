@@ -43,6 +43,7 @@ const CHANNEL_DROPPED_MESSAGE: &str =
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadSync {
+    #[allow(unused)]
     handle: thread::JoinHandle<STFResult<()>>,
 }
 
@@ -61,6 +62,7 @@ impl ProvingThreadSync {
         Self { handle }
     }
 
+    #[allow(unused)]
     pub(crate) fn join(self) -> STFResult<()> {
         self.handle
             .join()
