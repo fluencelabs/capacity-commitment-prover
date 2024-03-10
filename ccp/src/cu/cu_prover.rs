@@ -121,7 +121,8 @@ impl CUProver {
     pub(crate) async fn stop_nonblocking<'threads>(&'threads self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: &'threads ProvingThreadAsync| thread.stop_nonblocking().boxed();
+        let closure =
+            |_: usize, thread: &'threads ProvingThreadAsync| thread.stop_nonblocking().boxed();
         run_unordered(self.threads.iter(), closure).await?;
         Ok(())
     }

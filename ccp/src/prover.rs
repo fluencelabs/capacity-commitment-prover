@@ -214,7 +214,9 @@ impl CCProver {
 
     async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
         let nonblocking_closure =
-            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| prover.stop_nonblocking().boxed();
+            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
+                prover.stop_nonblocking().boxed()
+            };
 
         run_unordered(self.cu_provers.iter(), nonblocking_closure).await?;
         Ok(())

@@ -102,7 +102,7 @@ impl Default for UnresolvedLogs {
     fn default() -> Self {
         UnresolvedLogs {
             report_hashrate: default_report_hashrate(),
-            log_level: default_log_level()
+            log_level: default_log_level(),
         }
     }
 }
@@ -115,7 +115,9 @@ pub struct State {
 
 impl Default for State {
     fn default() -> Self {
-        State { path: default_state_path() }
+        State {
+            path: default_state_path(),
+        }
     }
 }
 
