@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.1...ccp-v0.4.2) (2024-03-10)
+
+
+### Bug Fixes
+
+* stop prover threads simultaneously ([#93](https://github.com/fluencelabs/capacity-commitment-prover/issues/93)) ([dc183fd](https://github.com/fluencelabs/capacity-commitment-prover/commit/dc183fd4eeb12a3870bed27f319fa5882fc57854))
+
 ## [0.4.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.0...ccp-v0.4.1) (2024-03-09)
 
 
