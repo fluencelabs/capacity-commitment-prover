@@ -118,13 +118,27 @@ impl CUProver {
         Ok(())
     }
 
-    pub(crate) async fn stop(self) -> CUResult<()> {
-        log::error!("Stopping thread on {}", self.pinned_core_id);
+    pub(crate) async fn stop_nonblocking<'threads>(&'threads self) -> CUResult<()> {
         use futures::FutureExt;
 
-        let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
+        let closure = |_: usize, thread: &'threads ProvingThreadAsync| thread.stop_nonblocking().boxed();
+        run_unordered(self.threads.iter(), closure).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn join(self) -> CUResult<()> {
+        use futures::FutureExt;
+
+        let closure = |_: usize, thread: ProvingThreadAsync| thread.join().boxed();
         run_unordered(self.threads.into_iter(), closure).await?;
-        log::error!("Stopped thread on {}", self.pinned_core_id);
+        Ok(())
+    }
+
+    pub(crate) async fn stop_join(self) -> CUResult<()> {
+        use futures::FutureExt;
+
+        let closure = |_: usize, thread: ProvingThreadAsync| thread.stop_join().boxed();
+        run_unordered(self.threads.into_iter(), closure).await?;
         Ok(())
     }
 

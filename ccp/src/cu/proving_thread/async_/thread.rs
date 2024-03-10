@@ -152,10 +152,18 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         }
     }
 
-    async fn stop(self) -> Result<(), Self::Error> {
+    async fn stop_nonblocking(&self) -> Result<(), Self::Error> {
         let message = AsyncToSyncMessage::Stop;
-        self.to_sync.send(message).await?;
+        Ok(self.to_sync.send(message).await?)
+    }
+
+    async fn join(self) -> Result<(), Self::Error> {
+        Ok(self.sync_thread.join()?)
+    }
+
+    async fn stop_join(self) -> Result<(), Self::Error> {
+        self.stop_nonblocking().await?;
+        self.join().await?;
         Ok(())
-        //Ok(self.sync_thread.join()?)
     }
 }
