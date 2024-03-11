@@ -121,7 +121,8 @@ impl CCProver {
     pub async fn new(config: CCPConfig) -> CCResult<Self> {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
         let state_storage = StateStorage::new(config.state_dir.clone());
-        let utility_core_ids_handle = CpuIdsHandle::new(vec![]);
+        let utility_core_ids_handle =
+            CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids.clone());
 
         Self::create_prover(
             config,
