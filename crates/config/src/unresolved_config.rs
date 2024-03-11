@@ -46,6 +46,7 @@ pub struct UnresolvedCCPConfig {
 pub struct UnresolvedRpcEndpoint {
     pub host: String,
     pub port: u16,
+    #[serde(default)]
     pub utility_thread_ids: Vec<u32>,
 }
 
