@@ -99,7 +99,7 @@ async fn idle_cu_prover_can_be_stopped() {
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Idle);
 
-    let result = prover.stop().await;
+    let result = prover.stop_join().await;
     assert!(result.is_ok());
 
     let result = handle.await;
@@ -125,7 +125,7 @@ async fn cu_prover_can_be_stopped() {
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
 
-    let result = prover.stop().await;
+    let result = prover.stop_join().await;
     let _ = handle.await;
     assert!(result.is_ok());
 }
@@ -186,7 +186,7 @@ async fn cu_prover_can_be_paused() {
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    prover.stop().await.unwrap();
+    prover.stop_join().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
     assert!(!proofs_before_pause.is_empty());
@@ -228,7 +228,7 @@ async fn cu_prover_produces_correct_proofs() {
     prover.new_epoch(epoch_2, cu_id_2).await.unwrap();
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
-    let result = prover.stop().await;
+    let result = prover.stop_join().await;
     let proofs = handle.await.unwrap();
 
     assert!(result.is_ok());
@@ -263,7 +263,7 @@ async fn cu_prover_works_with_odd_threads_number() {
     prover.new_epoch(epoch, cu_id).await.unwrap();
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    let result = prover.stop().await;
+    let result = prover.stop_join().await;
     let proofs = handle.await.unwrap();
 
     assert!(result.is_ok());
@@ -319,7 +319,7 @@ async fn cu_prover_changes_epoch_correctly() {
         tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     }
 
-    let result = prover.stop().await;
+    let result = prover.stop_join().await;
     let mut proofs = handle.await.unwrap();
 
     assert!(result.is_ok());
