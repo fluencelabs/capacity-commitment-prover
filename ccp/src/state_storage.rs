@@ -18,6 +18,7 @@ use std::path::PathBuf;
 
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
+use ccp_shared::types::LogicalCoreId;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -36,6 +37,7 @@ pub(crate) struct CCPState {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,
     pub(crate) msr_state: ccp_msr::state::MSRState,
+    pub(crate) utility_cores: Vec<LogicalCoreId>,
 }
 
 impl StateStorage {

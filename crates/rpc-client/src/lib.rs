@@ -65,7 +65,7 @@ pub trait CCPRpc {
         limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned>;
 
-    #[method(name = "realloc_utility_core", param_kind = map)]
+    #[method(name = "realloc_utility_cores", param_kind = map)]
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
 }
 
@@ -107,7 +107,7 @@ impl CCPRpcHttpClient {
         CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
     }
 
-    pub async fn realloc_utility_core(
+    pub async fn realloc_utility_cores(
         &self,
         utility_core_ids: Vec<LogicalCoreId>,
     ) -> Result<(), ClientError> {

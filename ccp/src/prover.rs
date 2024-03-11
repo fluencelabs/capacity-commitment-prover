@@ -33,6 +33,7 @@ use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
+use crate::cpuids_handle::CpuIdsHandle;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
@@ -60,6 +61,7 @@ pub struct CCProver {
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
     msr_enforcer: MSRModeEnforcer,
+    utility_core_ids_handle: CpuIdsHandle,
 }
 
 impl NoxCCPApi for CCProver {
@@ -102,6 +104,10 @@ impl NoxCCPApi for CCProver {
             .await
             .map_err(Into::into)
     }
+
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
+        self.utility_core_ids_handle.set_cores(utility_core_ids);
+    }
 }
 
 impl ToCCStatus for CCProver {
@@ -111,35 +117,71 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
+    // this method should be used in simple tests only
     pub async fn new(config: CCPConfig) -> CCResult<Self> {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
         let state_storage = StateStorage::new(config.state_dir.clone());
-        Self::create_prover(config, None, msr_enforcer, state_storage).await
+        let utility_core_ids_handle =
+            CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids.clone());
+
+        Self::create_prover(
+            config,
+            None,
+            msr_enforcer,
+            state_storage,
+            utility_core_ids_handle,
+        )
+        .await
     }
 
-    pub async fn from_saved_state(config: CCPConfig) -> CCResult<Self> {
+    pub async fn from_saved_state(
+        config: CCPConfig,
+        utility_core_ids_handle: CpuIdsHandle,
+    ) -> CCResult<Self> {
         let state_storage = StateStorage::new(config.state_dir.clone());
-        let prev_state = match state_storage.try_to_load_data().await? {
-            Some(prev_state) => prev_state,
-            None => return Self::new(config).await,
-        };
 
-        // if there is a state, then it means that CCP crashed without setting back
-        // possibly changed original MSR state, so, let's set it back
-        if !config.optimizations.msr_enabled {
-            cease_prev_msr_policy(&prev_state);
+        let prev_state = state_storage.try_to_load_data().await?;
+
+        let epoch;
+        let msr_enforcer;
+
+        match &prev_state {
+            Some(prev_state) => {
+                utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+
+                // if there is a state, then it means that CCP crashed without setting back
+                // possibly changed original MSR state, so, let's set it back
+                if !config.optimizations.msr_enabled {
+                    cease_prev_msr_policy(&prev_state);
+                }
+
+                epoch = Some(prev_state.epoch_params);
+
+                msr_enforcer = MSRModeEnforcer::from_preset(
+                    config.optimizations.msr_enabled,
+                    prev_state.msr_state.msr_preset.clone(),
+                );
+            }
+            None => {
+                epoch = None;
+                msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+            }
         }
 
-        let epoch = Some(prev_state.epoch_params);
-        let msr_enforcer = MSRModeEnforcer::from_preset(
-            config.optimizations.msr_enabled,
-            prev_state.msr_state.msr_preset,
-        );
-        let mut prover = Self::create_prover(config, epoch, msr_enforcer, state_storage).await?;
+        let mut prover = Self::create_prover(
+            config,
+            epoch,
+            msr_enforcer,
+            state_storage,
+            utility_core_ids_handle,
+        )
+        .await?;
 
-        prover
-            .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
-            .await?;
+        if let Some(prev_state) = &prev_state {
+            prover
+                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .await?;
+        }
 
         Ok(prover)
     }
@@ -149,6 +191,7 @@ impl CCProver {
         epoch: Option<EpochParameters>,
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
+        utility_core_ids_handle: CpuIdsHandle,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
@@ -165,7 +208,7 @@ impl CCProver {
 
         let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
         let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids,
+            config.rpc_endpoint.utility_cores_ids.clone(),
             start_proof_idx,
             proof_dir,
             prev_global_nonce,
@@ -189,6 +232,7 @@ impl CCProver {
             proof_drainer,
             state_storage,
             msr_enforcer,
+            utility_core_ids_handle,
         };
 
         Ok(prover)
@@ -252,9 +296,12 @@ impl CCProver {
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
+        let utility_cores = self.utility_core_ids_handle.get_cores();
+
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
+            utility_cores,
             msr_state,
         };
         self.state_storage.save_state(Some(&state)).await

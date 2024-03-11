@@ -30,6 +30,7 @@ use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
 
+use crate::cpuids_handle::CpuIdsHandle;
 use crate::state_storage::CCPState;
 use crate::CCProver;
 
@@ -58,7 +59,10 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         state_dir,
     };
 
-    CCProver::from_saved_state(config).await.unwrap()
+    let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
+    CCProver::from_saved_state(config, utility_core_ids_handle)
+        .await
+        .unwrap()
 }
 
 fn get_epoch_params() -> EpochParameters {
@@ -101,6 +105,7 @@ async fn prover_on_active_commitment() {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
+        utility_cores: vec![1.into()],
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -387,6 +392,7 @@ async fn prover_on_active_change_epoch() {
         epoch_params: epoch_params_second,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
+        utility_cores: vec![1.into()],
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -434,6 +440,7 @@ async fn prover_restore_from_state_with_no_proofs() {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
+        utility_cores: vec![1.into()],
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await
@@ -499,6 +506,7 @@ async fn prover_restore_from_state_with_proofs() {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
+        utility_cores: vec![1.into()],
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
         .await

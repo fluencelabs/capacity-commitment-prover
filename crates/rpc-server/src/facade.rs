@@ -123,6 +123,14 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
             .map_err(|e| eyre::eyre!(e.to_string()))
             .context("get_proofs_after")
     }
+
+    async fn realloc_utility_cores(&self, utility_core_ids: Vec<cpu_utils::LogicalCoreId>) {
+        self.prover
+            .read()
+            .await
+            .realloc_utility_cores(utility_core_ids)
+            .await;
+    }
 }
 
 #[tracing::instrument(skip_all)]
