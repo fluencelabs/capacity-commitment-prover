@@ -92,7 +92,7 @@ async fn idle_cu_prover_can_be_stopped() {
 
     let config = create_config(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
 
@@ -113,7 +113,7 @@ async fn cu_prover_can_be_stopped() {
     let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
@@ -139,7 +139,7 @@ async fn cu_prover_can_be_paused() {
     let config = create_config(1);
     let (inlet, mut outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
 
@@ -200,7 +200,7 @@ async fn cu_prover_produces_correct_proofs() {
     let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
 
@@ -240,7 +240,7 @@ async fn cu_prover_works_with_odd_threads_number() {
     let config = create_config(5);
     let (inlet, mut outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
 
@@ -277,7 +277,7 @@ async fn cu_prover_changes_epoch_correctly() {
     let config = create_config(2);
     let (inlet, mut outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
+    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into(), 1024)
         .await
         .unwrap();
 

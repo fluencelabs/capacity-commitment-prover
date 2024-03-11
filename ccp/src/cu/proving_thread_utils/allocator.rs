@@ -51,12 +51,18 @@ impl ThreadAllocator {
         &self,
         msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
+        hashes_per_round: usize,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
             .iter()
             .map(|logical_core| {
-                ProvingThreadAsync::new(*logical_core, msr_enforcer.clone(), to_utility.clone())
+                ProvingThreadAsync::new(
+                    *logical_core,
+                    msr_enforcer.clone(),
+                    to_utility.clone(),
+                    hashes_per_round,
+                )
             })
             .collect::<Vec<_>>();
         let threads = NonEmpty::from_vec(threads).unwrap();

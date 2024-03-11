@@ -27,6 +27,7 @@ use super::defaults::default_state_path;
 use crate::*;
 
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
+const DEFAULT_HASHES_PER_ROUND: usize = 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -39,6 +40,8 @@ pub struct UnresolvedCCPConfig {
     pub logs: UnresolvedLogs,
     #[serde(default)]
     pub state: State,
+    #[serde(default)]
+    pub parameters: UnresolvedParameters,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -122,6 +125,12 @@ impl Default for State {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnresolvedParameters {
+    hashes_per_round: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Argon2Impl {
     AVX2,
@@ -153,6 +162,7 @@ impl UnresolvedCCPConfig {
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
+        let parameters = self.parameters.resolve();
 
         let config = CCPConfig {
             rpc_endpoint,
@@ -160,6 +170,7 @@ impl UnresolvedCCPConfig {
             optimizations: optimization,
             logs,
             state_dir: config_dir.join(self.state.path),
+            parameters,
         };
         Ok(config)
     }
@@ -265,6 +276,22 @@ impl UnresolvedLogs {
         Logs {
             report_hashrate: self.report_hashrate,
             log_level: self.log_level.to_tracing_filter(),
+        }
+    }
+}
+
+impl UnresolvedParameters {
+    pub fn resolve(self) -> Parameters {
+        Parameters {
+            hashes_per_round: self.hashes_per_round,
+        }
+    }
+}
+
+impl Default for UnresolvedParameters {
+    fn default() -> Self {
+        Self {
+            hashes_per_round: DEFAULT_HASHES_PER_ROUND,
         }
     }
 }

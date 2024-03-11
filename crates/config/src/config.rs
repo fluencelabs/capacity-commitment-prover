@@ -20,6 +20,7 @@ use ccp_shared::types::LogicalCoreId;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
+use crate::unresolved_config::UnresolvedParameters;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
@@ -28,6 +29,7 @@ pub struct CCPConfig {
     pub optimizations: Optimizations,
     pub logs: Logs,
     pub state_dir: std::path::PathBuf,
+    pub parameters: Parameters,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -73,6 +75,11 @@ pub enum ThreadsPerCoreAllocationPolicy {
     },
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Parameters {
+    pub hashes_per_round: usize,
+}
+
 impl Default for RpcEndpoint {
     fn default() -> Self {
         Self {
@@ -99,5 +106,11 @@ impl Default for Logs {
             report_hashrate: default_report_hashrate(),
             log_level: default_log_level().to_tracing_filter(),
         }
+    }
+}
+
+impl Default for Parameters {
+    fn default() -> Self {
+        UnresolvedParameters::default().resolve()
     }
 }

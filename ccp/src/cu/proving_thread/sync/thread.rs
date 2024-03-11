@@ -36,8 +36,6 @@ use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::errors::ProvingThreadSyncFacadeError;
 use crate::hashrate::ThreadHashrateRecord;
 
-const HASHES_PER_ROUND: usize = 1024;
-
 const CHANNEL_DROPPED_MESSAGE: &str =
     "ThreadState::WaitForMessage async part of the ptt channel is dropped";
 
@@ -192,8 +190,8 @@ impl ProvingThreadSync {
                 Ok(ThreadState::WaitForMessage)
             }
 
-            AsyncToSyncMessage::NewCCJob(job) => {
-                let job = RandomXJob::from_cc_job(job, HASHES_PER_ROUND)?;
+            AsyncToSyncMessage::NewCCJob(job, hashes_per_round) => {
+                let job = RandomXJob::from_cc_job(job, hashes_per_round)?;
                 Ok(ThreadState::CCJob { job })
             }
 

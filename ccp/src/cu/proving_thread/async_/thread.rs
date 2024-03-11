@@ -35,6 +35,7 @@ pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
+    hashes_per_round: usize,
 }
 
 impl ProvingThreadAsync {
@@ -42,6 +43,7 @@ impl ProvingThreadAsync {
         core_id: LogicalCoreId,
         msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
+        hashes_per_round: usize,
     ) -> Self {
         let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
         let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
@@ -52,6 +54,7 @@ impl ProvingThreadAsync {
             to_sync,
             from_sync,
             sync_thread,
+            hashes_per_round,
         }
     }
 }
@@ -127,7 +130,7 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
         let message = NewCCJob::new(epoch, dataset, flags, cu_id);
-        let message = AsyncToSyncMessage::NewCCJob(message);
+        let message = AsyncToSyncMessage::NewCCJob(message, self.hashes_per_round);
         self.to_sync.send(message).await.map_err(Into::into)
     }
 

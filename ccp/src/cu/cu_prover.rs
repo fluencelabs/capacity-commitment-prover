@@ -50,10 +50,11 @@ impl CUProver {
         to_utility: ToUtilityInlet,
         msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
+        hashes_per_round: usize,
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(msr_enforcer, to_utility)?;
+            .allocate(msr_enforcer, to_utility, hashes_per_round)?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
