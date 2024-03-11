@@ -24,8 +24,6 @@ pub struct CUProverConfig {
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
-    /// Control to enable MSR-based performance optimization.
-    pub msr_enabled: bool,
 }
 
 impl From<Optimizations> for CUProverConfig {
@@ -33,7 +31,6 @@ impl From<Optimizations> for CUProverConfig {
         Self {
             randomx_flags: ccp_optimizations.randomx_flags,
             threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
-            msr_enabled: ccp_optimizations.msr_enabled,
         }
     }
 }

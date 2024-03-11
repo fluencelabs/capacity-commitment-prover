@@ -72,6 +72,10 @@ fn main() -> eyre::Result<()> {
         .wrap_err("setting global tracing subscriber failed")?;
     tracing_log::LogTracer::init()?;
 
+    if !config.state_dir.exists() {
+        std::fs::create_dir_all(&config.state_dir)?
+    }
+
     check_writable_dir(&config.state_dir)
         .wrap_err("state-dir value in a config should be a writeable directory path")?;
 

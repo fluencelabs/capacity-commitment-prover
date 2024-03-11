@@ -38,6 +38,18 @@ newtype_derive::NewtypeDisplay! { () pub struct PhysicalCoreId(CPUIdType); }
 newtype_derive::NewtypeFrom! { () pub struct LogicalCoreId(CPUIdType); }
 newtype_derive::NewtypeDisplay! { () pub struct LogicalCoreId(CPUIdType); }
 
+impl PhysicalCoreId {
+    pub const fn new(core_id: CPUIdType) -> Self {
+        Self(core_id)
+    }
+}
+
+impl LogicalCoreId {
+    pub const fn new(core_id: CPUIdType) -> Self {
+        Self(core_id)
+    }
+}
+
 impl From<PhysicalCoreId> for usize {
     fn from(value: PhysicalCoreId) -> usize {
         value.0 as usize

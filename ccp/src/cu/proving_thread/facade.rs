@@ -55,6 +55,12 @@ pub trait ProvingThreadFacade {
     /// Pauses proving thread till the next message.
     async fn pause(&mut self) -> Result<(), Self::Error>;
 
+    /// Send a stop message to thread and do not join on it.
+    async fn stop_nonblocking(&self) -> Result<(), Self::Error>;
+
     /// Send a stop message to thread and join on it till it ends.
-    async fn stop(self) -> Result<(), Self::Error>;
+    async fn stop_join(self) -> Result<(), Self::Error>;
+
+    /// Join on thread till it ends.
+    async fn join(self) -> Result<(), Self::Error>;
 }

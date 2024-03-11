@@ -43,14 +43,14 @@ pub struct PrometheusEndpoint {
     pub port: u16,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Optimizations {
     pub randomx_flags: RandomXFlags,
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
     pub msr_enabled: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Logs {
     pub report_hashrate: bool,
     pub log_level: tracing_subscriber::filter::LevelFilter,
@@ -61,7 +61,7 @@ pub struct State {
     pub state_dir: std::path::PathBuf,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum ThreadsPerCoreAllocationPolicy {
     /// CCP will try to run the optimal amount of threads per core,
     /// trying to utilize all benefits of HT and SMT.

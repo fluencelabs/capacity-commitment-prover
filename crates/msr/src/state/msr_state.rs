@@ -14,19 +14,26 @@
  * limitations under the License.
  */
 
-use config::Config;
-use config::File;
-use config::FileFormat;
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::unresolved_config::UnresolvedCCPConfig;
-use crate::CCPConfig;
+use super::MSRCpuPreset;
 
-pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
-    let config_source = File::with_name(path)
-        .required(true)
-        .format(FileFormat::Toml);
-    let config = Config::builder().add_source(config_source).build()?;
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MSRState {
+    pub msr_preset: MSRCpuPreset,
+}
 
-    let config: UnresolvedCCPConfig = config.try_deserialize()?;
-    config.resolve(path)
+impl MSRState {
+    pub fn new(msr_preset: MSRCpuPreset) -> MSRState {
+        Self { msr_preset }
+    }
+}
+
+impl Default for MSRState {
+    fn default() -> Self {
+        Self {
+            msr_preset: MSRCpuPreset::new(vec![]),
+        }
+    }
 }

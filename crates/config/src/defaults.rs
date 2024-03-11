@@ -14,16 +14,22 @@
  * limitations under the License.
  */
 
-use crate::unresolved_config::LogLevel;
+use std::path::PathBuf;
 
-pub(crate) fn default_msr_enabled() -> bool {
-    false
-}
+use crate::unresolved_config::LogLevel;
 
 pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
 }
 
 pub(crate) fn default_report_hashrate() -> bool {
+    false
+}
+
+pub(crate) fn default_state_path() -> PathBuf {
+    PathBuf::from("./state")
+}
+
+pub(crate) fn default_msr_enabled() -> bool {
     false
 }

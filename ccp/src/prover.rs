@@ -24,6 +24,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use ccp_config::CCPConfig;
+use ccp_msr::state::MSRState;
+use ccp_msr::{MSREnforce, MSRModeEnforcer};
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -58,6 +60,7 @@ pub struct CCProver {
     prometheus_endpoint: Option<PrometheusEndpoint>,
     proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
+    msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
 }
 
@@ -84,11 +87,10 @@ impl NoxCCPApi for CCProver {
         apply_resut
     }
 
-    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        let closure =
-            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.stop().boxed();
+    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
+        self.stop_provers_nonblocking().await?;
+        self.join_provers().await?;
 
-        run_unordered(self.cu_provers.drain(), closure).await?;
         self.status = CCStatus::Idle;
 
         self.save_no_state().await?;
@@ -115,33 +117,111 @@ impl ToCCStatus for CCProver {
 }
 
 impl CCProver {
-    pub fn new(config: CCPConfig) -> CCResult<Self> {
+    // this method should be used in simple tests only
+    pub async fn new(config: CCPConfig) -> CCResult<Self> {
+        let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        let utility_core_ids_handle = CpuIdsHandle::new(vec![]);
+
+        Self::create_prover(
+            config,
+            None,
+            msr_enforcer,
+            state_storage,
+            utility_core_ids_handle,
+        )
+        .await
+    }
+
+    pub async fn from_saved_state(
+        config: CCPConfig,
+        utility_core_ids_handle: CpuIdsHandle,
+    ) -> CCResult<Self> {
+        let state_storage = StateStorage::new(config.state_dir.clone());
+
+        let prev_state = state_storage.try_to_load_data().await?;
+
+        let epoch;
+        let msr_enforcer;
+
+        match &prev_state {
+            Some(prev_state) => {
+                utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+
+                // if there is a state, then it means that CCP crashed without setting back
+                // possibly changed original MSR state, so, let's set it back
+                if !config.optimizations.msr_enabled {
+                    cease_prev_msr_policy(&prev_state);
+                }
+
+                epoch = Some(prev_state.epoch_params);
+
+                msr_enforcer = MSRModeEnforcer::from_preset(
+                    config.optimizations.msr_enabled,
+                    prev_state.msr_state.msr_preset.clone(),
+                );
+            }
+            None => {
+                epoch = None;
+                msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+            }
+        }
+
+        let mut prover = Self::create_prover(
+            config,
+            epoch,
+            msr_enforcer,
+            state_storage,
+            utility_core_ids_handle,
+        )
+        .await?;
+
+        if let Some(prev_state) = &prev_state {
+            prover
+                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .await?;
+        }
+
+        Ok(prover)
+    }
+
+    async fn create_prover(
+        config: CCPConfig,
+        epoch: Option<EpochParameters>,
+        msr_enforcer: MSRModeEnforcer,
+        state_storage: StateStorage,
+        utility_core_ids_handle: CpuIdsHandle,
+    ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
-        let proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let start_proof_idx = proof_drainer.validate_proofs(&epoch).await?;
+
+        log::info!("continuing from proof index {start_proof_idx}");
+
         let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
             config.state_dir.clone(),
             config.logs.report_hashrate,
         )?;
+
+        let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
         let utility_thread = UtilityThread::spawn(
             config.rpc_endpoint.utility_cores_ids.clone(),
-            ProofIdx::zero(),
+            start_proof_idx,
             proof_dir,
-            None,
+            prev_global_nonce,
             hashrate_handler,
         );
+
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
             PrometheusEndpoint::new(
                 (endpoint_cfg.host.clone(), endpoint_cfg.port),
                 hashrate_collector,
             )
         });
+
         let cu_prover_config = config.optimizations.into();
-        let state_storage = StateStorage::new(config.state_dir);
-
-        let utility_core_ids_handle = CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids);
-
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
@@ -150,8 +230,10 @@ impl CCProver {
             prometheus_endpoint,
             proof_drainer,
             state_storage,
+            msr_enforcer,
             utility_core_ids_handle,
         };
+
         Ok(prover)
     }
 
@@ -173,6 +255,24 @@ impl CCProver {
         self.shutdown().await
     }
 
+    async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
+        let nonblocking_closure =
+            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
+                prover.stop_nonblocking().boxed()
+            };
+
+        run_unordered(self.cu_provers.iter(), nonblocking_closure).await?;
+        Ok(())
+    }
+
+    async fn join_provers(&mut self) -> CCResult<()> {
+        let join_closure =
+            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.join().boxed();
+
+        run_unordered(self.cu_provers.drain(), join_closure).await?;
+        Ok(())
+    }
+
     pub async fn shutdown(&mut self) -> CCResult<()> {
         log::info!("Shutting down prover...");
         // stop background thread
@@ -187,78 +287,21 @@ impl CCProver {
         Ok(())
     }
 
-    pub async fn from_saved_state(
-        config: CCPConfig,
-        utility_core_ids_handle: CpuIdsHandle,
-    ) -> CCResult<Self> {
-        let proof_dir = config.state_dir.join(PROOF_DIR);
-        let mut proof_cleaner = ProofStorageDrainer::new(proof_dir.clone());
-        let state_storage = StateStorage::new(config.state_dir.clone());
-
-        let prev_state = state_storage.try_to_load_data().await?;
-        let start_proof_idx = proof_cleaner
-            .validate_proofs(prev_state.as_ref().map(|state| &state.epoch_params))
-            .await?;
-
-        log::info!("continuing from proof index {start_proof_idx}");
-
-        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
-        let hashrate_handler = HashrateHandler::new(
-            hashrate_collector.clone(),
-            config.state_dir.clone(),
-            config.logs.report_hashrate,
-        )?;
-        let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids,
-            start_proof_idx,
-            proof_dir,
-            prev_state
-                .as_ref()
-                .map(|state| state.epoch_params.global_nonce),
-            hashrate_handler,
-        );
-        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
-            PrometheusEndpoint::new(
-                (endpoint_cfg.host.clone(), endpoint_cfg.port),
-                hashrate_collector,
-            )
-        });
-
-        if let Some(prev_state) = prev_state.as_ref() {
-            utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
-        }
-
-        let cu_prover_config = config.optimizations.into();
-        let mut self_ = Self {
-            cu_provers: HashMap::new(),
-            cu_prover_config,
-            status: CCStatus::Idle,
-            utility_thread,
-            prometheus_endpoint,
-            proof_drainer: proof_cleaner,
-            state_storage,
-            utility_core_ids_handle,
-        };
-
-        if let Some(prev_state) = prev_state {
-            self_
-                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
-                .await?;
-        }
-
-        Ok(self_)
-    }
-
     pub async fn save_state(
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> tokio::io::Result<()> {
+        let original_msr_preset = self.msr_enforcer.original_preset();
+        let msr_state = MSRState::new(original_msr_preset.clone());
+
         let utility_cores = self.utility_core_ids_handle.get_cores();
+
         let state = CCPState {
             epoch_params: epoch_state,
             cu_allocation,
             utility_cores,
+            msr_state,
         };
         self.state_storage.save_state(Some(&state)).await
     }
@@ -359,9 +402,12 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
+        let msr_enforcer = self.msr_enforcer.clone();
 
         async move {
-            let mut prover = CUProver::create(prover_config, to_utility, state.new_core_id).await?;
+            let mut prover =
+                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
+                    .await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))
@@ -375,7 +421,7 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         async move {
-            prover.stop().await?;
+            prover.stop_join().await?;
             Ok(AlignmentPostAction::Nothing)
         }
         .boxed()
@@ -406,5 +452,19 @@ impl CCProver {
             Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
+    }
+}
+
+fn cease_prev_msr_policy(prev_state: &CCPState) {
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, prev_state.msr_state.msr_preset.clone());
+
+    for (&physical_core_id, _) in prev_state.cu_allocation.iter() {
+        let core_id: u32 = physical_core_id.into();
+        let logical_core_id = core_id.into();
+        if let Err(error) = msr_enforcer.cease(logical_core_id) {
+            log::error!(
+                "{logical_core_id}: failed to cease MSR policy from previous state with {error}"
+            );
+        }
     }
 }

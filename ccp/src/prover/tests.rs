@@ -36,7 +36,7 @@ use crate::CCProver;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
 
-fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
+async fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
     let config = CCPConfig {
         rpc_endpoint: <_>::default(),
@@ -46,7 +46,7 @@ fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
         state_dir,
     };
 
-    CCProver::new(config).unwrap()
+    CCProver::new(config).await.unwrap()
 }
 
 async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver {
@@ -91,7 +91,7 @@ fn load_state(state_dir: &Path) -> Option<CCPState> {
 async fn prover_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
     prover
@@ -100,9 +100,11 @@ async fn prover_on_active_commitment() {
         .unwrap();
 
     let state = load_state(state_dir.path());
-    let expected_state = Some(CCPState {
+
+    let expected_state: Option<CCPState> = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
 
@@ -148,7 +150,7 @@ async fn prover_on_active_commitment() {
 async fn prover_on_no_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     prover.on_no_active_commitment().await.unwrap();
 
     let proofs = prover
@@ -164,7 +166,7 @@ async fn prover_on_no_active_commitment() {
 #[ignore = "until on_no_active_commitment cleans proofs_dir"]
 async fn prover_on_active_no_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
 
@@ -202,7 +204,7 @@ async fn prover_on_active_no_active_commitment() {
 async fn prover_on_active_reduce_allocation_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
     let epoch_params = get_epoch_params();
     prover
@@ -225,7 +227,7 @@ async fn prover_on_active_reduce_allocation_on_active_commitment() {
 async fn prover_on_active_reduce_empty_allocation_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
     prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
@@ -260,7 +262,7 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
 async fn prover_on_active_extend_allocation_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
 
     prover
@@ -288,7 +290,7 @@ async fn prover_on_active_extend_allocation_on_active_commitment() {
 async fn prover_on_active_reschedule_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
 
     prover
@@ -316,7 +318,7 @@ async fn prover_on_active_reschedule_on_active_commitment() {
 async fn prover_on_active_extend_on_active_commitment_performance() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let cu_allocation_large = get_cu_allocation();
     let cu_allocation_small = hashmap! {
         1.into() => cu_allocation_large.get(&1.into()).cloned().unwrap(),
@@ -360,7 +362,7 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
 async fn prover_on_active_change_epoch() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
 
-    let mut prover = get_prover(state_dir.path());
+    let mut prover = get_prover(state_dir.path()).await;
     let cu_allocation = get_cu_allocation();
 
     let epoch_params_first = get_epoch_params();
@@ -389,6 +391,7 @@ async fn prover_on_active_change_epoch() {
     let expected_state = Some(CCPState {
         epoch_params: epoch_params_second,
         cu_allocation: cu_allocation.clone(),
+        msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
 
@@ -436,6 +439,7 @@ async fn prover_restore_from_state_with_no_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
@@ -501,6 +505,7 @@ async fn prover_restore_from_state_with_proofs() {
     let initial_state = Some(CCPState {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
+        msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
     tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())

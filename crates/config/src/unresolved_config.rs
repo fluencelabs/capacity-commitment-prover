@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
+use std::path::Path;
+
+use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
+use super::defaults::default_state_path;
 use crate::*;
 
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
@@ -31,7 +35,9 @@ pub struct UnresolvedCCPConfig {
     pub prometheus_endpoint: Option<UnresolvedPrometheusEndpoint>,
     #[serde(default)]
     pub optimizations: UnresolvedOptimizations,
+    #[serde(default)]
     pub logs: UnresolvedLogs,
+    #[serde(default)]
     pub state: State,
 }
 
@@ -92,9 +98,27 @@ pub struct UnresolvedLogs {
     pub log_level: LogLevel,
 }
 
+impl Default for UnresolvedLogs {
+    fn default() -> Self {
+        UnresolvedLogs {
+            report_hashrate: default_report_hashrate(),
+            log_level: default_log_level(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct State {
+    #[serde(default = "default_state_path")]
     pub path: std::path::PathBuf,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            path: default_state_path(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -117,7 +141,14 @@ pub enum LogLevel {
 }
 
 impl UnresolvedCCPConfig {
-    pub fn resolve(self) -> eyre::Result<CCPConfig> {
+    pub fn resolve(self, config_path: impl AsRef<Path>) -> eyre::Result<CCPConfig> {
+        let config_dir = config_path.as_ref().parent().ok_or_else(|| {
+            eyre!(
+                "config resolver was provided with invalid config path: {}",
+                config_path.as_ref().display()
+            )
+        })?;
+
         let rpc_endpoint = self.rpc_endpoint.resolve();
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
@@ -128,7 +159,7 @@ impl UnresolvedCCPConfig {
             prometheus_endpoint,
             optimizations: optimization,
             logs,
-            state_dir: self.state.path,
+            state_dir: config_dir.join(self.state.path),
         };
         Ok(config)
     }
@@ -166,7 +197,7 @@ impl UnresolvedPrometheusEndpoint {
 impl UnresolvedOptimizations {
     pub fn resolve(self) -> eyre::Result<Optimizations> {
         let randomx_flags = self.randomx.resolve();
-        let msr_enabled = self.msr_enabled;
+        let msr_config = self.msr_enabled;
         let threads_per_core_policy = match self.threads_per_core {
             Some(threads_count) => ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core: threads_count.try_into()?,
@@ -176,7 +207,7 @@ impl UnresolvedOptimizations {
 
         let opt = Optimizations {
             randomx_flags,
-            msr_enabled,
+            msr_enabled: msr_config,
             threads_per_core_policy,
         };
         Ok(opt)

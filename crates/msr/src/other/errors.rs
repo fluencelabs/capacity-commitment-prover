@@ -14,19 +14,7 @@
  * limitations under the License.
  */
 
-use config::Config;
-use config::File;
-use config::FileFormat;
+use thiserror::Error as ThisError;
 
-use crate::unresolved_config::UnresolvedCCPConfig;
-use crate::CCPConfig;
-
-pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
-    let config_source = File::with_name(path)
-        .required(true)
-        .format(FileFormat::Toml);
-    let config = Config::builder().add_source(config_source).build()?;
-
-    let config: UnresolvedCCPConfig = config.try_deserialize()?;
-    config.resolve(path)
-}
+#[derive(ThisError, Debug)]
+pub enum MSRError {}
