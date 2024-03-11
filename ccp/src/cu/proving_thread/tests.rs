@@ -80,7 +80,7 @@ async fn cache_creation_works() {
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet);
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
-    thread.stop().await.unwrap();
+    thread.stop_join().await.unwrap();
 
     let actual_vm = RandomXVM::light(actual_cache.handle(), flags).unwrap();
     let actual_result_hash = actual_vm.hash(local_nonce.as_ref());
@@ -118,7 +118,7 @@ async fn dataset_creation_works() {
 
     let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
-    thread.stop().await.unwrap();
+    thread.stop_join().await.unwrap();
     handle.await.unwrap();
 
     let flags = RandomXFlags::recommended_full_mem();
@@ -184,7 +184,7 @@ async fn dataset_creation_works_with_three_threads() {
     };
     let threads = run_unordered(threads.into_iter(), closure).await.unwrap();
 
-    let closure = |_: usize, thread: ProvingThreadAsync| thread.stop().boxed();
+    let closure = |_: usize, thread: ProvingThreadAsync| thread.stop_join().boxed();
     run_unordered(threads.into_iter(), closure).await.unwrap();
 
     let flags = RandomXFlags::recommended_full_mem();
@@ -231,7 +231,7 @@ async fn cc_job_stopable() {
         }
     });
 
-    ingredients.thread.stop().await.unwrap();
+    ingredients.thread.stop_join().await.unwrap();
     let _ = handle.await;
 }
 
@@ -283,7 +283,7 @@ async fn cc_job_pausable() {
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-    ingredients.thread.stop().await.unwrap();
+    ingredients.thread.stop_join().await.unwrap();
 
     let (proofs_before_pause, proofs_after_pause) = handle.await.unwrap();
     assert!(!proofs_before_pause.is_empty());
@@ -317,7 +317,7 @@ async fn proving_thread_works() {
         proofs
     });
 
-    ingredients.thread.stop().await.unwrap();
+    ingredients.thread.stop_join().await.unwrap();
     let proofs = handle.await.unwrap();
     let proof = proofs[0];
 
@@ -376,7 +376,7 @@ async fn proving_therad_produces_repeatable_hashes() {
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
-    ingredients.thread.stop().await.unwrap();
+    ingredients.thread.stop_join().await.unwrap();
     let proofs = handle.await.unwrap();
     batch_proof_verification(proofs.into_iter(), epoch.difficulty);
 }
