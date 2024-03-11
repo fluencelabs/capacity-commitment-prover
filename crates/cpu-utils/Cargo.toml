@@ -15,7 +15,7 @@ doctest = false
 [dependencies]
 ccp-shared.workspace = true
 
-core_affinity.workspace = true
+ccp_core_affinity.workspace = true
 hwlocality.workspace = true
 nonempty.workspace = true
 serde.workspace = true

@@ -37,7 +37,7 @@ tokio-stream = {version = "0.1", features = ["fs"]}
 futures = "0.3"
 
 hwlocality = "1.0.0-alpha.1"
-core_affinity = { git = "https://github.com/fluencelabs/core_affinity_rs" }
+ccp_core_affinity = "0.8.1"
 
 anyhow = "1.0"
 byteorder = "1.5"
