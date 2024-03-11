@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.2...ccp-v0.5.0) (2024-03-11)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cfg,ccp:** store utility threads pinning to saved state ([#87](https://github.com/fluencelabs/capacity-commitment-prover/issues/87))
+
+### Features
+
+* **cfg,ccp:** store utility threads pinning to saved state ([#87](https://github.com/fluencelabs/capacity-commitment-prover/issues/87)) ([1b2ccd5](https://github.com/fluencelabs/capacity-commitment-prover/commit/1b2ccd5982f59783e06f12f5e037b40f3d0c9c0c))
+
 ## [0.4.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.1...ccp-v0.4.2) (2024-03-10)
 
 
