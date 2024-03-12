@@ -2,6 +2,7 @@
 FROM ubuntu:jammy
 
 ARG TARGETARCH
+ARG VERSION="0.6.0" x-release-please-version
 
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 LABEL org.opencontainers.image.base.name="ubuntu:jammy"
@@ -9,7 +10,8 @@ LABEL org.opencontainers.image.url="https://github.com/fluencelabs/capacity-comm
 LABEL org.opencontainers.image.vendor="fluencelabs"
 LABEL org.opencontainers.image.authors="fluencelabs"
 LABEL org.opencontainers.image.title="ccp"
-LABEL org.opencontainers.image.description="ccp runs on the capacity provider to prove that capacity is allocated."
+LABEL org.opencontainers.image.description="ccp runs on the capacity provider to prove that capacity is allocated"
+LABEL org.opencontainers.image.version=${VERSION}
 
 # install necessary packages
 RUN \
