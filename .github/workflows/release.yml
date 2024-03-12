@@ -192,10 +192,9 @@ jobs:
           password: ${{ env.DOCKER_HUB_PASSWORD }}
 
       - name: Add latest tag to container image
-        uses: silverlyra/latest-image-action@4396a00d00552d0b32d0b2a9d9bc4b69c7c95ed4
-        with:
-          repository: fluencelabs/ccp
-          candidate-tag: ${{ needs.release-please.outputs.version }}
+        env:
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: docker buildx imagetools create -t fluencelabs/ccp:latest fluencelabs/ccp:${{ env.VERSION }}
 
       - name: Update release notes
         uses: softprops/action-gh-release@v1
