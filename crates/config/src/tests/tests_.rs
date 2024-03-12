@@ -64,7 +64,7 @@ fn parse_basic_config() {
         optimizations,
         logs,
         state_dir: "../test".into(),
-        workers: UnresolvedWorkers::default().resolve(),
+        workers: Workers::default(),
     };
 
     assert_eq!(actual_config, expected_config);
@@ -100,7 +100,7 @@ fn parse_config_without_optimiziations() {
         optimizations,
         logs,
         state_dir: "../test".into(),
-        workers: UnresolvedWorkers::default().resolve(),
+        workers: Workers::default(),
     };
 
     assert_eq!(actual_config, expected_config);
