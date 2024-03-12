@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.0...ccp-v0.7.1) (2024-03-12)
+
+
+### Bug Fixes
+
+* **cargo:** move ccp-test-utils dependency to dev-dependencies of ccp ([#108](https://github.com/fluencelabs/capacity-commitment-prover/issues/108)) ([40d4205](https://github.com/fluencelabs/capacity-commitment-prover/commit/40d420526dcb02c0a9f94dffc2bb99264fcd71df))
+
 ## [0.7.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.6.0...ccp-v0.7.0) (2024-03-12)
 
 
