@@ -45,8 +45,9 @@ impl UtilityThread {
         proof_storage_dir: std::path::PathBuf,
         prev_global_nonce: Option<GlobalNonce>,
         hashrate_handler: HashrateHandler,
+        utility_queue_size: usize,
     ) -> Self {
-        let (to_utility, from_utility) = mpsc::channel(100);
+        let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
 
         let cancellation = CancellationToken::new();
 

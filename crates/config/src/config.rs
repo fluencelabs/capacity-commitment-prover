@@ -20,6 +20,8 @@ use ccp_shared::types::LogicalCoreId;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
+use crate::unresolved_config::default_facade_queue_size;
+use crate::unresolved_config::default_utility_queue_size;
 use crate::unresolved_config::UnresolvedParameters;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -37,6 +39,8 @@ pub struct RpcEndpoint {
     pub host: String,
     pub port: u16,
     pub utility_cores_ids: Vec<LogicalCoreId>,
+    pub utility_queue_size: usize,
+    pub facade_queue_size: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -86,6 +90,8 @@ impl Default for RpcEndpoint {
             host: "127.0.0.1".to_string(),
             port: 9383,
             utility_cores_ids: vec![1.into()],
+            utility_queue_size: default_utility_queue_size(),
+            facade_queue_size: default_facade_queue_size(),
         }
     }
 }

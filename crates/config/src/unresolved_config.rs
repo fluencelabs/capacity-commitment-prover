@@ -28,6 +28,16 @@ use crate::*;
 
 const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
 const DEFAULT_HASHES_PER_ROUND: usize = 1024;
+pub(crate) const DEFAULT_UTILITY_QUEUE_SIZE: usize = 100;
+pub(crate) const DEFAULT_FACADE_QUEUE_SIZE: usize = 100;
+
+pub(crate) fn default_utility_queue_size() -> usize {
+    DEFAULT_UTILITY_QUEUE_SIZE
+}
+
+pub(crate) fn default_facade_queue_size() -> usize {
+    DEFAULT_FACADE_QUEUE_SIZE
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -50,6 +60,10 @@ pub struct UnresolvedRpcEndpoint {
     pub host: String,
     pub port: u16,
     pub utility_thread_ids: Vec<u32>,
+    #[serde(default = "default_utility_queue_size")]
+    pub utility_queue_size: usize,
+    #[serde(default = "default_facade_queue_size")]
+    pub facade_queue_size: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -192,6 +206,8 @@ impl UnresolvedRpcEndpoint {
             host: self.host,
             port: self.port,
             utility_cores_ids: utility_thread_ids,
+            utility_queue_size: self.utility_queue_size,
+            facade_queue_size: self.facade_queue_size,
         }
     }
 }

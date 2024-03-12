@@ -214,6 +214,7 @@ impl CCProver {
             proof_dir,
             prev_global_nonce,
             hashrate_handler,
+            config.rpc_endpoint.utility_queue_size,
         );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {

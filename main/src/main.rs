@@ -124,6 +124,7 @@ fn main() -> eyre::Result<()> {
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
+    let facade_queue_size = config.rpc_endpoint.facade_queue_size;
 
     tracing::info!("Creating prover from a saved state");
     let prover = CCProver::from_saved_state(config, tokio_core_ids_state)
@@ -136,7 +137,8 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
         rpc_bind_address.1
     );
     let prover = Arc::new(RwLock::new(prover));
-    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone()));
+    let rpc_endpoint =
+        CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone(), facade_queue_size));
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await

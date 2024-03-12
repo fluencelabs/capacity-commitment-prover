@@ -42,8 +42,8 @@ where
     P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
 {
-    pub fn new(prover: Arc<RwLock<P>>) -> Self {
-        let (to_worker, from_facade) = mpsc::channel(100);
+    pub fn new(prover: Arc<RwLock<P>>, facade_queue_size: usize) -> Self {
+        let (to_worker, from_facade) = mpsc::channel(facade_queue_size);
 
         let worker = tokio::task::spawn(facade_loop(prover.clone(), from_facade));
 
