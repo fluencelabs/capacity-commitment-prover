@@ -1,7 +1,8 @@
 [rpc-endpoint]
 host = "0.0.0.0"
 port = "9383"
-utility-thread-ids = [1]
+# Empty list means "all cores"
+utility-thread-ids = []
 
 [prometheus-endpoint]
 host = "0.0.0.0"

@@ -26,8 +26,6 @@ use super::defaults::default_report_hashrate;
 use super::defaults::default_state_path;
 use crate::*;
 
-const DEFAULT_UTILITY_THREAD_ID: u32 = 1;
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedCCPConfig {
@@ -46,6 +44,7 @@ pub struct UnresolvedCCPConfig {
 pub struct UnresolvedRpcEndpoint {
     pub host: String,
     pub port: u16,
+    #[serde(default)]
     pub utility_thread_ids: Vec<u32>,
 }
 
@@ -167,15 +166,11 @@ impl UnresolvedCCPConfig {
 
 impl UnresolvedRpcEndpoint {
     pub fn resolve(self) -> RpcEndpoint {
-        let mut utility_thread_ids = self.utility_thread_ids;
-        if utility_thread_ids.is_empty() {
-            utility_thread_ids.push(DEFAULT_UTILITY_THREAD_ID);
-        }
-
-        let utility_thread_ids = utility_thread_ids
+        let utility_thread_ids = self
+            .utility_thread_ids
             .into_iter()
             .map(Into::into)
-            .collect::<Vec<_>>();
+            .collect();
 
         RpcEndpoint {
             host: self.host,
