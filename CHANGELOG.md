@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.6.0...ccp-v0.7.0) (2024-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** allow empty initial utility cores set ([#98](https://github.com/fluencelabs/capacity-commitment-prover/issues/98))
+
+### Features
+
+* **config:** allow empty initial utility cores set ([#98](https://github.com/fluencelabs/capacity-commitment-prover/issues/98)) ([e5b73f8](https://github.com/fluencelabs/capacity-commitment-prover/commit/e5b73f8fdc44f5c63094d2e118f29a2c0f8f3570))
+
 ## [0.6.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.5.0...ccp-v0.6.0) (2024-03-12)
 
 
