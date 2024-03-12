@@ -112,6 +112,9 @@ jobs:
         with:
           crate: cargo-workspaces
 
+      - name: Install libhwloc
+        run: sudo apt install libhwloc-dev --no-install-recommends -y
+
       - name: Publish to crates.io
         run: |
           cargo ws publish \
