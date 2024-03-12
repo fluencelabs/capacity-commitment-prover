@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.6.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.5.0...ccp-v0.6.0) (2024-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **rpc:** more ergonomic RPC client ([#102](https://github.com/fluencelabs/capacity-commitment-prover/issues/102))
+
+### Features
+
+* **rpc:** more ergonomic RPC client ([#102](https://github.com/fluencelabs/capacity-commitment-prover/issues/102)) ([0146973](https://github.com/fluencelabs/capacity-commitment-prover/commit/01469732b22996e49c18a9d6fa63acf9aeee2c1c))
+
 ## [0.5.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.2...ccp-v0.5.0) (2024-03-11)
 
 
