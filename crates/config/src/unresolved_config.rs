@@ -66,7 +66,7 @@ pub struct UnresolvedCCPConfig {
     #[serde(default)]
     pub state: State,
     #[serde(default)]
-    pub parameters: UnresolvedParameters,
+    pub workers: UnresolvedWorkers,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -155,7 +155,7 @@ impl Default for State {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct UnresolvedParameters {
+pub struct UnresolvedWorkers {
     #[serde(default = "default_hashes_per_round")]
     pub hashes_per_round: usize,
     #[serde(default = "default_async_to_sync_queue_size")]
@@ -196,7 +196,7 @@ impl UnresolvedCCPConfig {
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
-        let parameters = self.parameters.resolve();
+        let workers = self.workers.resolve();
 
         let config = CCPConfig {
             rpc_endpoint,
@@ -204,7 +204,7 @@ impl UnresolvedCCPConfig {
             optimizations: optimization,
             logs,
             state_dir: config_dir.join(self.state.path),
-            parameters,
+            workers,
         };
         Ok(config)
     }
@@ -316,9 +316,9 @@ impl UnresolvedLogs {
     }
 }
 
-impl UnresolvedParameters {
-    pub fn resolve(self) -> Parameters {
-        Parameters {
+impl UnresolvedWorkers {
+    pub fn resolve(self) -> Workers {
+        Workers {
             hashes_per_round: self.hashes_per_round,
             async_to_sync_queue_size: self.async_to_sync_queue_size,
             sync_to_async_queue_size: self.sync_to_async_queue_size,
@@ -326,7 +326,7 @@ impl UnresolvedParameters {
     }
 }
 
-impl Default for UnresolvedParameters {
+impl Default for UnresolvedWorkers {
     fn default() -> Self {
         Self {
             hashes_per_round: DEFAULT_HASHES_PER_ROUND,

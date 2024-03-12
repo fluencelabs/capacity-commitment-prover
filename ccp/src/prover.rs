@@ -223,7 +223,7 @@ impl CCProver {
             )
         });
 
-        let cu_prover_config = CUProverConfig::new(config.optimizations, config.parameters);
+        let cu_prover_config = CUProverConfig::new(config.optimizations, config.workers);
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,

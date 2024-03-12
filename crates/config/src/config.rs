@@ -22,7 +22,7 @@ use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
 use crate::unresolved_config::default_facade_queue_size;
 use crate::unresolved_config::default_utility_queue_size;
-use crate::unresolved_config::UnresolvedParameters;
+use crate::unresolved_config::UnresolvedWorkers;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CCPConfig {
@@ -31,7 +31,7 @@ pub struct CCPConfig {
     pub optimizations: Optimizations,
     pub logs: Logs,
     pub state_dir: std::path::PathBuf,
-    pub parameters: Parameters,
+    pub workers: Workers,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,7 +80,7 @@ pub enum ThreadsPerCoreAllocationPolicy {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Parameters {
+pub struct Workers {
     pub hashes_per_round: usize,
     pub async_to_sync_queue_size: usize,
     pub sync_to_async_queue_size: usize,
@@ -117,8 +117,8 @@ impl Default for Logs {
     }
 }
 
-impl Default for Parameters {
+impl Default for Workers {
     fn default() -> Self {
-        UnresolvedParameters::default().resolve()
+        UnresolvedWorkers::default().resolve()
     }
 }

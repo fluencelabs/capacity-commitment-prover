@@ -29,7 +29,7 @@ log-level = "info"
 # absolute path will work as is
 path = "./state"
 
-[parameters]
+[workers]
 # # how large is hash chunk to process; after each chunk, threads
 # # react to interruptions etc.
 # hashes_per_round = 1024

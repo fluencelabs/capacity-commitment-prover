@@ -15,9 +15,9 @@
  */
 
 use ccp_config::Optimizations;
-use ccp_config::Parameters;
 use ccp_config::RandomXFlags;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
+use ccp_config::Workers;
 
 #[derive(Clone, Debug)]
 pub struct CUProverConfig {
@@ -32,14 +32,14 @@ pub struct CUProverConfig {
 }
 
 impl CUProverConfig {
-    pub fn new(ccp_optimizations: Optimizations, parameters: Parameters) -> Self {
+    pub fn new(ccp_optimizations: Optimizations, workers: Workers) -> Self {
         Self {
             randomx_flags: ccp_optimizations.randomx_flags,
             threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
 
-            hashes_per_round: parameters.hashes_per_round,
-            async_to_sync_queue_size: parameters.async_to_sync_queue_size,
-            sync_to_async_queue_size: parameters.sync_to_async_queue_size,
+            hashes_per_round: workers.hashes_per_round,
+            async_to_sync_queue_size: workers.async_to_sync_queue_size,
+            sync_to_async_queue_size: workers.sync_to_async_queue_size,
         }
     }
 }
