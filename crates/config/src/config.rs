@@ -82,6 +82,8 @@ pub enum ThreadsPerCoreAllocationPolicy {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Parameters {
     pub hashes_per_round: usize,
+    pub async_to_sync_queue_size: usize,
+    pub sync_to_async_queue_size: usize,
 }
 
 impl Default for RpcEndpoint {

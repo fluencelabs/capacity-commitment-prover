@@ -29,6 +29,7 @@ use crate::cu::proving_thread::facade::ProvingThreadFacade;
 use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
 use crate::cu::proving_thread::sync::ProvingThreadSync;
+use crate::cu::CUProverConfig;
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadAsync {
@@ -43,10 +44,12 @@ impl ProvingThreadAsync {
         core_id: LogicalCoreId,
         msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
-        hashes_per_round: usize,
+        config: ProvingThreadConfig,
     ) -> Self {
-        let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
-        let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
+        let (to_sync, from_async) =
+            mpsc::channel::<AsyncToSyncMessage>(config.async_to_sync_queue_size);
+        let (to_async, from_sync) =
+            mpsc::channel::<SyncToAsyncMessage>(config.sync_to_async_queue_size);
         let sync_thread =
             ProvingThreadSync::spawn(core_id, msr_enforcer, from_async, to_async, to_utility);
 
@@ -54,7 +57,7 @@ impl ProvingThreadAsync {
             to_sync,
             from_sync,
             sync_thread,
-            hashes_per_round,
+            hashes_per_round: config.hashes_per_round,
         }
     }
 }
@@ -167,5 +170,22 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         self.stop_nonblocking().await?;
         self.join().await?;
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProvingThreadConfig {
+    pub hashes_per_round: usize,
+    pub async_to_sync_queue_size: usize,
+    pub sync_to_async_queue_size: usize,
+}
+
+impl ProvingThreadConfig {
+    pub fn from_compute_unit_config(cu_config: &CUProverConfig) -> Self {
+        Self {
+            hashes_per_round: cu_config.hashes_per_round,
+            async_to_sync_queue_size: cu_config.async_to_sync_queue_size,
+            sync_to_async_queue_size: cu_config.sync_to_async_queue_size,
+        }
     }
 }

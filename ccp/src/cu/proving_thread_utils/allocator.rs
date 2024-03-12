@@ -24,6 +24,7 @@ use cpu_utils::CPUTopology;
 
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::ProvingThreadAsync;
+use crate::cu::proving_thread::ProvingThreadConfig;
 use crate::cu::CUResult;
 use crate::cu::ThreadAllocationError;
 use crate::utility_thread::message::ToUtilityInlet;
@@ -51,7 +52,7 @@ impl ThreadAllocator {
         &self,
         msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
-        hashes_per_round: usize,
+        proving_config: ProvingThreadConfig,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
             .allocation_strategy
@@ -61,7 +62,7 @@ impl ThreadAllocator {
                     *logical_core,
                     msr_enforcer.clone(),
                     to_utility.clone(),
-                    hashes_per_round,
+                    proving_config.clone(),
                 )
             })
             .collect::<Vec<_>>();

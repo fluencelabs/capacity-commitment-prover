@@ -15,6 +15,7 @@
  */
 
 use ccp_config::Optimizations;
+use ccp_config::Parameters;
 use ccp_config::RandomXFlags;
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 
@@ -24,13 +25,21 @@ pub struct CUProverConfig {
     /// Defines how many threads will be assigned to a specific physical core,
     /// aims to utilize benefits of hyper-threading.
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
+
+    pub hashes_per_round: usize,
+    pub async_to_sync_queue_size: usize,
+    pub sync_to_async_queue_size: usize,
 }
 
-impl From<Optimizations> for CUProverConfig {
-    fn from(ccp_optimizations: Optimizations) -> Self {
+impl CUProverConfig {
+    pub fn new(ccp_optimizations: Optimizations, parameters: Parameters) -> Self {
         Self {
             randomx_flags: ccp_optimizations.randomx_flags,
             threads_per_core_policy: ccp_optimizations.threads_per_core_policy,
+
+            hashes_per_round: parameters.hashes_per_round,
+            async_to_sync_queue_size: parameters.async_to_sync_queue_size,
+            sync_to_async_queue_size: parameters.sync_to_async_queue_size,
         }
     }
 }

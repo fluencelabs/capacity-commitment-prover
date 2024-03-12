@@ -62,7 +62,6 @@ pub struct CCProver {
     state_storage: StateStorage,
     msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
-    hashes_per_round: usize,
 }
 
 impl NoxCCPApi for CCProver {
@@ -153,7 +152,7 @@ impl CCProver {
                 // if there is a state, then it means that CCP crashed without setting back
                 // possibly changed original MSR state, so, let's set it back
                 if !config.optimizations.msr_enabled {
-                    cease_prev_msr_policy(&prev_state);
+                    cease_prev_msr_policy(prev_state);
                 }
 
                 epoch = Some(prev_state.epoch_params);
@@ -224,7 +223,7 @@ impl CCProver {
             )
         });
 
-        let cu_prover_config = config.optimizations.into();
+        let cu_prover_config = CUProverConfig::new(config.optimizations, config.parameters);
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
@@ -235,7 +234,6 @@ impl CCProver {
             state_storage,
             msr_enforcer,
             utility_core_ids_handle,
-            hashes_per_round: config.parameters.hashes_per_round,
         };
 
         Ok(prover)
@@ -407,17 +405,11 @@ impl CCProver {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
         let msr_enforcer = self.msr_enforcer.clone();
-        let hashes_per_round = self.hashes_per_round;
 
         async move {
-            let mut prover = CUProver::create(
-                prover_config,
-                to_utility,
-                msr_enforcer,
-                state.new_core_id,
-                hashes_per_round,
-            )
-            .await?;
+            let mut prover =
+                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
+                    .await?;
             prover.new_epoch(epoch, state.new_cu_id).await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))
