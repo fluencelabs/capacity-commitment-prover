@@ -77,7 +77,7 @@ jobs:
 
   crates:
     if: needs.release-please.outputs.release-created
-    runs-on: ubuntu-latest
+    runs-on: linux-arm64-m-xlarge
     needs:
       - release-please
 
@@ -111,6 +111,27 @@ jobs:
         uses: baptiste0928/cargo-install@v3.0.0
         with:
           crate: cargo-workspaces
+
+      - name: Setup Rust toolchain
+        uses: dsherret/rust-toolchain-file@v1
+
+      - name: Setup mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: false
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: ~/.cache/sccache
+          shared-key: ccp-${{ matrix.arch }}
+          # github allows only 10GB of cache
+          # so save cache only on merge to master
+          # to use less space and speed up CI
+          save-if: ${{ github.event_name == 'push' }}
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.4
 
       - name: Publish to crates.io
         run: |
