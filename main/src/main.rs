@@ -92,8 +92,11 @@ fn main() -> eyre::Result<()> {
             let pid = std::thread::current().id();
             let tokio_cores = tokio_core_ids_state_start.get_cores();
             tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
-            if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
-                tracing::error!("Tokio thread pinning failed");
+            // initial core set may be empty, it is OK
+            if !tokio_cores.is_empty() {
+                if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
+                    tracing::error!("Tokio thread pinning failed");
+                }
             }
         })
         .on_thread_unpark(move || {
@@ -110,6 +113,10 @@ fn main() -> eyre::Result<()> {
                 let pid = std::thread::current().id();
                 let tokio_cores = tokio_core_ids_state_unpark.get_cores();
                 tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
+
+                // n.b.: pinning on an empty set just fails
+                //
+                // it is useless to set empty set with RPC
                 if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
                     tracing::error!("Tokio thread repinning failed");
                 }

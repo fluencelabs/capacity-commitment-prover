@@ -1,7 +1,8 @@
 [rpc-endpoint]
 host = "0.0.0.0"
 port = "9383"
-utility-thread-ids = [1]
+# # Empty list means "all cores"
+# utility-thread-ids = []
 # # Queue size from async worker task to utility task
 # utility-queue-size = 100
 # # Queue size from RPC endpoint to utility task

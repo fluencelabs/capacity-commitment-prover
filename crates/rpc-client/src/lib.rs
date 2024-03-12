@@ -82,15 +82,19 @@ impl CCPRpcHttpClient {
 
     pub async fn on_active_commitment(
         &self,
-        global_nonce: impl Into<OrHex<GlobalNonce>>,
-        difficulty: impl Into<OrHex<Difficulty>>,
-        cu_allocation: impl Into<HashMap<PhysicalCoreId, OrHex<CUID>>>,
+        global_nonce: GlobalNonce,
+        difficulty: Difficulty,
+        cu_allocation: HashMap<PhysicalCoreId, CUID>,
     ) -> Result<(), ClientError> {
+        let cu_allocation = cu_allocation
+            .into_iter()
+            .map(|(k, v)| (k, v.into()))
+            .collect();
         CCPRpcClient::on_active_commitment(
             &self.inner,
             global_nonce.into(),
             difficulty.into(),
-            cu_allocation.into(),
+            cu_allocation,
         )
         .await
     }

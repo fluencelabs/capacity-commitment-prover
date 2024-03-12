@@ -270,7 +270,7 @@ checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
 name = "capacity-commitment-prover"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "axum",
@@ -313,7 +313,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp-config"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "capacity-commitment-prover",
  "ccp-config",
@@ -344,7 +344,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -359,7 +359,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "bitflags 2.4.2",
  "ccp-shared",
@@ -373,7 +373,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -384,7 +384,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "async-trait",
  "capacity-commitment-prover",
@@ -399,7 +399,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "hex",
  "newtype_derive",
@@ -409,7 +409,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -417,7 +417,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -551,7 +551,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
 name = "cpu-utils"
-version = "0.5.0"
+version = "0.7.1"
 dependencies = [
  "ccp-shared",
  "ccp_core_affinity",

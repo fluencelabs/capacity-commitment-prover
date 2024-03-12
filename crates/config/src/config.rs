@@ -91,7 +91,7 @@ impl Default for RpcEndpoint {
         Self {
             host: "127.0.0.1".to_string(),
             port: 9383,
-            utility_cores_ids: vec![1.into()],
+            utility_cores_ids: vec![],
             utility_queue_size: default_utility_queue_size(),
             facade_queue_size: default_facade_queue_size(),
         }
