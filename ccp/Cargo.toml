@@ -17,7 +17,6 @@ ccp-config.workspace = true
 ccp-randomx.workspace = true
 ccp-msr.workspace = true
 ccp-shared.workspace = true
-ccp-test-utils.workspace = true
 ccp-utils.workspace = true
 cpu-utils.workspace = true
 
@@ -48,6 +47,7 @@ prometheus-client = "0.22.1"
 tokio-util = "0.7.10"
 
 [dev-dependencies]
+ccp-test-utils.workspace = true
 env_logger.workspace = true
 maplit.workspace = true
 tempdir.workspace = true
