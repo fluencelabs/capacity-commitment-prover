@@ -169,4 +169,9 @@ where
         let guard = self.cc_prover.lock().await;
         guard.realloc_utility_cores(utility_core_ids).await;
     }
+
+    #[instrument(skip(self))]
+    async fn health(&self) -> Result<String, ErrorObjectOwned> {
+        Ok("OK".to_owned())
+    }
 }

@@ -67,6 +67,9 @@ pub trait CCPRpc {
 
     #[method(name = "realloc_utility_cores", param_kind = map)]
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
+
+    #[method(name = "health")]
+    async fn health(&self) -> Result<String, ErrorObjectOwned>;
 }
 
 pub struct CCPRpcHttpClient {
@@ -112,5 +115,9 @@ impl CCPRpcHttpClient {
         utility_core_ids: Vec<LogicalCoreId>,
     ) -> Result<(), ClientError> {
         CCPRpcClient::realloc_utility_cores(&self.inner, utility_core_ids).await
+    }
+
+    pub async fn health(&self) -> Result<String, ClientError> {
+        CCPRpcClient::health(&self.inner).await
     }
 }
