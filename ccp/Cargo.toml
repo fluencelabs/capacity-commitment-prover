@@ -53,3 +53,4 @@ tempdir.workspace = true
 tokio.workspace = true
 test-log.workspace = true
 rand.workspace = true
+rand.features = ["small_rng"]
