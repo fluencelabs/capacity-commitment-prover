@@ -13,7 +13,7 @@ name = "ccp"
 path = "src/main.rs"
 
 [dependencies]
-capacity-commitment-prover.workspace = true
+ccp.workspace = true
 ccp-config.workspace = true
 ccp-randomx.workspace = true
 ccp-rpc-server.workspace = true

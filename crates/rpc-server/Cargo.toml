@@ -13,7 +13,7 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
-capacity-commitment-prover.workspace = true
+ccp.workspace = true
 ccp-rpc-client.workspace = true
 ccp-shared.workspace = true
 cpu-utils.workspace = true
