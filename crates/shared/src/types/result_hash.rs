@@ -23,7 +23,7 @@ pub const RANDOMX_RESULT_SIZE: usize = 32;
 
 pub type ResultHashInner = [u8; RANDOMX_RESULT_SIZE];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
 pub struct ResultHash(ResultHashInner);
@@ -68,8 +68,18 @@ impl ToHex for ResultHash {
     }
 }
 
-impl std::fmt::Display for ResultHash {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+use std::fmt;
+
+impl fmt::Display for ResultHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for ResultHash {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("ResultHash")
+            .field(&self.to_string())
+            .finish()
     }
 }

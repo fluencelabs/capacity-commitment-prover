@@ -22,7 +22,7 @@ use hex::FromHex;
 
 pub type GlobalNonceInner = [u8; 32];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
 pub struct GlobalNonce(GlobalNonceInner);
@@ -57,8 +57,18 @@ impl ToHex for GlobalNonce {
     }
 }
 
-impl std::fmt::Display for GlobalNonce {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+use std::fmt;
+
+impl fmt::Display for GlobalNonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for GlobalNonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("GlobalNonce")
+            .field(&self.to_string())
+            .finish()
     }
 }
