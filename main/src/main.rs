@@ -95,6 +95,7 @@ fn build_tokio_runtime(
     let tokio_core_ids_state_unpark = tokio_core_ids_state_async.clone();
     let mut builder = tokio::runtime::Builder::new_multi_thread();
     builder
+        .enable_all()
         .on_thread_start(move || {
             let pid = std::thread::current().id();
             let tokio_cores = tokio_core_ids_state_start.get_cores();
