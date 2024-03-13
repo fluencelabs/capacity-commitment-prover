@@ -1,7 +1,7 @@
 [package]
 name = "capacity-commitment-prover"
 description = "The core project of the capacity commitment prover for the Fluence protocol"
-version = "0.5.0"
+version = "0.7.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -17,7 +17,6 @@ ccp-config.workspace = true
 ccp-randomx.workspace = true
 ccp-msr.workspace = true
 ccp-shared.workspace = true
-ccp-test-utils.workspace = true
 ccp-utils.workspace = true
 cpu-utils.workspace = true
 
@@ -47,6 +46,7 @@ prometheus-client = "0.22.1"
 tokio-util = "0.7.10"
 
 [dev-dependencies]
+ccp-test-utils.workspace = true
 env_logger.workspace = true
 maplit.workspace = true
 tempdir.workspace = true

@@ -32,6 +32,16 @@ impl<T> OrHex<T> {
     }
 }
 
+use std::fmt;
+impl<T: fmt::Display> fmt::Display for OrHex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OrHex::String(s) => write!(f, "{s}"),
+            OrHex::Data(d) => write!(f, "{d}"),
+        }
+    }
+}
+
 impl<T: FromHex> From<T> for OrHex<T> {
     fn from(value: T) -> Self {
         OrHex::Data(value)

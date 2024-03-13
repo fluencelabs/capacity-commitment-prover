@@ -36,7 +36,7 @@ pub enum ProvingThreadSyncError {
     #[error(transparent)]
     ChannelError(#[from] anyhow::Error),
 
-    #[error("thread pinning to logical core {core_id} failed")]
+    #[error("pinning thread to a core {core_id} failed")]
     ThreadPinFailed { core_id: LogicalCoreId },
 }
 

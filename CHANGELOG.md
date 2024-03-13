@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.7.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.0...ccp-v0.7.1) (2024-03-12)
+
+
+### Bug Fixes
+
+* **cargo:** move ccp-test-utils dependency to dev-dependencies of ccp ([#108](https://github.com/fluencelabs/capacity-commitment-prover/issues/108)) ([40d4205](https://github.com/fluencelabs/capacity-commitment-prover/commit/40d420526dcb02c0a9f94dffc2bb99264fcd71df))
+
+## [0.7.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.6.0...ccp-v0.7.0) (2024-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config:** allow empty initial utility cores set ([#98](https://github.com/fluencelabs/capacity-commitment-prover/issues/98))
+
+### Features
+
+* **config:** allow empty initial utility cores set ([#98](https://github.com/fluencelabs/capacity-commitment-prover/issues/98)) ([e5b73f8](https://github.com/fluencelabs/capacity-commitment-prover/commit/e5b73f8fdc44f5c63094d2e118f29a2c0f8f3570))
+
+## [0.6.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.5.0...ccp-v0.6.0) (2024-03-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* **rpc:** more ergonomic RPC client ([#102](https://github.com/fluencelabs/capacity-commitment-prover/issues/102))
+
+### Features
+
+* **rpc:** more ergonomic RPC client ([#102](https://github.com/fluencelabs/capacity-commitment-prover/issues/102)) ([0146973](https://github.com/fluencelabs/capacity-commitment-prover/commit/01469732b22996e49c18a9d6fa63acf9aeee2c1c))
+
 ## [0.5.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.4.2...ccp-v0.5.0) (2024-03-11)
 
 
