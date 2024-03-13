@@ -88,13 +88,16 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn pin<'threads>(&'threads mut self, core_id: PhysicalCoreId) -> CUResult<()> {
+    pub(crate) async fn pin<'threads>(
+        &'threads mut self,
+        new_core_id: PhysicalCoreId,
+    ) -> CUResult<()> {
         use super::proving_thread_utils::RoundRobinDistributor;
         use super::proving_thread_utils::ThreadDistributionPolicy;
 
         use futures::FutureExt;
 
-        let logical_cores = self.cpu_topology.logical_cores_for_physical(core_id)?;
+        let logical_cores = self.cpu_topology.logical_cores_for_physical(new_core_id)?;
         let distributor = RoundRobinDistributor {};
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
@@ -102,6 +105,7 @@ impl CUProver {
             thread.pin(core_id).boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;
+        self.pinned_core_id = new_core_id;
 
         Ok(())
     }
