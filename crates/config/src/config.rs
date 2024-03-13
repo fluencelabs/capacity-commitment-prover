@@ -32,13 +32,13 @@ pub struct CCPConfig {
     pub logs: Logs,
     pub state_dir: std::path::PathBuf,
     pub workers: Workers,
+    pub tokio: Tokio,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RpcEndpoint {
     pub host: String,
     pub port: u16,
-    pub utility_cores_ids: Vec<LogicalCoreId>,
     pub utility_queue_size: usize,
     pub facade_queue_size: usize,
 }
@@ -86,12 +86,18 @@ pub struct Workers {
     pub sync_to_async_queue_size: usize,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Tokio {
+    pub worker_threads: Option<usize>,
+    pub max_blocking_threads: Option<usize>,
+    pub utility_cores_ids: Vec<LogicalCoreId>,
+}
+
 impl Default for RpcEndpoint {
     fn default() -> Self {
         Self {
             host: "127.0.0.1".to_string(),
             port: 9383,
-            utility_cores_ids: vec![],
             utility_queue_size: default_utility_queue_size(),
             facade_queue_size: default_facade_queue_size(),
         }

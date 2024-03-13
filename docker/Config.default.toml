@@ -1,8 +1,6 @@
 [rpc-endpoint]
 host = "0.0.0.0"
 port = "9383"
-# # Empty list means "all cores"
-# utility-thread-ids = []
 # # Queue size from async worker task to utility task
 # utility-queue-size = 100
 # # Queue size from RPC endpoint to utility task
@@ -38,3 +36,11 @@ path = "./state"
 # async_to_sync_queue_size = 1
 # # sync to async queue size
 # sync_to_async_queue_size = 1
+
+[tokio]
+# # Empty list means "all cores"
+# utility-thread-ids = []
+# # tokio worker thread count; unset by default
+# worker-threads = 2
+# # max tokio blocking thread count; unset by default
+# max-blocking-threads = 15

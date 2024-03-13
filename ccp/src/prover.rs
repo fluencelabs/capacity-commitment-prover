@@ -121,8 +121,7 @@ impl CCProver {
     pub async fn new(config: CCPConfig) -> CCResult<Self> {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
         let state_storage = StateStorage::new(config.state_dir.clone());
-        let utility_core_ids_handle =
-            CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids.clone());
+        let utility_core_ids_handle = CpuIdsHandle::new(config.tokio.utility_cores_ids.clone());
 
         Self::create_prover(
             config,
@@ -208,7 +207,6 @@ impl CCProver {
 
         let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
         let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids.clone(),
             start_proof_idx,
             proof_dir,
             prev_global_nonce,
