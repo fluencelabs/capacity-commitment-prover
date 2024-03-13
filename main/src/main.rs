@@ -30,14 +30,14 @@ use std::cell::Cell;
 use std::path::Path;
 use std::sync::Arc;
 
-use capacity_commitment_prover::cpuids_handle::CpuIdsHandle;
+use ccp::cpuids_handle::CpuIdsHandle;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::RwLock;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
-use capacity_commitment_prover::CCProver;
+use ccp::CCProver;
 use ccp_config::load_config;
 use ccp_config::CCPConfig;
 use ccp_rpc_server::BackgroundFacade;

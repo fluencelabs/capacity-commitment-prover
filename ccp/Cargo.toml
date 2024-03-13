@@ -1,5 +1,5 @@
 [package]
-name = "capacity-commitment-prover"
+name = "ccp"
 description = "The core project of the capacity commitment prover for the Fluence protocol"
 version = "0.7.1"
 authors.workspace = true
