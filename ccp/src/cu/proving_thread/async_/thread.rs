@@ -132,8 +132,11 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         flags: RandomXFlags,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(epoch, dataset, flags, cu_id);
-        let message = AsyncToSyncMessage::NewCCJob(message, self.hashes_per_round);
+        let job = NewCCJob::new(epoch, dataset, flags, cu_id);
+        let message = AsyncToSyncMessage::NewCCJob {
+            job,
+            hashes_per_round: self.hashes_per_round,
+        };
         self.to_sync.send(message).await.map_err(Into::into)
     }
 

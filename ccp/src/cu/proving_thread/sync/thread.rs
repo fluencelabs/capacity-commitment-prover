@@ -190,7 +190,10 @@ impl ProvingThreadSync {
                 Ok(ThreadState::WaitForMessage)
             }
 
-            AsyncToSyncMessage::NewCCJob(job, hashes_per_round) => {
+            AsyncToSyncMessage::NewCCJob {
+                job,
+                hashes_per_round,
+            } => {
                 let job = RandomXJob::from_cc_job(job, hashes_per_round)?;
                 Ok(ThreadState::CCJob { job })
             }
