@@ -269,7 +269,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2bd12c1caf447e69cd4528f47f94d203fd2582878ecb9e9465484c4148a8223"
 
 [[package]]
-name = "capacity-commitment-prover"
+name = "cc"
+version = "1.0.88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
+
+[[package]]
+name = "ccp"
 version = "0.7.1"
 dependencies = [
  "anyhow",
@@ -306,12 +312,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cc"
-version = "1.0.88"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
-
-[[package]]
 name = "ccp-config"
 version = "0.7.1"
 dependencies = [
@@ -327,7 +327,7 @@ dependencies = [
 name = "ccp-main"
 version = "0.7.1"
 dependencies = [
- "capacity-commitment-prover",
+ "ccp",
  "ccp-config",
  "ccp-randomx",
  "ccp-rpc-server",
@@ -387,7 +387,7 @@ name = "ccp-rpc-server"
 version = "0.7.1"
 dependencies = [
  "async-trait",
- "capacity-commitment-prover",
+ "ccp",
  "ccp-rpc-client",
  "ccp-shared",
  "cpu-utils",
@@ -413,6 +413,7 @@ version = "0.7.1"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
+ "rand 0.8.5",
 ]
 
 [[package]]
