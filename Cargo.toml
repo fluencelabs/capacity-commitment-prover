@@ -20,7 +20,7 @@ members = [
 ]
 
 [workspace.dependencies]
-capacity-commitment-prover = { path = "./ccp", version = "0.7.0" }
+ccp = { path = "./ccp", version = "0.7.0" }
 ccp-config = { path = "./crates/config", version = "0.7.0" }
 ccp-randomx = { path = "./crates/randomx", version = "0.7.0"}
 ccp-msr = { path = "./crates/msr", version = "0.7.0" }

@@ -23,7 +23,7 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 
-use capacity_commitment_prover::CCProver;
+use ccp::CCProver;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
