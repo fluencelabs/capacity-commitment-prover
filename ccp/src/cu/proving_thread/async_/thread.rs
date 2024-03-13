@@ -24,12 +24,12 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 
+pub use super::config::ProvingThreadConfig;
 use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;
 use crate::cu::proving_thread::messages::*;
 use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
 use crate::cu::proving_thread::sync::ProvingThreadSync;
-use crate::cu::CUProverConfig;
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadAsync {
@@ -173,22 +173,5 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         self.stop_nonblocking().await?;
         self.join().await?;
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ProvingThreadConfig {
-    pub hashes_per_round: usize,
-    pub async_to_sync_queue_size: usize,
-    pub sync_to_async_queue_size: usize,
-}
-
-impl ProvingThreadConfig {
-    pub fn from_compute_unit_config(cu_config: &CUProverConfig) -> Self {
-        Self {
-            hashes_per_round: cu_config.hashes_per_round,
-            async_to_sync_queue_size: cu_config.async_to_sync_queue_size,
-            sync_to_async_queue_size: cu_config.sync_to_async_queue_size,
-        }
     }
 }

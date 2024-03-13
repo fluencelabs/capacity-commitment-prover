@@ -57,7 +57,7 @@ impl CUProver {
             .allocate(
                 msr_enforcer,
                 to_utility,
-                ProvingThreadConfig::from_compute_unit_config(&config),
+                ProvingThreadConfig::from_cu_prover_config(&config),
             )?;
 
         let thread = &mut threads.head;
