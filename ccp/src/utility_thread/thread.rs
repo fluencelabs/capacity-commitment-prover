@@ -140,7 +140,7 @@ impl UtilityThreadImpl {
                 self.hashrate_handler.proof_found(core_id);
             }
             ToUtilityMessage::ErrorHappened { core_id, error } => {
-                log::error!("{core_id} core: {error}");
+                log::error!("{core_id}: {error}");
             }
             ToUtilityMessage::Hashrate(record) => {
                 log::info!("{record}");
