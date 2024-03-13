@@ -88,7 +88,10 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn pin<'threads>(&'threads mut self, new_core_id: PhysicalCoreId) -> CUResult<()> {
+    pub(crate) async fn pin<'threads>(
+        &'threads mut self,
+        new_core_id: PhysicalCoreId,
+    ) -> CUResult<()> {
         use super::proving_thread_utils::RoundRobinDistributor;
         use super::proving_thread_utils::ThreadDistributionPolicy;
 

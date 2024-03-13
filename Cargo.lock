@@ -413,6 +413,7 @@ version = "0.5.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
+ "rand 0.8.5",
 ]
 
 [[package]]

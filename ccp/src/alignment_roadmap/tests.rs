@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 
+
 use std::collections::HashMap;
+
+use rand::rngs::SmallRng;
+use rand::Rng;
 
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::CUID;
+use ccp_shared::types::PhysicalCoreId;
 use ccp_test_utils::test_values as test;
 
 use super::CCProverAlignmentRoadmap;
@@ -434,4 +439,127 @@ fn remove_more_then_create() {
     // we can assign prover 1 to the 4th task and remove the 2nd prover or
     //        assign prover 2 to the 4th task and remove the 1st prover
     assert!((actual_roadmap == expected_roadmap_1) || (actual_roadmap == expected_roadmap_2));
+}
+
+#[test]
+fn consecutive_repinnings() {
+    use rand::SeedableRng;
+    const ITERATIONS: usize = 1000;
+    const CORES: u8 = 128;
+    const SEED: u64 = 0x012345678ABCDEF;
+
+    let mut rng = SmallRng::seed_from_u64(SEED);
+    let cores_distribution = rand::distributions::Uniform::from(0..CORES + 1);
+
+    let mut current_allocation: Option<CUAllocation> = None;
+    let mut prover_state = HashMap::<PhysicalCoreId, MockProver>::new();
+    let mut current_epoch = test::generate_epoch_params(0xFF, 1);
+
+    let apply_roadmap = |prover_state: &mut HashMap<PhysicalCoreId, MockProver>,
+                         roadmap: CCProverAlignmentRoadmap| {
+        for action in roadmap.actions {
+            match action {
+                CUProverAction::CreateCUProver(state) => {
+                    let result = prover_state.insert(state.new_core_id, state.new_cu_id.into());
+                    assert!(result.is_none())
+                }
+                CUProverAction::RemoveCUProver(state) => {
+                    let result = prover_state.remove(&state.current_core_id);
+                    assert!(result.is_some())
+                }
+                CUProverAction::NewCCJob(state) => {
+                    *prover_state.get_mut(&state.current_core_id).unwrap() = state.new_cu_id.into();
+                }
+                CUProverAction::NewCCJobWithRepining(state) => {
+                    let result = prover_state.remove(&state.current_core_id);
+                    assert!(result.is_some());
+                    let result = prover_state.insert(state.new_core_id, state.new_cu_id.into());
+                    assert!(result.is_none())
+                }
+            }
+        }
+    };
+
+    let check_prover_state = |prover_state: &HashMap<PhysicalCoreId, MockProver>,
+                              current_allocation: &CUAllocation| {
+        for (core_id, prover) in prover_state.iter() {
+            let allocated_cu_id = current_allocation.get(core_id).unwrap();
+            match prover.status {
+                CUStatus::Idle => panic!("prover running but was not allocated"),
+                CUStatus::Running { cu_id } if cu_id != *allocated_cu_id => {
+                    panic!("expected matching cu_id")
+                }
+                _ => continue,
+            }
+        }
+
+        for (allocated_core_id, allocated_cu_id) in current_allocation.iter() {
+            let prover = prover_state.get(allocated_core_id).unwrap();
+            match prover.status {
+                CUStatus::Idle => panic!("expected running prover"),
+                CUStatus::Running { cu_id } if cu_id != *allocated_cu_id => {
+                    panic!("expected matching cu_id")
+                }
+                _ => continue,
+            }
+        }
+    };
+
+    for i in 0..ITERATIONS {
+        let allocation_size = rng.sample(&cores_distribution);
+        let new_allocation =
+            test::generate_random_allocation(&mut rng, allocation_size as usize, 0..CORES);
+        let new_epoch = test::generate_epoch_params((i % 256) as u8, 1);
+        let status = if current_allocation.is_some() {
+            CCStatus::Running {
+                epoch: current_epoch,
+            }
+        } else {
+            CCStatus::Idle
+        };
+
+        let roadmap = CCProverAlignmentRoadmap::make(
+            new_allocation.clone(),
+            new_epoch,
+            &prover_state,
+            status,
+        );
+
+        apply_roadmap(&mut prover_state, roadmap);
+        current_epoch = new_epoch;
+        current_allocation = Some(new_allocation);
+        check_prover_state(&prover_state, &current_allocation.as_ref().unwrap())
+    }
+}
+
+#[derive(Debug)]
+struct MockProver {
+    #[allow(unused)]
+    pub status: CUStatus,
+}
+
+impl MockProver {
+    pub fn new(cu_id: CUID) -> Self {
+        Self {
+            status: CUStatus::Running { cu_id },
+        }
+    }
+}
+
+impl From<&CUID> for MockProver {
+    fn from(value: &CUID) -> Self {
+        Self::new(value.clone())
+    }
+}
+
+impl From<CUID> for MockProver {
+    fn from(value: CUID) -> Self {
+        Self::new(value)
+    }
+}
+
+impl ToCUStatus for MockProver {
+    fn status(&self) -> CUStatus {
+        self.status
+    }
 }

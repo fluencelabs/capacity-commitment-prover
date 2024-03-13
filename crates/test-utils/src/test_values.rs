@@ -50,3 +50,33 @@ pub fn generate_difficulty(difficulty: u8) -> Difficulty {
         3, 4, 6, 3, 2,
     ])
 }
+
+pub fn generate_allocation(cores: &[u8]) -> CUAllocation {
+    cores
+        .iter()
+        .map(|core_id| {
+            (
+                PhysicalCoreId::from(*core_id as u32),
+                generate_cu_id(*core_id),
+            )
+        })
+        .collect()
+}
+
+pub fn generate_random_allocation(
+    rng: &mut impl rand::Rng,
+    size: usize,
+    range: std::ops::Range<u8>,
+) -> CUAllocation {
+    use rand::Rng;
+    let distr = rand::distributions::Uniform::from(range);
+    rng.sample_iter(distr)
+        .take(size as usize)
+        .map(|core_id| {
+            (
+                PhysicalCoreId::from(core_id as u32),
+                generate_cu_id(core_id),
+            )
+        })
+        .collect()
+}

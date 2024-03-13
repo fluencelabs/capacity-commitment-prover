@@ -15,3 +15,4 @@ doctest = false
 [dependencies]
 ccp-shared.workspace = true
 ccp-randomx.workspace = true
+rand.workspace = true
