@@ -73,7 +73,9 @@ fn main() -> eyre::Result<()> {
     tracing_log::LogTracer::init()?;
 
     if !config.state_dir.exists() {
-        std::fs::create_dir_all(&config.state_dir)?
+        std::fs::create_dir_all(&config.state_dir).with_context(|| {
+            format!("Failed to ensure state dir exits at {:?}", config.state_dir)
+        })?
     }
 
     check_writable_dir(&config.state_dir)
@@ -203,6 +205,7 @@ fn check_writable_dir(path: &Path) -> eyre::Result<()> {
 
     let meta = std::fs::metadata(path)?;
     let permissions = meta.permissions();
+    // TODO this is not an accurate check; std docs advise to use libc::access with is too low-level
     if permissions.readonly() {
         eyre::bail!("{path:?} is not writable");
     }
