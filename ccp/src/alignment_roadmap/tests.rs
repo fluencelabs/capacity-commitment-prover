@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 use std::collections::HashMap;
 
 use rand::rngs::SmallRng;
@@ -446,7 +445,7 @@ fn consecutive_repinnings() {
     use rand::SeedableRng;
     const ITERATIONS: usize = 1000;
     const CORES: u8 = 128;
-    const SEED: u64 = 0x012345678ABCDEF;
+    const SEED: u64 = 0x0123456789ABCDEF;
 
     let mut rng = SmallRng::seed_from_u64(SEED);
     let cores_distribution = rand::distributions::Uniform::from(0..CORES + 1);

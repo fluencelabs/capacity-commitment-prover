@@ -342,7 +342,6 @@ impl RoadmapAlignable for CCProver {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
-        println!("roadmap: {:?}", roadmap);
         let CCProverAlignmentRoadmap {
             pre_action,
             actions,
