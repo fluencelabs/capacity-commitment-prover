@@ -217,9 +217,7 @@ impl ThreadHashrateRaw {
                 count: hashes_count,
             } => {
                 let overall_duration = match self.cc_job_duration {
-                    ParameterStatus::Measured(measured_duration) => {
-                        measured_duration + new_entry.duration
-                    }
+                    ParameterStatus::Measured(duration) => duration + new_entry.duration,
                     ParameterStatus::NotMeasured => new_entry.duration,
                 };
                 self.cc_job_duration = ParameterStatus::Measured(overall_duration);
