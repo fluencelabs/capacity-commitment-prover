@@ -13,7 +13,7 @@ port = "9384"
 # hard-aes = true
 # jit = true
 # secure = false
-# argon2 = "default" possible values are: "ssse3", "avx2" or "default"
+# argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
 # msr = false
 # threads-per-core = 2
 
