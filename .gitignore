@@ -3,4 +3,4 @@
 .DS_Store
 
 # by default, CCP creates state dir in the same dir where it's config is saved
-./docker/state
+.docker/state

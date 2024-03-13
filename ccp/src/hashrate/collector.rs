@@ -216,8 +216,13 @@ impl ThreadHashrateRaw {
             HashrateRecordType::CheckedHashes {
                 count: hashes_count,
             } => {
-                self.cc_job_duration
-                    .map(|duration| duration + new_entry.duration);
+                let overall_duration = match self.cc_job_duration {
+                    ParameterStatus::Measured(measured_duration) => {
+                        measured_duration + new_entry.duration
+                    }
+                    ParameterStatus::NotMeasured => new_entry.duration,
+                };
+                self.cc_job_duration = ParameterStatus::Measured(overall_duration);
                 self.checked_hashes_count += hashes_count as u64;
             }
         }
