@@ -17,11 +17,11 @@
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
+use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
-use crate::unresolved_config::default_facade_queue_size;
-use crate::unresolved_config::default_utility_queue_size;
+use crate::defaults::default_utility_queue_size;
 use crate::unresolved_config::UnresolvedWorkers;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -20,38 +20,17 @@ use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::defaults::default_async_to_sync_queue_size;
+use super::defaults::default_facade_queue_size;
+use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
 use super::defaults::default_state_path;
+use super::defaults::default_sync_to_async_queue_size;
+use super::defaults::default_utility_queue_size;
+
 use crate::*;
-
-const DEFAULT_HASHES_PER_ROUND: usize = 1024;
-const DEFAULT_ASYNC_TO_SYNC_QUEUE_SIZE: usize = 1;
-const DEFAULT_SYNC_TO_ASYNC_QUEUE_SIZE: usize = 1;
-
-pub(crate) const DEFAULT_UTILITY_QUEUE_SIZE: usize = 100;
-pub(crate) const DEFAULT_FACADE_QUEUE_SIZE: usize = 100;
-
-fn default_hashes_per_round() -> usize {
-    DEFAULT_HASHES_PER_ROUND
-}
-
-fn default_async_to_sync_queue_size() -> usize {
-    DEFAULT_ASYNC_TO_SYNC_QUEUE_SIZE
-}
-
-fn default_sync_to_async_queue_size() -> usize {
-    DEFAULT_SYNC_TO_ASYNC_QUEUE_SIZE
-}
-
-pub(crate) fn default_utility_queue_size() -> usize {
-    DEFAULT_UTILITY_QUEUE_SIZE
-}
-
-pub(crate) fn default_facade_queue_size() -> usize {
-    DEFAULT_FACADE_QUEUE_SIZE
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -328,9 +307,9 @@ impl UnresolvedWorkers {
 impl Default for UnresolvedWorkers {
     fn default() -> Self {
         Self {
-            hashes_per_round: DEFAULT_HASHES_PER_ROUND,
-            async_to_sync_queue_size: DEFAULT_ASYNC_TO_SYNC_QUEUE_SIZE,
-            sync_to_async_queue_size: DEFAULT_SYNC_TO_ASYNC_QUEUE_SIZE,
+            hashes_per_round: default_hashes_per_round(),
+            async_to_sync_queue_size: default_async_to_sync_queue_size(),
+            sync_to_async_queue_size: default_sync_to_async_queue_size(),
         }
     }
 }
