@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use ccp_randomx::RandomXFlags;
 
 use crate::config_loader::load_config;
+use crate::unresolved_config::UnresolvedWorkers;
 use crate::CCPConfig;
 use crate::Logs;
 use crate::Optimizations;
@@ -63,6 +64,7 @@ fn parse_basic_config() {
         optimizations,
         logs,
         state_dir: "../test".into(),
+        workers: Workers::default(),
     };
 
     assert_eq!(actual_config, expected_config);
@@ -98,6 +100,7 @@ fn parse_config_without_optimiziations() {
         optimizations,
         logs,
         state_dir: "../test".into(),
+        workers: Workers::default(),
     };
 
     assert_eq!(actual_config, expected_config);

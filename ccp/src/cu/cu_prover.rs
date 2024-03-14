@@ -25,6 +25,7 @@ use cpu_utils::CPUTopology;
 
 use super::config::CUProverConfig;
 use super::proving_thread::ProvingThreadAsync;
+use super::proving_thread::ProvingThreadConfig;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
@@ -53,7 +54,11 @@ impl CUProver {
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(msr_enforcer, to_utility)?;
+            .allocate(
+                msr_enforcer,
+                to_utility,
+                ProvingThreadConfig::from_cu_prover_config(&config),
+            )?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;

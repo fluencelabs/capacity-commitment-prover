@@ -46,7 +46,7 @@ impl ThreadInitIngredients {
         let (inlet, outlet) = mpsc::channel(1);
 
         let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-        let mut thread = ProvingThreadAsync::new(core_id, msr_enforcer, inlet);
+        let mut thread = ProvingThreadAsync::new(core_id, msr_enforcer, inlet, 1024);
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
@@ -78,7 +78,7 @@ async fn cache_creation_works() {
 
     let (inlet, _outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet);
+    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop_join().await.unwrap();
 
@@ -102,7 +102,7 @@ async fn dataset_creation_works() {
 
     let (inlet, mut outlet) = mpsc::channel(3);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet);
+    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread
@@ -151,7 +151,12 @@ async fn dataset_creation_works_with_three_threads() {
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut threads = (0..threads_count)
         .map(|thread_id| {
-            ProvingThreadAsync::new((2 + thread_id).into(), msr_enforcer.clone(), inlet.clone())
+            ProvingThreadAsync::new(
+                (2 + thread_id).into(),
+                msr_enforcer.clone(),
+                inlet.clone(),
+                1024,
+            )
         })
         .collect::<Vec<_>>();
 

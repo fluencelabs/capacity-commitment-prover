@@ -1,8 +1,10 @@
 [rpc-endpoint]
 host = "0.0.0.0"
 port = "9383"
-# Empty list means "all cores"
-utility-thread-ids = []
+# # Queue size from async worker task to utility task
+# utility-queue-size = 100
+# # Queue size from RPC endpoint to utility task
+# facade-queue-size = 100
 
 [prometheus-endpoint]
 host = "0.0.0.0"
@@ -25,3 +27,20 @@ log-level = "info"
 # relative path will be resolved relative to Config.toml
 # absolute path will work as is
 path = "./state"
+
+[workers]
+# # how large is hash chunk to process; after each chunk, threads
+# # react to interruptions etc.
+# hashes_per_round = 1024
+# # async to sync queue size
+# async_to_sync_queue_size = 1
+# # sync to async queue size
+# sync_to_async_queue_size = 1
+
+[tokio]
+# # Empty list means "all cores"
+# utility-thread-ids = []
+# # tokio worker thread count; unset by default
+# worker-threads = 2
+# # max tokio blocking thread count; unset by default
+# max-blocking-threads = 15

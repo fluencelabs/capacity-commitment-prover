@@ -79,15 +79,23 @@ fn main() -> eyre::Result<()> {
     check_writable_dir(&config.state_dir)
         .wrap_err("state-dir value in a config should be a writeable directory path")?;
 
-    let tokio_cores = config.rpc_endpoint.utility_cores_ids.clone();
+    let tokio_cores = config.tokio.utility_cores_ids.clone();
 
-    let tokio_core_ids_state_start = CpuIdsHandle::new(tokio_cores);
-    let tokio_core_ids_state_unpark = tokio_core_ids_state_start.clone();
-    let tokio_core_ids_state_async = tokio_core_ids_state_start.clone();
+    let tokio_core_ids_state_async = CpuIdsHandle::new(tokio_cores);
+    let runtime = build_tokio_runtime(&config, &tokio_core_ids_state_async)?;
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
+    runtime.block_on(async_main(config, tokio_core_ids_state_async))
+}
+
+fn build_tokio_runtime(
+    config: &CCPConfig,
+    tokio_core_ids_state_async: &CpuIdsHandle,
+) -> Result<tokio::runtime::Runtime, eyre::Error> {
+    let tokio_core_ids_state_start = tokio_core_ids_state_async.clone();
+    let tokio_core_ids_state_unpark = tokio_core_ids_state_async.clone();
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    builder
         .enable_all()
-        .worker_threads(2)
         .on_thread_start(move || {
             let pid = std::thread::current().id();
             let tokio_cores = tokio_core_ids_state_start.get_cores();
@@ -122,15 +130,19 @@ fn main() -> eyre::Result<()> {
                 }
                 LAST_SEEN_REPIN_VERSION.set(version);
             }
-        })
-        .build()
-        .wrap_err("failed to build tokio runtime")?;
-
-    runtime.block_on(async_main(config, tokio_core_ids_state_async))
+        });
+    if let Some(worker_threads) = &config.tokio.worker_threads {
+        builder.worker_threads(*worker_threads);
+    };
+    if let Some(max_blocking_threads) = &config.tokio.max_blocking_threads {
+        builder.max_blocking_threads(*max_blocking_threads);
+    }
+    builder.build().wrap_err("failed to build tokio runtime")
 }
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
+    let facade_queue_size = config.rpc_endpoint.facade_queue_size;
 
     tracing::info!("Creating prover from a saved state");
     let prover = CCProver::from_saved_state(config, tokio_core_ids_state)
@@ -143,7 +155,8 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
         rpc_bind_address.1
     );
     let prover = Arc::new(RwLock::new(prover));
-    let rpc_endpoint = CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone()));
+    let rpc_endpoint =
+        CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone(), facade_queue_size));
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await

@@ -24,6 +24,7 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 
+pub use super::config::ProvingThreadConfig;
 use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;
 use crate::cu::proving_thread::messages::*;
@@ -35,6 +36,7 @@ pub(crate) struct ProvingThreadAsync {
     to_sync: AsyncToSyncInlet,
     from_sync: SyncToAsyncOutlet,
     sync_thread: ProvingThreadSync,
+    hashes_per_round: usize,
 }
 
 impl ProvingThreadAsync {
@@ -42,9 +44,12 @@ impl ProvingThreadAsync {
         core_id: LogicalCoreId,
         msr_enforcer: MSRModeEnforcer,
         to_utility: ToUtilityInlet,
+        config: ProvingThreadConfig,
     ) -> Self {
-        let (to_sync, from_async) = mpsc::channel::<AsyncToSyncMessage>(1);
-        let (to_async, from_sync) = mpsc::channel::<SyncToAsyncMessage>(1);
+        let (to_sync, from_async) =
+            mpsc::channel::<AsyncToSyncMessage>(config.async_to_sync_queue_size);
+        let (to_async, from_sync) =
+            mpsc::channel::<SyncToAsyncMessage>(config.sync_to_async_queue_size);
         let sync_thread =
             ProvingThreadSync::spawn(core_id, msr_enforcer, from_async, to_async, to_utility);
 
@@ -52,6 +57,7 @@ impl ProvingThreadAsync {
             to_sync,
             from_sync,
             sync_thread,
+            hashes_per_round: config.hashes_per_round,
         }
     }
 }
@@ -126,8 +132,11 @@ impl ProvingThreadFacade for ProvingThreadAsync {
         flags: RandomXFlags,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let message = NewCCJob::new(epoch, dataset, flags, cu_id);
-        let message = AsyncToSyncMessage::NewCCJob(message);
+        let job = NewCCJob::new(epoch, dataset, flags, cu_id);
+        let message = AsyncToSyncMessage::NewCCJob {
+            job,
+            hashes_per_round: self.hashes_per_round,
+        };
         self.to_sync.send(message).await.map_err(Into::into)
     }
 

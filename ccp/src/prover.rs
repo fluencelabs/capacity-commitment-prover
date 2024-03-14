@@ -121,8 +121,7 @@ impl CCProver {
     pub async fn new(config: CCPConfig) -> CCResult<Self> {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
         let state_storage = StateStorage::new(config.state_dir.clone());
-        let utility_core_ids_handle =
-            CpuIdsHandle::new(config.rpc_endpoint.utility_cores_ids.clone());
+        let utility_core_ids_handle = CpuIdsHandle::new(config.tokio.utility_cores_ids.clone());
 
         Self::create_prover(
             config,
@@ -152,7 +151,7 @@ impl CCProver {
                 // if there is a state, then it means that CCP crashed without setting back
                 // possibly changed original MSR state, so, let's set it back
                 if !config.optimizations.msr_enabled {
-                    cease_prev_msr_policy(&prev_state);
+                    cease_prev_msr_policy(prev_state);
                 }
 
                 epoch = Some(prev_state.epoch_params);
@@ -208,11 +207,11 @@ impl CCProver {
 
         let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
         let utility_thread = UtilityThread::spawn(
-            config.rpc_endpoint.utility_cores_ids.clone(),
             start_proof_idx,
             proof_dir,
             prev_global_nonce,
             hashrate_handler,
+            config.rpc_endpoint.utility_queue_size,
         );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
@@ -222,7 +221,7 @@ impl CCProver {
             )
         });
 
-        let cu_prover_config = config.optimizations.into();
+        let cu_prover_config = CUProverConfig::new(config.optimizations, config.workers);
         let prover = Self {
             cu_provers: HashMap::new(),
             cu_prover_config,

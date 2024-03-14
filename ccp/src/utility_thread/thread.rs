@@ -22,7 +22,6 @@ use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::GlobalNonce;
-use cpu_utils::LogicalCoreId;
 use tokio_util::sync::CancellationToken;
 
 use super::message::*;
@@ -40,13 +39,13 @@ pub(crate) struct UtilityThread {
 
 impl UtilityThread {
     pub(crate) fn spawn(
-        core_ids: Vec<LogicalCoreId>,
         prev_proof_idx: ProofIdx,
         proof_storage_dir: std::path::PathBuf,
         prev_global_nonce: Option<GlobalNonce>,
         hashrate_handler: HashrateHandler,
+        utility_queue_size: usize,
     ) -> Self {
-        let (to_utility, from_utility) = mpsc::channel(100);
+        let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
 
         let cancellation = CancellationToken::new();
 
@@ -59,7 +58,7 @@ impl UtilityThread {
             hashrate_handler,
         );
 
-        let handle = tokio::spawn(ut_impl.utility_closure(core_ids));
+        let handle = tokio::spawn(ut_impl.utility_closure());
         Self {
             to_utility,
             cancellation,
@@ -100,13 +99,9 @@ impl UtilityThreadImpl {
         }
     }
 
-    pub(crate) async fn utility_closure(mut self, core_ids: Vec<LogicalCoreId>) {
+    pub(crate) async fn utility_closure(mut self) {
         use futures::FutureExt;
         use futures::StreamExt;
-
-        if !cpu_utils::pinning::pin_current_thread_to_cpuset(core_ids.iter().cloned()) {
-            log::error!("failed to pin to {core_ids:?} cores");
-        }
 
         let mut cum_hashrate_ticker =
             time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));

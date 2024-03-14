@@ -20,10 +20,16 @@ use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
 
+use super::defaults::default_async_to_sync_queue_size;
+use super::defaults::default_facade_queue_size;
+use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
 use super::defaults::default_report_hashrate;
 use super::defaults::default_state_path;
+use super::defaults::default_sync_to_async_queue_size;
+use super::defaults::default_utility_queue_size;
+
 use crate::*;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -37,6 +43,10 @@ pub struct UnresolvedCCPConfig {
     pub logs: UnresolvedLogs,
     #[serde(default)]
     pub state: State,
+    #[serde(default)]
+    pub workers: UnresolvedWorkers,
+    #[serde(default)]
+    pub tokio: UnresolvedTokio,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,8 +54,10 @@ pub struct UnresolvedCCPConfig {
 pub struct UnresolvedRpcEndpoint {
     pub host: String,
     pub port: u16,
-    #[serde(default)]
-    pub utility_thread_ids: Vec<u32>,
+    #[serde(default = "default_utility_queue_size")]
+    pub utility_queue_size: usize,
+    #[serde(default = "default_facade_queue_size")]
+    pub facade_queue_size: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -121,6 +133,25 @@ impl Default for State {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnresolvedWorkers {
+    #[serde(default = "default_hashes_per_round")]
+    pub hashes_per_round: usize,
+    #[serde(default = "default_async_to_sync_queue_size")]
+    pub async_to_sync_queue_size: usize,
+    #[serde(default = "default_sync_to_async_queue_size")]
+    pub sync_to_async_queue_size: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct UnresolvedTokio {
+    pub worker_threads: Option<usize>,
+    pub max_blocking_threads: Option<usize>,
+    #[serde(default)]
+    pub utility_thread_ids: Vec<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Argon2Impl {
     AVX2,
@@ -152,6 +183,8 @@ impl UnresolvedCCPConfig {
         let prometheus_endpoint = self.prometheus_endpoint.map(|cfg| cfg.resolve());
         let optimization = self.optimizations.resolve()?;
         let logs = self.logs.resolve();
+        let workers = self.workers.resolve();
+        let tokio = self.tokio.resolve();
 
         let config = CCPConfig {
             rpc_endpoint,
@@ -159,6 +192,8 @@ impl UnresolvedCCPConfig {
             optimizations: optimization,
             logs,
             state_dir: config_dir.join(self.state.path),
+            workers,
+            tokio,
         };
         Ok(config)
     }
@@ -166,16 +201,11 @@ impl UnresolvedCCPConfig {
 
 impl UnresolvedRpcEndpoint {
     pub fn resolve(self) -> RpcEndpoint {
-        let utility_thread_ids = self
-            .utility_thread_ids
-            .into_iter()
-            .map(Into::into)
-            .collect();
-
         RpcEndpoint {
             host: self.host,
             port: self.port,
-            utility_cores_ids: utility_thread_ids,
+            utility_queue_size: self.utility_queue_size,
+            facade_queue_size: self.facade_queue_size,
         }
     }
 }
@@ -260,6 +290,42 @@ impl UnresolvedLogs {
         Logs {
             report_hashrate: self.report_hashrate,
             log_level: self.log_level.to_tracing_filter(),
+        }
+    }
+}
+
+impl UnresolvedWorkers {
+    pub fn resolve(self) -> Workers {
+        Workers {
+            hashes_per_round: self.hashes_per_round,
+            async_to_sync_queue_size: self.async_to_sync_queue_size,
+            sync_to_async_queue_size: self.sync_to_async_queue_size,
+        }
+    }
+}
+
+impl Default for UnresolvedWorkers {
+    fn default() -> Self {
+        Self {
+            hashes_per_round: default_hashes_per_round(),
+            async_to_sync_queue_size: default_async_to_sync_queue_size(),
+            sync_to_async_queue_size: default_sync_to_async_queue_size(),
+        }
+    }
+}
+
+impl UnresolvedTokio {
+    pub fn resolve(self) -> Tokio {
+        let utility_thread_ids = self
+            .utility_thread_ids
+            .into_iter()
+            .map(Into::into)
+            .collect();
+
+        Tokio {
+            utility_cores_ids: utility_thread_ids,
+            worker_threads: self.worker_threads,
+            max_blocking_threads: self.max_blocking_threads,
         }
     }
 }
