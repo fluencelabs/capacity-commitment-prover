@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
+use ccp_config::Tokio;
 use ccp_config::Workers;
 use ccp_randomx::ResultHash;
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
@@ -46,6 +47,7 @@ async fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
         logs: <_>::default(),
         state_dir,
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     CCProver::new(config).await.unwrap()
@@ -60,6 +62,7 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         logs: <_>::default(),
         state_dir,
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
