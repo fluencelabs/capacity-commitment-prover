@@ -18,10 +18,12 @@ use super::CCProverAlignmentRoadmap;
 
 pub trait RoadmapAlignable: Send {
     type Error: Send;
+    type ProofCache;
 
     /// Apply the given roadmap (a set of actions) to align Nox and CCP states.
     fn align_with(
         &mut self,
         roadmap: CCProverAlignmentRoadmap,
+        proof_cache: Self::ProofCache,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 }

@@ -15,7 +15,6 @@
  */
 
 use std::sync::Arc;
-use std::sync::Mutex;
 
 use axum::body;
 use axum::extract::State;
@@ -23,6 +22,7 @@ use axum::http;
 use axum::response;
 use axum::response::ErrorResponse;
 use axum::routing::get;
+use parking_lot::Mutex;
 use prometheus_client::registry::Registry;
 use tokio::net::ToSocketAddrs;
 use tokio::task::JoinHandle;
@@ -48,12 +48,7 @@ async fn handle_metrics(
         let mut registry = Registry::with_prefix("ccp");
 
         {
-            let guard = state.hashrate_collector.lock().map_err(|_| {
-                // TODO use parking_lot mutex
-                log::error!("Prometehus metrics lock is poisoned");
-                ErrorResponse::from(http::StatusCode::INTERNAL_SERVER_ERROR)
-            })?;
-
+            let guard = state.hashrate_collector.lock();
             guard.apply_to_registry(&mut registry);
         }
 

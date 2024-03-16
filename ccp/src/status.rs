@@ -24,5 +24,5 @@ pub enum CCStatus {
 }
 
 pub trait ToCCStatus {
-    fn status(&self) -> CCStatus;
+    fn status(&self) -> impl std::future::Future<Output = CCStatus> + Send;
 }

@@ -38,7 +38,6 @@ use jsonrpsee::server::ServerHandle;
 use jsonrpsee::tracing::instrument;
 use jsonrpsee::types::ErrorObjectOwned;
 use tokio::net::ToSocketAddrs;
-use tokio::sync::Mutex;
 
 use ccp_rpc_client::CCPRpcServer;
 use ccp_rpc_client::OrHex;
@@ -55,20 +54,20 @@ pub use crate::facade::BackgroundFacade;
 
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
-    cc_prover: Arc<Mutex<P>>,
+    cc_prover: Arc<P>,
 }
 
 impl<P> CCPRcpHttpServer<P> {
     pub fn new(cc_prover: P) -> Self {
         Self {
-            cc_prover: Arc::new(Mutex::new(cc_prover)),
+            cc_prover: Arc::new(cc_prover),
         }
     }
 }
 
 impl<P> CCPRcpHttpServer<P>
 where
-    P: NoxCCPApi + 'static,
+    P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: ToString,
 {
     ///  Run the JSON-RPC HTTP server in the background.
@@ -89,7 +88,7 @@ where
 #[async_trait]
 impl<P> CCPRpcServer for CCPRcpHttpServer<P>
 where
-    P: NoxCCPApi + 'static,
+    P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: ToString,
 {
     #[instrument(skip(self))]
@@ -118,9 +117,8 @@ where
             );
         }
 
-        let mut guard = self.cc_prover.lock().await;
         let epoch = EpochParameters::new(global_nonce, difficulty);
-        guard
+        self.cc_prover
             .on_active_commitment(epoch, cu_allocation_real)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
@@ -129,8 +127,7 @@ where
 
     #[instrument(skip(self))]
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
-        let mut guard = self.cc_prover.lock().await;
-        guard
+        self.cc_prover
             .on_no_active_commitment()
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
@@ -143,8 +140,8 @@ where
         proof_idx: ProofIdx,
         limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
-        let guard = self.cc_prover.lock().await;
-        let mut proofs = guard
+        let mut proofs = self
+            .cc_prover
             .get_proofs_after(proof_idx)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
@@ -166,7 +163,6 @@ where
             tracing::error!("Tokio thread repinning failed");
         }
 
-        let guard = self.cc_prover.lock().await;
-        guard.realloc_utility_cores(utility_core_ids).await;
+        self.cc_prover.realloc_utility_cores(utility_core_ids).await;
     }
 }

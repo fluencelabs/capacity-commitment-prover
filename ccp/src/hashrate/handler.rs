@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::LogicalCoreId;
+use parking_lot::Mutex;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::Mutex;
+
+use ccp_shared::types::LogicalCoreId;
 
 use super::HResult;
 use super::HashrateCollector;
@@ -54,7 +55,7 @@ impl HashrateHandler {
     }
 
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) -> HResult<()> {
-        let mut guard = self.collector.lock().unwrap();
+        let mut guard = self.collector.lock();
 
         if let EpochObservation::EpochChanged {
             prev_epoch_hashrate,
@@ -73,12 +74,12 @@ impl HashrateHandler {
     }
 
     pub(crate) fn proof_found(&mut self, core_id: LogicalCoreId) {
-        let mut guard = self.collector.lock().unwrap();
+        let mut guard = self.collector.lock();
         guard.proof_found(core_id)
     }
 
     pub(crate) fn handle_cum_tick(&self) -> HResult<()> {
-        let guard = self.collector.lock().unwrap();
+        let guard = self.collector.lock();
         let hashrate = guard.collect();
         self.saver.save_hashrate_current(hashrate)
     }

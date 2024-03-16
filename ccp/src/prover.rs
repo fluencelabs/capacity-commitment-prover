@@ -17,11 +17,15 @@
 #[cfg(test)]
 mod tests;
 
-use futures::future;
-use futures::FutureExt;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::sync::Mutex;
+
+use futures::future;
+use futures::FutureExt;
+use parking_lot::Mutex as SyncMutex;
+use tokio::sync::Mutex as TokioMutex;
+use tokio::sync::OwnedRwLockWriteGuard;
+use tokio::sync::RwLock as AsyncRwLock;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
@@ -53,45 +57,45 @@ const PROOF_DIR: &str = "cc_proofs";
 pub type CCResult<T> = Result<T, CCProverError>;
 
 pub struct CCProver {
-    cu_provers: HashMap<PhysicalCoreId, CUProver>,
-    cu_prover_config: CUProverConfig,
-    status: CCStatus,
-    utility_thread: UtilityThread,
     prometheus_endpoint: Option<PrometheusEndpoint>,
-    proof_drainer: ProofStorageDrainer,
     state_storage: StateStorage,
-    msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
+    proof_drainer: Arc<AsyncRwLock<ProofStorageDrainer>>,
+    state: Arc<TokioMutex<CCProverState>>,
+    msr_enforcer: Arc<SyncMutex<MSRModeEnforcer>>,
 }
 
 impl NoxCCPApi for CCProver {
     type Error = CCProverError;
 
     async fn on_active_commitment(
-        &mut self,
+        &self,
         new_epoch: EpochParameters,
         new_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        let apply_resut = self
-            .apply_cc_parameters(new_epoch, &new_allocation)
-            .await
-            .inspect_err(|e| {
-                log::error!("Failed to apply parameters: {e}.  Still trying to save state.");
-            });
+        log::info!("Saving state...");
         self.save_state(new_epoch, new_allocation.clone())
             .await
             .inspect_err(|e| {
                 log::error!("Failed to save state: {e}");
             })?;
-
-        apply_resut
+        log::debug!("Getting proof cache lock...");
+        let proof_cache = self.proof_drainer.clone().write_owned().await;
+        self.state
+            .lock()
+            .await
+            .apply_cc_parameters(new_epoch, &new_allocation, proof_cache)
+            .await
+            .inspect_err(|e| {
+                log::error!("Failed to apply parameters: {e}.  Still trying to save state.");
+            })
     }
 
-    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
-        self.stop_provers_nonblocking().await?;
-        self.join_provers().await?;
-
-        self.status = CCStatus::Idle;
+    async fn on_no_active_commitment(&self) -> Result<(), Self::Error> {
+        {
+            let mut state_guard = self.state.lock().await;
+            state_guard.on_no_active_commitment().await?;
+        }
 
         self.save_no_state().await?;
 
@@ -100,6 +104,8 @@ impl NoxCCPApi for CCProver {
 
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
         self.proof_drainer
+            .read()
+            .await
             .get_proofs_after(proof_idx)
             .await
             .map_err(Into::into)
@@ -111,8 +117,8 @@ impl NoxCCPApi for CCProver {
 }
 
 impl ToCCStatus for CCProver {
-    fn status(&self) -> CCStatus {
-        self.status
+    async fn status(&self) -> CCStatus {
+        self.state.lock().await.status
     }
 }
 
@@ -167,7 +173,7 @@ impl CCProver {
             }
         }
 
-        let mut prover = Self::create_prover(
+        let prover = Self::create_prover(
             config,
             epoch,
             msr_enforcer,
@@ -176,9 +182,14 @@ impl CCProver {
         )
         .await?;
 
+        // TODO use API
         if let Some(prev_state) = &prev_state {
+            let drainer = prover.proof_drainer.clone().write_owned().await;
             prover
-                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .state
+                .lock()
+                .await
+                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation, drainer)
                 .await?;
         }
 
@@ -198,7 +209,7 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
-        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
+        let hashrate_collector = Arc::new(SyncMutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
             config.state_dir.clone(),
@@ -222,19 +233,94 @@ impl CCProver {
         });
 
         let cu_prover_config = CUProverConfig::new(config.optimizations, config.workers);
-        let prover = Self {
-            cu_provers: HashMap::new(),
+        let msr_enforcer = Arc::new(SyncMutex::new(msr_enforcer));
+        let prover_state = CCProverState {
             cu_prover_config,
-            status: CCStatus::Idle,
             utility_thread,
+            msr_enforcer: msr_enforcer.clone(),
+            cu_provers: HashMap::new(),
+            status: CCStatus::Idle,
+        };
+        let prover = Self {
             prometheus_endpoint,
-            proof_drainer,
+            proof_drainer: Arc::new(AsyncRwLock::new(proof_drainer)),
             state_storage,
-            msr_enforcer,
             utility_core_ids_handle,
+            state: Arc::new(TokioMutex::new(prover_state)),
+            msr_enforcer,
         };
 
         Ok(prover)
+    }
+
+    pub async fn stop(self) -> CCResult<()> {
+        self.state.lock().await.stop().await
+    }
+
+    pub async fn shutdown(&mut self) -> CCResult<()> {
+        log::info!("Shutting down prover...");
+        if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
+            prometheus_endpoint.shutdown().await?;
+        }
+
+        self.state.lock().await.shutdown().await?;
+
+        log::info!("Shutting down prover done");
+        Ok(())
+    }
+
+    pub async fn save_state(
+        &self,
+        epoch_state: EpochParameters,
+        cu_allocation: CUAllocation,
+    ) -> tokio::io::Result<()> {
+        let original_msr_preset = {
+            let msr_enforcer_guard = self.msr_enforcer.lock();
+            msr_enforcer_guard.original_preset().clone()
+        };
+        let msr_state = MSRState::new(original_msr_preset);
+
+        let utility_cores = self.utility_core_ids_handle.get_cores();
+
+        let state = CCPState {
+            epoch_params: epoch_state,
+            cu_allocation,
+            utility_cores,
+            msr_state,
+        };
+        self.state_storage.save_state(Some(&state)).await
+    }
+
+    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
+        self.state_storage.save_state(None).await
+    }
+}
+
+pub(crate) struct CCProverState {
+    cu_prover_config: CUProverConfig,
+    utility_thread: UtilityThread,
+    msr_enforcer: Arc<SyncMutex<MSRModeEnforcer>>,
+    status: CCStatus,
+    cu_provers: HashMap<PhysicalCoreId, CUProver>,
+}
+
+impl CCProverState {
+    async fn apply_cc_parameters(
+        &mut self,
+        new_epoch: EpochParameters,
+        new_allocation: &HashMap<PhysicalCoreId, CUID>,
+        proof_cache: OwnedRwLockWriteGuard<ProofStorageDrainer>,
+    ) -> Result<(), <CCProver as NoxCCPApi>::Error> {
+        let roadmap = CCProverAlignmentRoadmap::make(
+            new_allocation.clone(),
+            new_epoch,
+            &self.cu_provers,
+            self.status,
+        );
+        RoadmapAlignable::align_with(self, roadmap, proof_cache).await?;
+        self.status = CCStatus::Running { epoch: new_epoch };
+
+        Ok(())
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -249,10 +335,22 @@ impl CCProver {
         Ok(())
     }
 
-    pub async fn stop(mut self) -> CCResult<()> {
+    pub async fn stop(&mut self) -> CCResult<()> {
         // stop all active provers
         self.on_no_active_commitment().await?;
         self.shutdown().await
+    }
+
+    pub async fn shutdown(&mut self) -> CCResult<()> {
+        Ok(self.utility_thread.shutdown().await?)
+    }
+
+    async fn on_no_active_commitment(&mut self) -> CCResult<()> {
+        self.stop_provers_nonblocking().await?;
+        self.join_provers().await?;
+
+        self.status = CCStatus::Idle;
+        Ok(())
     }
 
     async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
@@ -272,60 +370,6 @@ impl CCProver {
         run_unordered(self.cu_provers.drain(), join_closure).await?;
         Ok(())
     }
-
-    pub async fn shutdown(&mut self) -> CCResult<()> {
-        log::info!("Shutting down prover...");
-        // stop background thread
-        // TODO
-        self.utility_thread.shutdown().await?;
-
-        if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
-            prometheus_endpoint.shutdown().await?;
-        }
-
-        log::info!("Shutting down prover done");
-        Ok(())
-    }
-
-    pub async fn save_state(
-        &self,
-        epoch_state: EpochParameters,
-        cu_allocation: CUAllocation,
-    ) -> tokio::io::Result<()> {
-        let original_msr_preset = self.msr_enforcer.original_preset();
-        let msr_state = MSRState::new(original_msr_preset.clone());
-
-        let utility_cores = self.utility_core_ids_handle.get_cores();
-
-        let state = CCPState {
-            epoch_params: epoch_state,
-            cu_allocation,
-            utility_cores,
-            msr_state,
-        };
-        self.state_storage.save_state(Some(&state)).await
-    }
-
-    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
-        self.state_storage.save_state(None).await
-    }
-
-    async fn apply_cc_parameters(
-        &mut self,
-        new_epoch: EpochParameters,
-        new_allocation: &HashMap<PhysicalCoreId, CUID>,
-    ) -> Result<(), <CCProver as NoxCCPApi>::Error> {
-        let roadmap = CCProverAlignmentRoadmap::make(
-            new_allocation.clone(),
-            new_epoch,
-            &self.cu_provers,
-            self.status,
-        );
-        self.align_with(roadmap).await?;
-        self.status = CCStatus::Running { epoch: new_epoch };
-
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -334,10 +378,15 @@ enum AlignmentPostAction {
     Nothing,
 }
 
-impl RoadmapAlignable for CCProver {
+impl RoadmapAlignable for CCProverState {
     type Error = CCProverError;
+    type ProofCache = OwnedRwLockWriteGuard<ProofStorageDrainer>;
 
-    async fn align_with(&mut self, roadmap: CCProverAlignmentRoadmap) -> Result<(), Self::Error> {
+    async fn align_with(
+        &mut self,
+        roadmap: CCProverAlignmentRoadmap,
+        mut proof_cache: Self::ProofCache,
+    ) -> Result<(), Self::Error> {
         use futures::stream::FuturesUnordered;
         use futures::StreamExt;
 
@@ -351,7 +400,9 @@ impl RoadmapAlignable for CCProver {
             CUProverPreAction::NoAction => {}
             CUProverPreAction::CleanupProofCache => {
                 self.pause().await?;
-                self.proof_drainer.remove_proofs().await?;
+                proof_cache.remove_proofs().await?;
+                std::mem::drop(proof_cache);
+                log::info!("Cleaned proofs because of new epoch");
             }
         }
 
@@ -394,7 +445,7 @@ impl RoadmapAlignable for CCProver {
     }
 }
 
-impl CCProver {
+impl CCProverState {
     pub(self) fn cu_creation(
         &mut self,
         state: actions_state::CreateCUProverState,
@@ -402,7 +453,7 @@ impl CCProver {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
-        let msr_enforcer = self.msr_enforcer.clone();
+        let msr_enforcer = self.msr_enforcer.lock().clone();
 
         async move {
             let mut prover =
