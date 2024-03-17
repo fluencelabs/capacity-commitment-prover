@@ -111,7 +111,7 @@ async fn prover_on_active_commitment() {
         epoch_params,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
-        utility_cores: vec![1.into()],
+        utility_cores: vec![],
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
@@ -398,7 +398,7 @@ async fn prover_on_active_change_epoch() {
         epoch_params: epoch_params_second,
         cu_allocation: cu_allocation.clone(),
         msr_state: <_>::default(),
-        utility_cores: vec![1.into()],
+        utility_cores: vec![],
     });
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
