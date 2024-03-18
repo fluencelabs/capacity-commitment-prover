@@ -205,7 +205,7 @@ fn check_writable_dir(path: &Path) -> eyre::Result<()> {
 
     let meta = std::fs::metadata(path)?;
     let permissions = meta.permissions();
-    // TODO this is not an accurate check; std docs advise to use libc::access with is too low-level
+    // TODO this is not an accurate check; std docs advise to use libc::access which is too low-level
     if permissions.readonly() {
         eyre::bail!("{path:?} is not writable");
     }
