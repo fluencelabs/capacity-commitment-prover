@@ -49,7 +49,6 @@ use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
 use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
-use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
 
 const PROOF_DIR: &str = "cc_proofs";
@@ -113,12 +112,6 @@ impl NoxCCPApi for CCProver {
 
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
         self.utility_core_ids_handle.set_cores(utility_core_ids);
-    }
-}
-
-impl ToCCStatus for CCProver {
-    async fn status(&self) -> CCStatus {
-        self.state.lock().await.status
     }
 }
 
