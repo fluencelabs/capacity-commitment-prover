@@ -15,6 +15,7 @@
  */
 
 use config::Config;
+use config::Environment;
 use config::File;
 use config::FileFormat;
 use eyre::Context;
@@ -26,7 +27,9 @@ pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
     let config_source = File::with_name(path)
         .required(true)
         .format(FileFormat::Toml);
+    let environment_source = Environment::with_prefix("CCP").separator("_");
     let config = Config::builder()
+        .add_source(environment_source)
         .add_source(config_source)
         .build()
         .with_context(|| format!("Failed to load config from {path}"))?;
