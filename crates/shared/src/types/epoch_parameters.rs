@@ -50,7 +50,7 @@ use std::fmt;
 
 impl fmt::Display for EpochParameters {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "global nonce: {:?}", self.global_nonce)?;
-        writeln!(f, "difficulty: {:?}", self.difficulty)
+        writeln!(f, "global nonce: {}", self.global_nonce)?;
+        writeln!(f, "difficulty: {}", self.difficulty)
     }
 }
