@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::str::FromStr;
+
 use hex::ToHex;
 use serde::Deserialize;
 use serde::Serialize;
@@ -60,5 +62,13 @@ impl ToHex for GlobalNonce {
 impl std::fmt::Display for GlobalNonce {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl FromStr for GlobalNonce {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
     }
 }

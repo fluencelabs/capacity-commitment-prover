@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::str::FromStr;
+
 use hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 
@@ -71,5 +73,13 @@ impl ToHex for Difficulty {
 impl std::fmt::Display for Difficulty {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl FromStr for Difficulty {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
     }
 }
