@@ -21,6 +21,7 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 use serde::Deserialize;
 use serde::Serialize;
+use thiserror::Error as ThisError;
 
 use crate::utility_thread::save_reliably;
 
@@ -45,18 +46,29 @@ impl StateStorage {
         Self { state_dir }
     }
 
-    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
+    pub(crate) async fn save_state(
+        &self,
+        state: Option<&CCPState>,
+    ) -> Result<(), StateStorageError> {
         let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
 
         log::info!("Saving state to {:?}", path);
 
-        tokio::task::spawn_blocking(move || save_reliably(&path, &data)).await??;
+        let path_err = path.clone();
+
+        tokio::task::spawn_blocking(move || {
+            save_reliably(&path, &data)
+                .map_err(|nested| StateStorageError::new(nested, path, "Saving CCP state to"))
+        })
+        .await
+        .map_err(|nested| StateStorageError::new(nested, path_err, "Saving CCP state to"))??;
+
         Ok(())
     }
 
     // TODO should it return error on IO problems?
-    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<Option<CCPState>> {
+    pub(crate) async fn try_to_load_data(&self) -> Result<Option<CCPState>, StateStorageError> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);
 
@@ -64,7 +76,9 @@ impl StateStorage {
             return Ok(None);
         }
 
-        let state_data = tokio::fs::read(&path).await?;
+        let state_data = tokio::fs::read(&path).await.map_err(|nested| {
+            StateStorageError::new(nested, &path, "Failed to load state data from")
+        })?;
 
         match serde_json::from_slice(&state_data) {
             Ok(data) => Ok(data),
@@ -72,6 +86,28 @@ impl StateStorage {
                 log::warn!("failed to parse state data from {path:?}, ignoring: {e}");
                 Ok(None)
             }
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+#[error("{operation} {path} failed: {nested}")]
+pub struct StateStorageError {
+    pub nested: tokio::io::Error,
+    pub path: PathBuf,
+    pub operation: String,
+}
+
+impl StateStorageError {
+    pub fn new(
+        nested: impl Into<tokio::io::Error>,
+        path: impl Into<PathBuf>,
+        operation: impl Into<String>,
+    ) -> Self {
+        Self {
+            nested: nested.into(),
+            path: path.into(),
+            operation: operation.into(),
         }
     }
 }

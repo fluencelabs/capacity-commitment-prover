@@ -19,6 +19,7 @@ use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
 use crate::hashrate::HashrateError;
+use crate::state_storage::StateStorageError;
 use crate::utility_thread::UtilityThreadError;
 
 #[derive(ThisError, Debug)]
@@ -40,6 +41,9 @@ pub enum CCProverError {
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
+
+    #[error(transparent)]
+    StorageError(#[from] StateStorageError),
 }
 
 impl From<Vec<CUProverError>> for CCProverError {

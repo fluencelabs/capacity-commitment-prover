@@ -44,6 +44,7 @@ use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
 use crate::state_storage::StateStorage;
+use crate::state_storage::StateStorageError;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
 use crate::utility_thread::UtilityThread;
@@ -139,7 +140,10 @@ impl CCProver {
     ) -> CCResult<Self> {
         let state_storage = StateStorage::new(config.state_dir.clone());
 
-        let prev_state = state_storage.try_to_load_data().await?;
+        let prev_state = state_storage
+            .try_to_load_data()
+            .await
+            .map_err(CCProverError::StorageError)?;
 
         let epoch;
         let msr_enforcer;
@@ -291,7 +295,7 @@ impl CCProver {
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> tokio::io::Result<()> {
+    ) -> Result<(), StateStorageError> {
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
@@ -306,7 +310,7 @@ impl CCProver {
         self.state_storage.save_state(Some(&state)).await
     }
 
-    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
+    pub async fn save_no_state(&self) -> Result<(), StateStorageError> {
         self.state_storage.save_state(None).await
     }
 
