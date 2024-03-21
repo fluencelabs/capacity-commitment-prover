@@ -43,4 +43,4 @@ env CCP_RPC-ENDPOINT_HOST=localhost \
   ccp ./your-config.toml
 ```
 
-Environment variables override corresponding config values.
+Environment variables override corresponding values of a config file.
