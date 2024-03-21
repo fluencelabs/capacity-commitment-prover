@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.8.0...ccp-v0.8.1) (2024-03-21)
+
+
+### Features
+
+* **shared:** implement FromStr for shared types ([#121](https://github.com/fluencelabs/capacity-commitment-prover/issues/121)) ([001f8bc](https://github.com/fluencelabs/capacity-commitment-prover/commit/001f8bceb1cf25df4a06882ee7476e7d1cfcfdbf))
+
 ## [0.8.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.1...ccp-v0.8.0) (2024-03-17)
 
 
