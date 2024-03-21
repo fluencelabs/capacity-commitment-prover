@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::str::FromStr;
+
 use hex::FromHex;
 use hex::ToHex;
 use serde::Deserialize;
@@ -71,5 +73,13 @@ impl ToHex for ResultHash {
 impl std::fmt::Display for ResultHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl FromStr for ResultHash {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
     }
 }
