@@ -70,14 +70,12 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
     type Error = eyre::Error;
 
     async fn on_active_commitment(
-        &mut self,
+        &self,
         epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        // Save state early so that caller is sure it is saved.
-        // Please note that the caller may be still stuck if dataset generation
-        // is in progress and writer lock is held.
         {
+            // Save state early so that caller is sure it is saved.
             let guard = self.prover.read().await;
             guard
                 .save_state(epoch_parameters, cu_allocation.clone())
@@ -91,17 +89,14 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
             .context("on_active_commitment")
     }
 
-    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        // Save state early so that caller is sure it is saved.
-        // Please note that the caller may be still stuck if dataset generation
-        // is in progress and writer lock is held.
+    async fn on_no_active_commitment(&self) -> Result<(), Self::Error> {
         {
+            // Save state early so that caller is sure it is saved.
             let guard = self.prover.read().await;
             guard.save_no_state().await?;
         }
         self.to_worker
-            .send(FacadeMessage::OnNoCommitment)
-            .await
+            .try_send(FacadeMessage::OnNoCommitment)
             .context("on_no_active_commitment")
     }
 
@@ -141,7 +136,7 @@ where
 {
     use FacadeMessage::*;
     while let Some(message) = receive_last(&mut from_facade).await {
-        let mut guard = prover.write().await;
+        let guard = prover.read().await;
         match message {
             OnActiveCommitment(epoch_parameters, cu_allocation) => {
                 let res = guard
@@ -164,7 +159,7 @@ where
 async fn receive_last<T>(receiver: &mut mpsc::Receiver<T>) -> Option<T> {
     // wating for a new value
     let mut val = receiver.recv().await?;
-    //  non-wating getting of the last available value
+    // non-wating getting of the last available value
     loop {
         match receiver.try_recv() {
             Ok(v) => {

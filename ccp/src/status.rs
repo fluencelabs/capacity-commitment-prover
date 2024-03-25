@@ -22,7 +22,3 @@ pub enum CCStatus {
     Running { epoch: EpochParameters },
     Idle,
 }
-
-pub trait ToCCStatus {
-    fn status(&self) -> CCStatus;
-}

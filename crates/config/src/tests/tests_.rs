@@ -19,12 +19,13 @@ use std::path::PathBuf;
 use ccp_randomx::RandomXFlags;
 
 use crate::config_loader::load_config;
-use crate::unresolved_config::UnresolvedWorkers;
 use crate::CCPConfig;
 use crate::Logs;
 use crate::Optimizations;
 use crate::RpcEndpoint;
 use crate::ThreadsPerCoreAllocationPolicy;
+use crate::Tokio;
+use crate::Workers;
 
 #[test]
 fn parse_basic_config() {
@@ -36,7 +37,8 @@ fn parse_basic_config() {
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        facade_queue_size: 100,
+        utility_queue_size: 100,
     };
 
     let mut randomx_flags = RandomXFlags::default();
@@ -65,6 +67,7 @@ fn parse_basic_config() {
         logs,
         state_dir: "../test".into(),
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     assert_eq!(actual_config, expected_config);
@@ -80,7 +83,8 @@ fn parse_config_without_optimiziations() {
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        utility_queue_size: 100,
+        facade_queue_size: 100,
     };
 
     let randomx_flags = RandomXFlags::recommended_full_mem();
@@ -101,6 +105,7 @@ fn parse_config_without_optimiziations() {
         logs,
         state_dir: "../test".into(),
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     assert_eq!(actual_config, expected_config);

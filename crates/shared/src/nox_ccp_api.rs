@@ -40,14 +40,14 @@ pub trait NoxCCPApi: Send {
     ///    after event from the on-chain part
     ///  - Nox (re)started
     fn on_active_commitment(
-        &mut self,
+        &self,
         epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Stops all active jobs.
     fn on_no_active_commitment(
-        &mut self,
+        &self,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
     /// Returns proofs after the provided proof idx for current epoch.

@@ -34,7 +34,7 @@ impl ProofStorageDrainer {
 
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
-    pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
+    pub async fn remove_proofs(&mut self) -> tokio::io::Result<()> {
         if tokio::fs::try_exists(&self.proof_directory).await? {
             tokio::fs::remove_dir_all(&self.proof_directory).await?;
         }
