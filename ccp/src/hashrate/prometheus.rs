@@ -39,6 +39,10 @@ async fn handler_404() -> impl response::IntoResponse {
     (http::StatusCode::NOT_FOUND, "No such endpoint")
 }
 
+async fn health(_: State<PrometheusMetrics>) -> impl response::IntoResponse {
+    (http::StatusCode::OK, "OK")
+}
+
 async fn handle_metrics(
     State(state): State<PrometheusMetrics>,
 ) -> response::Result<http::Response<body::Body>> {
@@ -84,6 +88,7 @@ async fn run_prometheus_endpoint(
     let state = PrometheusMetrics { hashrate_collector };
     let app = axum::Router::new()
         .route("/metrics", get(handle_metrics))
+        .route("/health", get(health))
         .fallback(handler_404)
         .with_state(state);
     log::info!("Starting a prometheus endpoint at {prometheus_listen_address:?}");
