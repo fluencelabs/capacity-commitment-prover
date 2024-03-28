@@ -27,6 +27,7 @@ use tokio_util::sync::CancellationToken;
 use super::message::*;
 use super::UTResult;
 use crate::hashrate::HashrateHandler;
+use crate::state_storage::StateStorage;
 use crate::utility_thread::proof_storage::ProofStorage;
 
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
@@ -44,6 +45,8 @@ impl UtilityThread {
         prev_global_nonce: Option<GlobalNonce>,
         hashrate_handler: HashrateHandler,
         utility_queue_size: usize,
+        utility_control_outlet: UtilityControlOutlet,
+        state_storage: StateStorage,
     ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
 
@@ -53,9 +56,11 @@ impl UtilityThread {
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
         let ut_impl = UtilityThreadImpl::new(
             from_utility,
+            utility_control_outlet,
             cancellation.clone(),
             proofs_handler,
             hashrate_handler,
+            state_storage,
         );
 
         let handle = tokio::spawn(ut_impl.utility_closure());
@@ -79,23 +84,29 @@ impl UtilityThread {
 
 struct UtilityThreadImpl {
     to_utility: ToUtilityOutlet,
+    control: UtilityControlOutlet,
     cancellation: CancellationToken,
     proofs_handler: NewProofHandler,
     hashrate_handler: HashrateHandler,
+    state_storage: StateStorage,
 }
 
 impl UtilityThreadImpl {
     pub(crate) fn new(
         to_utility: ToUtilityOutlet,
+        control: UtilityControlOutlet,
         cancellation: CancellationToken,
         proofs_handler: NewProofHandler,
         hashrate_handler: HashrateHandler,
+        state_storage: StateStorage,
     ) -> Self {
         Self {
             to_utility,
+            control,
             cancellation,
             proofs_handler,
             hashrate_handler,
+            state_storage,
         }
     }
 
@@ -114,7 +125,8 @@ impl UtilityThreadImpl {
 
         loop {
             tokio::select! {
-                Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
+                Some(utility_message) = self.to_utility.recv() => self.handle_to_utility_message(utility_message).await,
+                Some(control_message) = self.control.recv() => self.handle_control_message(control_message).await,
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
                 maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = self.cancellation.cancelled() => {
@@ -143,6 +155,19 @@ impl UtilityThreadImpl {
                 if let Err(error) = self.hashrate_handler.account_record(record) {
                     log::error!("hashrate accounting failed: {error}");
                 }
+            }
+        }
+    }
+
+    async fn handle_control_message(&mut self, message: UtilityControlMessage) {
+        match message {
+            UtilityControlMessage::SaveConfig {
+                notifier: notify,
+                state,
+            } => {
+                let ret = self.state_storage.save_state(state.as_ref()).await;
+                // if receiver is dead, there is nothing we can do
+                let _ = notify.send(ret);
             }
         }
     }

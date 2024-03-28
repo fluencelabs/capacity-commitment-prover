@@ -17,6 +17,7 @@
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
+use crate::defaults::default_control_queue_size;
 use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
@@ -41,6 +42,7 @@ pub struct RpcEndpoint {
     pub port: u16,
     pub utility_queue_size: usize,
     pub facade_queue_size: usize,
+    pub control_queue_size: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -100,6 +102,7 @@ impl Default for RpcEndpoint {
             port: 9383,
             utility_queue_size: default_utility_queue_size(),
             facade_queue_size: default_facade_queue_size(),
+            control_queue_size: default_control_queue_size(),
         }
     }
 }

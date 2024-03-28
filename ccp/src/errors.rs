@@ -40,6 +40,9 @@ pub enum CCProverError {
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
+
+    #[error(transparent)]
+    ConfigSavingError(eyre::Error),
 }
 
 impl From<Vec<CUProverError>> for CCProverError {
