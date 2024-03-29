@@ -295,7 +295,7 @@ impl CCProver {
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> Result<(), CCProverError> {
+    ) -> CCResult<()> {
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
@@ -311,7 +311,7 @@ impl CCProver {
     }
 
     #[inline]
-    pub async fn save_no_state(&self) -> Result<(), CCProverError> {
+    pub async fn save_no_state(&self) -> CCResult<()> {
         self.call_utility_save_state(None).await
     }
 
@@ -332,7 +332,7 @@ impl CCProver {
         Ok(())
     }
 
-    async fn call_utility_save_state(&self, state: Option<CCPState>) -> Result<(), CCProverError> {
+    async fn call_utility_save_state(&self, state: Option<CCPState>) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::SaveConfig { notifier, state };
         // if the queue is full, it a sign of serious problem
@@ -344,7 +344,7 @@ impl CCProver {
             .map_err(|_| CCProverError::UtilityConnectionError)??)
     }
 
-    async fn call_utility_cleanup_proof_cache(&self) -> Result<(), CCProverError> {
+    async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::CleanProofCache { notifier };
         // if the queue is full, it a sign of serious problem
@@ -359,7 +359,7 @@ impl CCProver {
     async fn call_utility_get_proofs_after(
         &self,
         proof_idx: ProofIdx,
-    ) -> Result<Vec<CCProof>, CCProverError> {
+    ) -> CCResult<Vec<CCProof>> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::GetProofs {
             proof_idx,
