@@ -61,8 +61,6 @@ pub struct CCProver {
     status: CCStatus,
     utility_thread: UtilityThread,
     prometheus_endpoint: Option<PrometheusEndpoint>,
-    // TODO move too
-    proof_drainer: ProofStorageDrainer,
     msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
     utility_control_inlet: UtilityControlInlet,
@@ -86,8 +84,7 @@ impl NoxCCPApi for CCProver {
             .await
             .inspect_err(|e| {
                 log::error!("Failed to save state: {e}");
-            })
-            .map_err(CCProverError::ConfigSavingError)?;
+            })?;
 
         apply_resut
     }
@@ -98,18 +95,14 @@ impl NoxCCPApi for CCProver {
 
         self.status = CCStatus::Idle;
 
-        self.save_no_state()
-            .await
-            .map_err(CCProverError::ConfigSavingError)?;
+        self.save_no_state().await?;
 
         Ok(())
     }
 
+    #[inline]
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.proof_drainer
-            .get_proofs_after(proof_idx)
-            .await
-            .map_err(Into::into)
+        self.call_utility_get_proofs_after(proof_idx).await
     }
 
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
@@ -223,6 +216,7 @@ impl CCProver {
             config.rpc_endpoint.utility_queue_size,
             utility_control_outlet,
             state_storage,
+            proof_drainer,
         );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
@@ -239,7 +233,6 @@ impl CCProver {
             status: CCStatus::Idle,
             utility_thread,
             prometheus_endpoint,
-            proof_drainer,
             msr_enforcer,
             utility_core_ids_handle,
             utility_control_inlet,
@@ -302,7 +295,7 @@ impl CCProver {
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> eyre::Result<()> {
+    ) -> Result<(), CCProverError> {
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
@@ -314,11 +307,12 @@ impl CCProver {
             utility_cores,
             msr_state,
         };
-        self.send_state_utility_control_message(Some(state)).await
+        self.call_utility_save_state(Some(state)).await
     }
 
-    pub async fn save_no_state(&self) -> eyre::Result<()> {
-        self.send_state_utility_control_message(None).await
+    #[inline]
+    pub async fn save_no_state(&self) -> Result<(), CCProverError> {
+        self.call_utility_save_state(None).await
     }
 
     async fn apply_cc_parameters(
@@ -338,15 +332,46 @@ impl CCProver {
         Ok(())
     }
 
-    async fn send_state_utility_control_message(
-        &self,
-        state: Option<CCPState>,
-    ) -> eyre::Result<()> {
+    async fn call_utility_save_state(&self, state: Option<CCPState>) -> Result<(), CCProverError> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::SaveConfig { notifier, state };
         // if the queue is full, it a sign of serious problem
-        self.utility_control_inlet.try_send(message)?;
-        Ok(wait_for.await??)
+        self.utility_control_inlet
+            .try_send(message)
+            .map_err(|_| CCProverError::UtilityConnectionError)?;
+        Ok(wait_for
+            .await
+            .map_err(|_| CCProverError::UtilityConnectionError)??)
+    }
+
+    async fn call_utility_cleanup_proof_cache(&self) -> Result<(), CCProverError> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::CleanProofCache { notifier };
+        // if the queue is full, it a sign of serious problem
+        self.utility_control_inlet
+            .try_send(message)
+            .map_err(|_| CCProverError::UtilityConnectionError)?;
+        Ok(wait_for
+            .await
+            .map_err(|_| CCProverError::UtilityConnectionError)??)
+    }
+
+    async fn call_utility_get_proofs_after(
+        &self,
+        proof_idx: ProofIdx,
+    ) -> Result<Vec<CCProof>, CCProverError> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::GetProofs {
+            proof_idx,
+            notifier,
+        };
+        // if the queue is full, it a sign of serious problem
+        self.utility_control_inlet
+            .try_send(message)
+            .map_err(|_| CCProverError::UtilityConnectionError)?;
+        Ok(wait_for
+            .await
+            .map_err(|_| CCProverError::UtilityConnectionError)??)
     }
 }
 
@@ -373,7 +398,7 @@ impl RoadmapAlignable for CCProver {
             CUProverPreAction::NoAction => {}
             CUProverPreAction::CleanupProofCache => {
                 self.pause().await?;
-                self.proof_drainer.remove_proofs().await?;
+                self.call_utility_cleanup_proof_cache().await?;
             }
         }
 

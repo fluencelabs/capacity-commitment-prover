@@ -81,7 +81,9 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
             let guard = self.prover.read().await;
             guard
                 .save_state(epoch_parameters, cu_allocation.clone())
-                .await?;
+                .await
+                // CCProverError is not Sync, so we convert it to a string in situ
+                .map_err(|e| eyre::eyre!(e.to_string()))?;
         }
         self.to_worker
             .try_send(FacadeMessage::OnActiveCommitment(
@@ -97,7 +99,11 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
         // is in progress and writer lock is held.
         {
             let guard = self.prover.read().await;
-            guard.save_no_state().await?;
+            guard
+                .save_no_state()
+                .await
+                // CCProverError is not Sync, so we convert it to a string in situ
+                .map_err(|e| eyre::eyre!(e.to_string()))?;
         }
         self.to_worker
             .send(FacadeMessage::OnNoCommitment)

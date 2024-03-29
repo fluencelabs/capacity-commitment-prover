@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -58,7 +60,14 @@ impl ToUtilityMessage {
 #[derive(Debug)]
 pub(crate) enum UtilityControlMessage {
     SaveConfig {
-        notifier: oneshot::Sender<std::io::Result<()>>,
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
         state: Option<CCPState>,
+    },
+    CleanProofCache {
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
+    },
+    GetProofs {
+        proof_idx: ProofIdx,
+        notifier: oneshot::Sender<tokio::io::Result<Vec<CCProof>>>,
     },
 }

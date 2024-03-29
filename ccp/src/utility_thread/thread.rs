@@ -27,6 +27,7 @@ use tokio_util::sync::CancellationToken;
 use super::message::*;
 use super::UTResult;
 use crate::hashrate::HashrateHandler;
+use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::StateStorage;
 use crate::utility_thread::proof_storage::ProofStorage;
 
@@ -47,6 +48,7 @@ impl UtilityThread {
         utility_queue_size: usize,
         utility_control_outlet: UtilityControlOutlet,
         state_storage: StateStorage,
+        proof_drainer: ProofStorageDrainer,
     ) -> Self {
         let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
 
@@ -61,6 +63,7 @@ impl UtilityThread {
             proofs_handler,
             hashrate_handler,
             state_storage,
+            proof_drainer,
         );
 
         let handle = tokio::spawn(ut_impl.utility_closure());
@@ -89,6 +92,7 @@ struct UtilityThreadImpl {
     proofs_handler: NewProofHandler,
     hashrate_handler: HashrateHandler,
     state_storage: StateStorage,
+    proof_drainer: ProofStorageDrainer,
 }
 
 impl UtilityThreadImpl {
@@ -99,6 +103,7 @@ impl UtilityThreadImpl {
         proofs_handler: NewProofHandler,
         hashrate_handler: HashrateHandler,
         state_storage: StateStorage,
+        proof_drainer: ProofStorageDrainer,
     ) -> Self {
         Self {
             to_utility,
@@ -107,6 +112,7 @@ impl UtilityThreadImpl {
             proofs_handler,
             hashrate_handler,
             state_storage,
+            proof_drainer,
         }
     }
 
@@ -161,13 +167,23 @@ impl UtilityThreadImpl {
 
     async fn handle_control_message(&mut self, message: UtilityControlMessage) {
         match message {
-            UtilityControlMessage::SaveConfig {
-                notifier: notify,
-                state,
-            } => {
+            UtilityControlMessage::SaveConfig { notifier, state } => {
                 let ret = self.state_storage.save_state(state.as_ref()).await;
                 // if receiver is dead, there is nothing we can do
-                let _ = notify.send(ret);
+                let _ = notifier.send(ret);
+            }
+            UtilityControlMessage::CleanProofCache { notifier } => {
+                let ret = self.proof_drainer.remove_proofs().await;
+                // if receiver is dead, there is nothing we can do
+                let _ = notifier.send(ret);
+            }
+            UtilityControlMessage::GetProofs {
+                proof_idx,
+                notifier,
+            } => {
+                let ret = self.proof_drainer.get_proofs_after(proof_idx).await;
+                // if receiver is dead, there is nothing we can do
+                let _ = notifier.send(ret);
             }
         }
     }
