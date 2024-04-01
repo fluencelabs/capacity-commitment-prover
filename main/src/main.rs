@@ -34,6 +34,7 @@ use ccp::cpuids_handle::CpuIdsHandle;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
@@ -143,11 +144,16 @@ fn build_tokio_runtime(
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
     let facade_queue_size = config.rpc_endpoint.facade_queue_size;
+    let global_cancellation_token = CancellationToken::new();
 
     tracing::info!("Creating prover from a saved state");
-    let prover = CCProver::from_saved_state(config, tokio_core_ids_state)
-        .await
-        .map_err(|e| eyre::eyre!(e.to_string()))?;
+    let prover = CCProver::from_saved_state(
+        config,
+        tokio_core_ids_state,
+        global_cancellation_token.clone(),
+    )
+    .await
+    .map_err(|e| eyre::eyre!(e.to_string()))?;
 
     tracing::info!(
         "starting RPC endpoint on {}:{}",
@@ -178,6 +184,8 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
     }
 
     // and then shutdown
+    global_cancellation_token.cancel();
+
     tracing::info!("Shuttting down RPC server");
     match server_handle.stop() {
         Ok(()) => {
@@ -187,6 +195,7 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
             tracing::warn!("failed to stop RPC server: {e}; ignoring");
         }
     };
+
     prover.write().await.shutdown().await.map_err(|e| {
         tracing::error!("error during prover shutdown: {e}");
         eyre::eyre!(e.to_string())

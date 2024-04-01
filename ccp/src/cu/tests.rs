@@ -24,6 +24,7 @@ use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
+use tokio_util::sync::CancellationToken;
 
 use super::CUProver;
 use super::CUProverConfig;
@@ -123,7 +124,8 @@ async fn cu_prover_can_be_stopped() {
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
-    prover.new_epoch(epoch, cu_id).await.unwrap();
+    let cancel_token = CancellationToken::new();
+    prover.new_epoch(epoch, cu_id, cancel_token).await.unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
@@ -172,7 +174,8 @@ async fn cu_prover_can_be_paused() {
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
-    prover.new_epoch(epoch, cu_id).await.unwrap();
+    let cancel_token = CancellationToken::new();
+    prover.new_epoch(epoch, cu_id, cancel_token).await.unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Running { cu_id });
@@ -222,13 +225,20 @@ async fn cu_prover_produces_correct_proofs() {
         proofs
     });
 
-    prover.new_epoch(epoch_1, cu_id_1).await.unwrap();
+    let cancel_token = CancellationToken::new();
+    prover
+        .new_epoch(epoch_1, cu_id_1, cancel_token.clone())
+        .await
+        .unwrap();
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let epoch_2 = test::generate_epoch_params(2, 0xFF);
     let cu_id_2 = test::generate_cu_id(2);
 
-    prover.new_epoch(epoch_2, cu_id_2).await.unwrap();
+    prover
+        .new_epoch(epoch_2, cu_id_2, cancel_token)
+        .await
+        .unwrap();
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
 
     let result = prover.stop_join().await;
@@ -263,7 +273,8 @@ async fn cu_prover_works_with_odd_threads_number() {
         proofs
     });
 
-    prover.new_epoch(epoch, cu_id).await.unwrap();
+    let cancel_token = CancellationToken::new();
+    prover.new_epoch(epoch, cu_id, cancel_token).await.unwrap();
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     let result = prover.stop_join().await;
@@ -314,9 +325,10 @@ async fn cu_prover_changes_epoch_correctly() {
         proofs
     });
 
+    let cancel_token = CancellationToken::new();
     for param_id in 0..epochs_count {
         prover
-            .new_epoch(params[param_id].0, params[param_id].1)
+            .new_epoch(params[param_id].0, params[param_id].1, cancel_token.clone())
             .await
             .unwrap();
         tokio::time::sleep(std::time::Duration::from_secs(10)).await;

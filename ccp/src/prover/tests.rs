@@ -19,7 +19,6 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
-use ccp_config::Workers;
 use ccp_randomx::ResultHash;
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
 use ccp_shared::types::LocalNonce;
@@ -30,6 +29,7 @@ use ccp_shared::{
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
+use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::state_storage::CCPState;
@@ -45,7 +45,8 @@ async fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
         optimizations: <_>::default(),
         logs: <_>::default(),
         state_dir,
-        workers: Workers::default(),
+        workers: <_>::default(),
+        tokio: <_>::default(),
     };
 
     CCProver::new(config).await.unwrap()
@@ -59,11 +60,12 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         optimizations: <_>::default(),
         logs: <_>::default(),
         state_dir,
-        workers: Workers::default(),
+        workers: <_>::default(),
+        tokio: <_>::default(),
     };
 
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle)
+    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
         .await
         .unwrap()
 }

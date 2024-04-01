@@ -27,6 +27,7 @@ use ccp_test_utils::test_values as test;
 use ccp_utils::run_utils::run_unordered;
 
 use super::ProvingThreadAsync;
+use super::ProvingThreadConfig;
 use super::ProvingThreadFacade;
 use crate::utility_thread::message::RawProof;
 use crate::utility_thread::message::ToUtilityMessage;
@@ -43,10 +44,15 @@ impl ThreadInitIngredients {
     pub(self) async fn create(core_id: LogicalCoreId, epoch: EpochParameters, cu_id: CUID) -> Self {
         let flags = RandomXFlags::recommended_full_mem();
 
-        let (inlet, outlet) = mpsc::channel(1);
+        let (inlet, outlet) = mpsc::channel(2);
 
+        let proving_config = ProvingThreadConfig {
+            hashes_per_round: 1024,
+            async_to_sync_queue_size: 2,
+            sync_to_async_queue_size: 2,
+        };
         let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-        let mut thread = ProvingThreadAsync::new(core_id, msr_enforcer, inlet, 1024);
+        let mut thread = ProvingThreadAsync::new(core_id, msr_enforcer, inlet, proving_config);
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
@@ -76,9 +82,14 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let (inlet, _outlet) = mpsc::channel(1);
+    let proving_config = ProvingThreadConfig {
+        hashes_per_round: 1024,
+        async_to_sync_queue_size: 2,
+        sync_to_async_queue_size: 2,
+    };
+    let (inlet, _outlet) = mpsc::channel(2);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
+    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, proving_config);
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop_join().await.unwrap();
 
@@ -100,9 +111,14 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
+    let proving_config = ProvingThreadConfig {
+        hashes_per_round: 1024,
+        async_to_sync_queue_size: 1,
+        sync_to_async_queue_size: 1,
+    };
     let (inlet, mut outlet) = mpsc::channel(3);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
+    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, proving_config);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread
@@ -148,6 +164,11 @@ async fn dataset_creation_works_with_three_threads() {
     let (inlet, _outlet) = mpsc::channel(100);
     let threads_count = 3u32;
 
+    let proving_config = ProvingThreadConfig {
+        hashes_per_round: 1024,
+        async_to_sync_queue_size: 1,
+        sync_to_async_queue_size: 1,
+    };
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut threads = (0..threads_count)
         .map(|thread_id| {
@@ -155,7 +176,7 @@ async fn dataset_creation_works_with_three_threads() {
                 (2 + thread_id).into(),
                 msr_enforcer.clone(),
                 inlet.clone(),
-                1024,
+                proving_config.clone(),
             )
         })
         .collect::<Vec<_>>();
