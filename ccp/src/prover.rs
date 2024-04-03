@@ -335,43 +335,43 @@ impl CCProver {
     async fn call_utility_save_state(&self, state: Option<CCPState>) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::SaveConfig { notifier, state };
-        // if the queue is full, it a sign of serious problem
-        self.utility_control_inlet
-            .try_send(message)
-            .map_err(|_| CCProverError::UtilityConnectionError)?;
-        Ok(wait_for
-            .await
-            .map_err(|_| CCProverError::UtilityConnectionError)??)
+        self.execute_utility_call(message, wait_for).await
     }
 
     async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::CleanProofCache { notifier };
         // if the queue is full, it a sign of serious problem
-        self.utility_control_inlet
-            .try_send(message)
-            .map_err(|_| CCProverError::UtilityConnectionError)?;
-        Ok(wait_for
-            .await
-            .map_err(|_| CCProverError::UtilityConnectionError)??)
+        self.execute_utility_call(message, wait_for).await
     }
 
-    async fn call_utility_get_proofs_after(
-        &self,
-        proof_idx: ProofIdx,
-    ) -> CCResult<Vec<CCProof>> {
+    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::GetProofs {
             proof_idx,
             notifier,
         };
-        // if the queue is full, it a sign of serious problem
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn execute_utility_call<T>(
+        &self,
+        message: UtilityControlMessage,
+        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
+    ) -> Result<T, CCProverError> {
+        use tokio::sync::mpsc::error::TrySendError;
+
         self.utility_control_inlet
             .try_send(message)
-            .map_err(|_| CCProverError::UtilityConnectionError)?;
+            .map_err(|e| match e {
+                // if the queue is full, it a sign of serious problem
+                TrySendError::Full(_) => CCProverError::UtilityFullError,
+                // if the queue is closed, the problem is even more serios
+                TrySendError::Closed(_) => CCProverError::UtilityClosedError,
+            })?;
         Ok(wait_for
             .await
-            .map_err(|_| CCProverError::UtilityConnectionError)??)
+            .map_err(|_| CCProverError::UtilityClosedError)??)
     }
 }
 

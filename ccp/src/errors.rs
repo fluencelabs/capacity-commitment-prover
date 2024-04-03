@@ -41,8 +41,10 @@ pub enum CCProverError {
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
 
-    #[error("utility thread closed channel")]
-    UtilityConnectionError,
+    #[error("cannot read from utility task")]
+    UtilityClosedError,
+    #[error("cannot write to utitlity task")]
+    UtilityFullError,
 }
 
 impl From<Vec<CUProverError>> for CCProverError {
