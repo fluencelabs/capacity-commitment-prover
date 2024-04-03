@@ -16,6 +16,7 @@
 
 use ccp_randomx::cache::Cache;
 use ccp_randomx::Dataset;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
 use super::to_utility_message::ToUtilityInlet;
@@ -95,6 +96,13 @@ impl ToUtility {
         error: ProvingThreadSyncError,
     ) -> STResult<()> {
         let to_utility_message = ToUtilityMessage::error_happened(core_id, error);
+        self.to_utility
+            .blocking_send(to_utility_message)
+            .map_err(Into::into)
+    }
+
+    pub(crate) fn send_epoch(&self, epoch: EpochParameters) -> STResult<()> {
+        let to_utility_message = ToUtilityMessage::epoch(epoch);
         self.to_utility
             .blocking_send(to_utility_message)
             .map_err(Into::into)

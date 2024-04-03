@@ -104,13 +104,12 @@ impl ProvingThreadFacade for ProvingThreadAsync {
 
     async fn initialize_dataset(
         &mut self,
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
     ) -> Result<(), Self::Error> {
-        let message = InitializeDataset::new(epoch, cache, dataset, start_item, items_count);
+        let message = InitializeDataset::new(cache, dataset, start_item, items_count);
         let message = AsyncToSyncMessage::InitializeDataset(message);
         self.to_sync.send(message).await?;
 
