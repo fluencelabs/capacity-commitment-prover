@@ -22,8 +22,8 @@ use futures::FutureExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
-use tokio_util::sync::CancellationToken;
 use tokio::sync::oneshot;
+use tokio_util::sync::CancellationToken;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
