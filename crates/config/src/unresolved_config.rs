@@ -21,6 +21,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_async_to_sync_queue_size;
+use super::defaults::default_control_queue_size;
 use super::defaults::default_facade_queue_size;
 use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
@@ -58,6 +59,8 @@ pub struct UnresolvedRpcEndpoint {
     pub utility_queue_size: usize,
     #[serde(default = "default_facade_queue_size")]
     pub facade_queue_size: usize,
+    #[serde(default = "default_control_queue_size")]
+    pub control_queue_size: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -206,6 +209,7 @@ impl UnresolvedRpcEndpoint {
             port: self.port,
             utility_queue_size: self.utility_queue_size,
             facade_queue_size: self.facade_queue_size,
+            control_queue_size: self.control_queue_size,
         }
     }
 }

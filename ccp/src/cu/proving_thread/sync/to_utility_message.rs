@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
 pub(crate) use crate::hashrate::ThreadHashrateRecord;
+use crate::state_storage::CCPState;
 
 pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
 pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
+pub(crate) type UtilityControlInlet = mpsc::Sender<UtilityControlMessage>;
+pub(crate) type UtilityControlOutlet = mpsc::Receiver<UtilityControlMessage>;
 
+#[derive(Debug)]
 pub(crate) enum ToUtilityMessage {
     ProofFound {
         core_id: LogicalCoreId,
@@ -48,4 +55,19 @@ impl ToUtilityMessage {
     pub(crate) fn hashrate(entry: ThreadHashrateRecord) -> Self {
         Self::Hashrate(entry)
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum UtilityControlMessage {
+    SaveConfig {
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        state: Option<CCPState>,
+    },
+    CleanProofCache {
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
+    },
+    GetProofs {
+        proof_idx: ProofIdx,
+        notifier: oneshot::Sender<tokio::io::Result<Vec<CCProof>>>,
+    },
 }
