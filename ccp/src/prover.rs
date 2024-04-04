@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio_util::sync::CancellationToken;
+use tokio::sync::oneshot;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
@@ -35,6 +36,8 @@ use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
 use crate::cpuids_handle::CpuIdsHandle;
+use crate::cu::proving_thread::sync::to_utility_message::UtilityControlInlet;
+use crate::cu::proving_thread::sync::to_utility_message::UtilityControlMessage;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
@@ -59,10 +62,9 @@ pub struct CCProver {
     status: CCStatus,
     utility_thread: UtilityThread,
     prometheus_endpoint: Option<PrometheusEndpoint>,
-    proof_drainer: ProofStorageDrainer,
-    state_storage: StateStorage,
     msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
+    utility_control_inlet: UtilityControlInlet,
     cancellation_token: CancellationToken,
 }
 
@@ -100,11 +102,9 @@ impl NoxCCPApi for CCProver {
         Ok(())
     }
 
+    #[inline]
     async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.proof_drainer
-            .get_proofs_after(proof_idx)
-            .await
-            .map_err(Into::into)
+        self.call_utility_get_proofs_after(proof_idx).await
     }
 
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
@@ -213,12 +213,17 @@ impl CCProver {
         )?;
 
         let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
+        let (utility_control_inlet, utility_control_outlet) =
+            tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
         let utility_thread = UtilityThread::spawn(
             start_proof_idx,
             proof_dir,
             prev_global_nonce,
             hashrate_handler,
             config.rpc_endpoint.utility_queue_size,
+            utility_control_outlet,
+            state_storage,
+            proof_drainer,
         );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
@@ -235,10 +240,9 @@ impl CCProver {
             status: CCStatus::Idle,
             utility_thread,
             prometheus_endpoint,
-            proof_drainer,
-            state_storage,
             msr_enforcer,
             utility_core_ids_handle,
+            utility_control_inlet,
             cancellation_token,
         };
 
@@ -299,7 +303,7 @@ impl CCProver {
         &self,
         epoch_state: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> tokio::io::Result<()> {
+    ) -> CCResult<()> {
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
@@ -311,11 +315,12 @@ impl CCProver {
             utility_cores,
             msr_state,
         };
-        self.state_storage.save_state(Some(&state)).await
+        self.call_utility_save_state(Some(state)).await
     }
 
-    pub async fn save_no_state(&self) -> tokio::io::Result<()> {
-        self.state_storage.save_state(None).await
+    #[inline]
+    pub async fn save_no_state(&self) -> CCResult<()> {
+        self.call_utility_save_state(None).await
     }
 
     async fn apply_cc_parameters(
@@ -333,6 +338,48 @@ impl CCProver {
         self.status = CCStatus::Running { epoch: new_epoch };
 
         Ok(())
+    }
+
+    async fn call_utility_save_state(&self, state: Option<CCPState>) -> CCResult<()> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::SaveConfig { notifier, state };
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::CleanProofCache { notifier };
+        // if the queue is full, it a sign of serious problem
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::GetProofs {
+            proof_idx,
+            notifier,
+        };
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn execute_utility_call<T>(
+        &self,
+        message: UtilityControlMessage,
+        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
+    ) -> Result<T, CCProverError> {
+        use tokio::sync::mpsc::error::TrySendError;
+
+        self.utility_control_inlet
+            .try_send(message)
+            .map_err(|e| match e {
+                // if the queue is full, it a sign of serious problem
+                TrySendError::Full(_) => CCProverError::UtilityFullError,
+                // if the queue is closed, the problem is even more serios
+                TrySendError::Closed(_) => CCProverError::UtilityClosedError,
+            })?;
+        Ok(wait_for
+            .await
+            .map_err(|_| CCProverError::UtilityClosedError)??)
     }
 }
 
@@ -359,7 +406,7 @@ impl RoadmapAlignable for CCProver {
             CUProverPreAction::NoAction => {}
             CUProverPreAction::CleanupProofCache => {
                 self.pause().await?;
-                self.proof_drainer.remove_proofs().await?;
+                self.call_utility_cleanup_proof_cache().await?;
             }
         }
 

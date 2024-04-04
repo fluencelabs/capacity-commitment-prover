@@ -24,6 +24,7 @@ const DEFAULT_SYNC_TO_ASYNC_QUEUE_SIZE: usize = 1;
 
 const DEFAULT_UTILITY_QUEUE_SIZE: usize = 100;
 const DEFAULT_FACADE_QUEUE_SIZE: usize = 100;
+const DEFAULT_CONTROL_QUEUE_SIZE: usize = 100;
 
 pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
@@ -59,4 +60,8 @@ pub(crate) fn default_utility_queue_size() -> usize {
 
 pub(crate) fn default_facade_queue_size() -> usize {
     DEFAULT_FACADE_QUEUE_SIZE
+}
+
+pub(crate) fn default_control_queue_size() -> usize {
+    DEFAULT_CONTROL_QUEUE_SIZE
 }
