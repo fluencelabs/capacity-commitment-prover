@@ -249,40 +249,10 @@ impl CCProver {
         Ok(prover)
     }
 
-    #[allow(clippy::needless_lifetimes)]
-    pub async fn pause<'provers>(&'provers mut self) -> CCResult<()> {
-        let closure = move |_: usize, (_, prover): (&PhysicalCoreId, &'provers mut CUProver)| {
-            prover.pause().boxed()
-        };
-        run_unordered(self.cu_provers.iter_mut(), closure).await?;
-
-        self.status = CCStatus::Idle;
-
-        Ok(())
-    }
-
     pub async fn stop(mut self) -> CCResult<()> {
         // stop all active provers
         self.on_no_active_commitment().await?;
         self.shutdown().await
-    }
-
-    async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
-        let nonblocking_closure =
-            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
-                prover.stop_nonblocking().boxed()
-            };
-
-        run_unordered(self.cu_provers.iter(), nonblocking_closure).await?;
-        Ok(())
-    }
-
-    async fn join_provers(&mut self) -> CCResult<()> {
-        let join_closure =
-            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.join().boxed();
-
-        run_unordered(self.cu_provers.drain(), join_closure).await?;
-        Ok(())
     }
 
     pub async fn shutdown(&mut self) -> CCResult<()> {
@@ -517,6 +487,39 @@ impl CCProver {
         }
         .boxed()
     }
+}
+
+impl CCProver {
+    #[allow(clippy::needless_lifetimes)]
+    pub async fn pause<'provers>(&'provers mut self) -> CCResult<()> {
+        let closure = move |_: usize, (_, prover): (&PhysicalCoreId, &'provers mut CUProver)| {
+            prover.pause().boxed()
+        };
+        run_unordered(self.cu_provers.iter_mut(), closure).await?;
+
+        self.status = CCStatus::Idle;
+
+        Ok(())
+    }
+
+    async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
+        let nonblocking_closure =
+            move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
+                prover.stop_nonblocking().boxed()
+            };
+
+        run_unordered(self.cu_provers.iter(), nonblocking_closure).await?;
+        Ok(())
+    }
+
+    async fn join_provers(&mut self) -> CCResult<()> {
+        let join_closure =
+            move |_: usize, (_, prover): (PhysicalCoreId, CUProver)| prover.join().boxed();
+
+        run_unordered(self.cu_provers.drain(), join_closure).await?;
+        Ok(())
+    }
+
 }
 
 fn cease_prev_msr_policy(prev_state: &CCPState) {
