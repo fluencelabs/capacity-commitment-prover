@@ -144,22 +144,29 @@ impl UtilityThreadImpl {
     }
 
     async fn handle_to_utility_message(&mut self, message: ToUtilityMessage) {
+        use ToUtilityMessage::*;
+
         match message {
-            ToUtilityMessage::ProofFound { core_id, proof } => {
+            ProofFound { core_id, proof } => {
                 if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
                     log::error!("failed to save proof: {error}\nfound proof {proof}");
                 }
 
                 self.hashrate_handler.proof_found(core_id);
             }
-            ToUtilityMessage::ErrorHappened { core_id, error } => {
+            ErrorHappened { core_id, error } => {
                 log::error!("{core_id}: {error}");
             }
-            ToUtilityMessage::Hashrate(record) => {
+            Hashrate(record) => {
                 log::info!("{record}");
 
                 if let Err(error) = self.hashrate_handler.account_record(record) {
                     log::error!("hashrate accounting failed: {error}");
+                }
+            }
+            Epoch(epoch) => {
+                if let Err(error) = self.hashrate_handler.handle_epoch(epoch) {
+                    log::error!("epoch processing failed: {error}");
                 }
             }
         }

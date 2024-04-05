@@ -16,12 +16,10 @@
 
 use std::time::Duration;
 
-use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct ThreadHashrateRecord {
-    pub(crate) epoch: EpochParameters,
     pub(crate) core_id: LogicalCoreId,
     pub(crate) duration: Duration,
     pub(crate) variant: HashrateRecordType,
@@ -37,13 +35,8 @@ pub(crate) enum HashrateRecordType {
 }
 
 impl ThreadHashrateRecord {
-    pub(crate) fn cache_creation(
-        epoch: EpochParameters,
-        core_id: LogicalCoreId,
-        duration: Duration,
-    ) -> Self {
+    pub(crate) fn cache_creation(core_id: LogicalCoreId, duration: Duration) -> Self {
         Self {
-            epoch,
             core_id,
             duration,
             variant: HashrateRecordType::CacheCreation,
@@ -51,14 +44,12 @@ impl ThreadHashrateRecord {
     }
 
     pub(crate) fn dataset_initialization(
-        epoch: EpochParameters,
         core_id: LogicalCoreId,
         duration: Duration,
         start_item: u64,
         items_count: u64,
     ) -> Self {
         Self {
-            epoch,
             core_id,
             duration,
             variant: HashrateRecordType::DatasetInitialization {
@@ -69,13 +60,11 @@ impl ThreadHashrateRecord {
     }
 
     pub(crate) fn checked_hashes(
-        epoch: EpochParameters,
         core_id: LogicalCoreId,
         duration: Duration,
         hashes_count: usize,
     ) -> Self {
         Self {
-            epoch,
             core_id,
             duration,
             variant: HashrateRecordType::CheckedHashes {

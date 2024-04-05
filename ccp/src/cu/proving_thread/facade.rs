@@ -35,7 +35,6 @@ pub trait ProvingThreadFacade {
 
     async fn initialize_dataset(
         &mut self,
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,

@@ -16,6 +16,7 @@
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -41,6 +42,7 @@ pub(crate) enum ToUtilityMessage {
         error: ProvingThreadSyncError,
     },
     Hashrate(ThreadHashrateRecord),
+    Epoch(EpochParameters),
 }
 
 impl ToUtilityMessage {
@@ -54,6 +56,10 @@ impl ToUtilityMessage {
 
     pub(crate) fn hashrate(entry: ThreadHashrateRecord) -> Self {
         Self::Hashrate(entry)
+    }
+
+    pub(crate) fn epoch(epoch: EpochParameters) -> Self {
+        Self::Epoch(epoch)
     }
 }
 
