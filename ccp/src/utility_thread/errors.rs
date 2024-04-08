@@ -30,7 +30,4 @@ pub enum UtilityThreadError {
 
     #[error(transparent)]
     HashrateError(#[from] HashrateError),
-
-    #[error("error occurred while trying to shutdown the utility thread")]
-    ShutdownError,
 }

@@ -20,6 +20,8 @@ mod local_nonce;
 mod raw_proof;
 mod state;
 mod thread;
+pub(crate) mod to_state_operating_message;
+pub(crate) mod to_stats_collecting_message;
 pub(crate) mod to_utility_message;
 
 pub(crate) use errors::ProvingThreadSyncFacadeError;
