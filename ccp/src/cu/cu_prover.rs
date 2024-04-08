@@ -26,6 +26,7 @@ use ccp_utils::run_utils::run_unordered;
 use cpu_utils::CPUTopology;
 
 use super::config::CUProverConfig;
+use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
 use super::proving_thread::ProvingThreadAsync;
 use super::proving_thread::ProvingThreadConfig;
 use super::proving_thread::ProvingThreadFacade;
@@ -34,7 +35,7 @@ use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
 use crate::cu::chunk::ChunkGenerator;
-use crate::utility_thread::message::ToUtilityInlet;
+use crate::state_operating_thread::message::ToStateOperatingInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
@@ -52,7 +53,8 @@ pub struct CUProver {
 impl CUProver {
     pub(crate) async fn create(
         config: CUProverConfig,
-        to_utility: ToUtilityInlet,
+        to_state_operating: ToStateOperatingInlet,
+        to_stats_collecting: ToStatsCollectingInlet,
         msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
@@ -60,7 +62,8 @@ impl CUProver {
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
             .allocate(
                 msr_enforcer,
-                to_utility,
+                to_state_operating,
+                to_stats_collecting,
                 ProvingThreadConfig::from_cu_prover_config(&config),
             )?;
 

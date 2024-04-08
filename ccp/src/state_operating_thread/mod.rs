@@ -18,13 +18,13 @@ mod errors;
 mod proof_storage;
 mod thread;
 
-// pub use errors::UtilityThreadError;
-// pub(crate) use proof_storage::save_reliably;
-// pub(crate) use thread::*;
+pub use errors::StateOperatingThreadError;
+pub(crate) use proof_storage::save_reliably;
+pub(crate) use thread::*;
 
 // WIP
 pub(crate) mod message {
-    pub(crate) use crate::cu::proving_thread::sync::to_utility_message::*;
+    pub(crate) use crate::cu::proving_thread::sync::to_state_operating_message::*;
 }
 
-pub(crate) type UTResult<T> = Result<T, errors::UtilityThreadError>;
+pub(crate) type SOTResult<T> = Result<T, errors::StateOperatingThreadError>;

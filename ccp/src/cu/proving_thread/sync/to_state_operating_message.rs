@@ -26,13 +26,12 @@ use crate::state_storage::CCPState;
 
 pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
 pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
-// pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
+pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
 pub(crate) type StateOperatingControlOutlet = mpsc::Receiver<StateOperatingControlMessage>;
 
 #[derive(Debug)]
 pub(crate) enum ToStateOperatingMessage {
     ProofFound {
-        core_id: LogicalCoreId,
         proof: RawProof,
     },
     ErrorHappened {
@@ -42,8 +41,8 @@ pub(crate) enum ToStateOperatingMessage {
 }
 
 impl ToStateOperatingMessage {
-    pub(crate) fn proof_found(core_id: LogicalCoreId, proof: RawProof) -> Self {
-        Self::ProofFound { core_id, proof }
+    pub(crate) fn proof_found(proof: RawProof) -> Self {
+        Self::ProofFound { proof }
     }
 
     pub(crate) fn error_happened(core_id: LogicalCoreId, error: ProvingThreadSyncError) -> Self {

@@ -23,7 +23,7 @@ use ccp_shared::types::GlobalNonce;
 use tokio_util::sync::CancellationToken;
 
 use super::message::*;
-use super::UTResult;
+use super::SOTResult;
 use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
 use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlOutlet;
 use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
@@ -57,7 +57,7 @@ impl StateOperatingThread {
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
-        let ut_impl = StateOperatingThreadImpl::new(
+        let sot_impl = StateOperatingThreadImpl::new(
             from_state_operating,
             state_operating_control_outlet,
             cancellation.clone(),
@@ -66,7 +66,7 @@ impl StateOperatingThread {
             proof_drainer,
         );
 
-        let handle = tokio::spawn(ut_impl.utility_closure());
+        let handle = tokio::spawn(sot_impl.state_operating_closure());
         Self {
             to_state_operating,
             cancellation,
@@ -74,13 +74,13 @@ impl StateOperatingThread {
         }
     }
 
-    pub(crate) async fn shutdown(&mut self) -> UTResult<()> {
+    pub(crate) async fn shutdown(&mut self) -> SOTResult<()> {
         log::info!("Shutting down utility thread");
         self.cancellation.cancel();
         Ok((&mut self.handle).await?)
     }
 
-    pub(crate) fn get_to_utility_channel(&self) -> ToStateOperatingInlet {
+    pub(crate) fn get_to_state_operating_channel(&self) -> ToStateOperatingInlet {
         self.to_state_operating.clone()
     }
 }
@@ -113,10 +113,10 @@ impl StateOperatingThreadImpl {
         }
     }
 
-    pub(crate) async fn utility_closure(mut self) {
+    pub(crate) async fn state_operating_closure(mut self) {
         loop {
             tokio::select! {
-                Some(utility_message) = self.to_utility.recv() => self.handle_to_utility_message(utility_message).await,
+                Some(utility_message) = self.to_utility.recv() => self.handle_to_state_operating_message(utility_message).await,
                 Some(control_message) = self.control.recv() => self.handle_control_message(control_message).await,
                 _ = self.cancellation.cancelled() => {
                     log::info!("The utility thread was shutdown");
@@ -126,11 +126,11 @@ impl StateOperatingThreadImpl {
         }
     }
 
-    async fn handle_to_utility_message(&mut self, message: ToStateOperatingMessage) {
+    async fn handle_to_state_operating_message(&mut self, message: ToStateOperatingMessage) {
         use ToStateOperatingMessage::*;
 
         match message {
-            ProofFound { core_id: _, proof } => {
+            ProofFound { proof } => {
                 if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
                     log::error!("failed to save proof: {error}\nfound proof {proof}");
                 }
@@ -186,8 +186,8 @@ impl NewProofHandler {
         }
     }
 
-    async fn handle_found_proof(&mut self, proof: &RawProof) -> UTResult<()> {
-        log::debug!("utility_thread: new proof_received {proof:?}");
+    async fn handle_found_proof(&mut self, proof: &RawProof) -> SOTResult<()> {
+        log::debug!("state_operating_thread: new proof_received {proof:?}");
 
         self.maybe_new_epoch(proof); // WIP
 
@@ -208,6 +208,7 @@ impl NewProofHandler {
         Ok(())
     }
 
+    // WIP refactor this and use an explicit epoch message to reset proof_idx
     fn maybe_new_epoch(&mut self, proof: &RawProof) {
         if self.is_new_epoch(proof) {
             self.last_seen_global_nonce = proof.epoch.global_nonce;

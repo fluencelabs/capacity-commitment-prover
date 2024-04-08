@@ -37,7 +37,7 @@ pub(crate) mod state_operating_thread;
 mod state_storage;
 pub(crate) mod stats_collecting_thread;
 pub mod status;
-pub(crate) mod utility_thread;
+// pub(crate) mod utility_thread;
 
 pub use errors::CCProverError;
 pub use prover::CCProver;

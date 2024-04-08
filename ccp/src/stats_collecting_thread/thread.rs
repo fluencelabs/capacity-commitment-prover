@@ -20,7 +20,7 @@ use tokio::time;
 
 use tokio_util::sync::CancellationToken;
 
-use super::UTResult;
+use super::STTResult;
 use crate::cu::proving_thread::sync::to_stats_collecting_message::{
     ToStatsCollectingInlet, ToStatsCollectingMessage, ToStatsCollectingOutlet,
 };
@@ -28,13 +28,13 @@ use crate::hashrate::HashrateHandler;
 
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
 
-pub(crate) struct StatsCollecting {
+pub(crate) struct StatsCollectingThread {
     to_stats_collecting: ToStatsCollectingInlet,
     cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
-impl StatsCollecting {
+impl StatsCollectingThread {
     pub(crate) fn spawn(
         hashrate_handler: HashrateHandler,
         stats_collecting_queue_size: usize,
@@ -44,13 +44,13 @@ impl StatsCollecting {
 
         let cancellation = CancellationToken::new();
 
-        let ut_impl = StatsCollectingImpl::new(
+        let sct_impl = StatsCollectingImpl::new(
             from_stats_collecting,
             cancellation.clone(),
             hashrate_handler,
         );
 
-        let handle = tokio::spawn(ut_impl.utility_closure());
+        let handle = tokio::spawn(sct_impl.stats_collecting_closure());
         Self {
             to_stats_collecting,
             cancellation,
@@ -58,8 +58,8 @@ impl StatsCollecting {
         }
     }
 
-    pub(crate) async fn shutdown(&mut self) -> UTResult<()> {
-        log::info!("Shutting down utility thread");
+    pub(crate) async fn shutdown(&mut self) -> STTResult<()> {
+        log::info!("Shutting down stats collecting thread");
         self.cancellation.cancel();
         Ok((&mut self.handle).await?)
     }
@@ -88,7 +88,7 @@ impl StatsCollectingImpl {
         }
     }
 
-    pub(crate) async fn utility_closure(mut self) {
+    pub(crate) async fn stats_collecting_closure(mut self) {
         use futures::FutureExt;
         use futures::StreamExt;
 
@@ -103,11 +103,11 @@ impl StatsCollectingImpl {
 
         loop {
             tokio::select! {
-                Some(utility_message) = self.to_stats_collecting.recv() => self.handle_to_stats_collecting_message(utility_message).await,
+                Some(message) = self.to_stats_collecting.recv() => self.handle_to_stats_collecting_message(message).await,
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
                 maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = self.cancellation.cancelled() => {
-                    log::info!("The utility thread was shutdown");
+                    log::info!("Stats collecting thread is shutdown.");
                     return;
                 }
             }

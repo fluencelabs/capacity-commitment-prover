@@ -17,6 +17,7 @@
 mod errors;
 mod thread;
 
+pub use errors::StatsCollectingThreadError;
 pub(crate) use thread::*;
 
-pub(crate) type UTResult<T> = Result<T, errors::UtilityThreadError>;
+pub(crate) type STTResult<T> = Result<T, errors::StatsCollectingThreadError>;
