@@ -116,7 +116,7 @@ impl StateOperatingThreadImpl {
     pub(crate) async fn state_operating_closure(mut self) {
         loop {
             tokio::select! {
-                Some(utility_message) = self.to_utility.recv() => self.handle_to_state_operating_message(utility_message).await,
+                Some(state_operating_message) = self.to_utility.recv() => self.handle_to_state_operating_message(state_operating_message).await,
                 Some(control_message) = self.control.recv() => self.handle_control_message(control_message).await,
                 _ = self.cancellation.cancelled() => {
                     log::info!("The utility thread was shutdown");
@@ -208,7 +208,6 @@ impl NewProofHandler {
         Ok(())
     }
 
-    // WIP refactor this and use an explicit epoch message to reset proof_idx
     fn maybe_new_epoch(&mut self, proof: &RawProof) {
         if self.is_new_epoch(proof) {
             self.last_seen_global_nonce = proof.epoch.global_nonce;
