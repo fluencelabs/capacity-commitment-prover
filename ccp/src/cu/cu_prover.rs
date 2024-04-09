@@ -176,7 +176,7 @@ impl CUProver {
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let dataset_size = dataset.items_count() as u64;
+        let dataset_size = dataset.items_count();
         let threads_number = self.threads.len() as u64;
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
@@ -185,7 +185,8 @@ impl CUProver {
             let start_item = (dataset_size * thread_id) / threads_number;
             let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
 
-            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, DATASET_CHUNK_SIZE);
+            let chunk_generator =
+                ChunkGenerator::new(start_item, next_start_item, DATASET_CHUNK_SIZE);
             async {
                 for chunk in chunk_generator {
                     if cancel_token.is_cancelled() {
