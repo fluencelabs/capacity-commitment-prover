@@ -33,6 +33,7 @@ use crate::utility_thread::proof_storage::ProofStorage;
 
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
 
+#[derive(Debug)]
 pub(crate) struct UtilityThread {
     to_utility: ToUtilityInlet,
     cancellation: CancellationToken,

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+mod cu_governor;
 #[cfg(test)]
 mod tests;
 
@@ -519,7 +520,6 @@ impl CCProver {
         run_unordered(self.cu_provers.drain(), join_closure).await?;
         Ok(())
     }
-
 }
 
 fn cease_prev_msr_policy(prev_state: &CCPState) {
