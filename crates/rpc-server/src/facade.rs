@@ -17,6 +17,7 @@
 use std::fmt::Display;
 use std::sync::Arc;
 
+use ccp::cpuids_handle::CpuIdsHandle;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -35,6 +36,7 @@ pub struct BackgroundFacade<P> {
     to_worker: mpsc::Sender<FacadeMessage>,
     prover: Arc<RwLock<P>>,
     worker: JoinHandle<()>,
+    utility_core_ids_handle: CpuIdsHandle,
 }
 
 impl<P> BackgroundFacade<P>
@@ -42,7 +44,11 @@ where
     P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
 {
-    pub fn new(prover: Arc<RwLock<P>>, facade_queue_size: usize) -> Self {
+    pub fn new(
+        prover: Arc<RwLock<P>>,
+        utility_core_ids_handle: CpuIdsHandle,
+        facade_queue_size: usize,
+    ) -> Self {
         let (to_worker, from_facade) = mpsc::channel(facade_queue_size);
 
         let worker = tokio::task::spawn(facade_loop(prover.clone(), from_facade));
@@ -51,6 +57,7 @@ where
             to_worker,
             prover,
             worker,
+            utility_core_ids_handle,
         }
     }
 
@@ -131,11 +138,7 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
     }
 
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<cpu_utils::LogicalCoreId>) {
-        self.prover
-            .read()
-            .await
-            .realloc_utility_cores(utility_core_ids)
-            .await;
+        self.utility_core_ids_handle.set_cores(utility_core_ids);
     }
 }
 
