@@ -105,11 +105,6 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let proving_config = ProvingThreadConfig {
-        hashes_per_round: 1024,
-        async_to_sync_queue_size: 1,
-        sync_to_async_queue_size: 1,
-    };
     let (inlet, mut outlet) = mpsc::channel(3);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let thread_cfg = ProvingThreadConfig {
@@ -162,11 +157,6 @@ async fn dataset_creation_works_with_three_threads() {
     let (inlet, _outlet) = mpsc::channel(100);
     let threads_count = 3u32;
 
-    let proving_config = ProvingThreadConfig {
-        hashes_per_round: 1024,
-        async_to_sync_queue_size: 1,
-        sync_to_async_queue_size: 1,
-    };
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut threads = (0..threads_count)
         .map(|thread_id| {
