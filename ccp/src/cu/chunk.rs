@@ -16,18 +16,18 @@
 
 pub(crate) struct ChunkGenerator {
     // inclusive
-    start: u64,
+    next_chunk_start: u64,
     chunk_size: u64,
     // exclusive
-    end: u64,
+    range_end: u64,
 }
 
 impl ChunkGenerator {
-    pub(crate) fn new(size: u64, chunk_size: u64) -> Self {
+    pub(crate) fn new(range_size: u64, chunk_size: u64) -> Self {
         Self {
-            start: 0,
+            next_chunk_start: 0,
             chunk_size,
-            end: size,
+            range_end: range_size,
         }
     }
 }
@@ -42,18 +42,19 @@ impl Iterator for ChunkGenerator {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // we add 1 to substracted and 1 to result because we want to have None when end == start, not Some(0).
-        let remains = self.end.checked_sub(self.start + 1).map(|n| n + 1);
+        if self.range_end <= self.next_chunk_start {
+            return None;
+        }
 
-        remains.map(|remains| {
-            let capped_chunk_size = std::cmp::min(remains, self.chunk_size);
-            let chunk = Chunk {
-                start: self.start,
-                size: capped_chunk_size,
-            };
-            self.start += capped_chunk_size;
-            chunk
-        })
+        let remains = self.range_end - self.next_chunk_start;
+
+        let capped_chunk_size = remains.clamp(0, self.chunk_size);
+        let chunk = Chunk {
+            start: self.next_chunk_start,
+            size: capped_chunk_size,
+        };
+        self.next_chunk_start += capped_chunk_size;
+        Some(chunk)
     }
 }
 
