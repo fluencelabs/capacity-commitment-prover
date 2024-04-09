@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use parking_lot::Mutex as PLMutex;
 use tokio_util::sync::CancellationToken;
 
 use ccp_msr::MSRModeEnforcer;
@@ -177,16 +176,18 @@ impl CUProver {
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let dataset_size = dataset.items_count();
+        let dataset_size = dataset.items_count() as u64;
+        let threads_number = self.threads.len() as u64;
 
-        let chunk_generator = PLMutex::new(ChunkGenerator::new(dataset_size, DATASET_CHUNK_SIZE));
+        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
+            let thread_id = thread_id as u64;
 
-        let closure = |_thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
+            let start_item = (dataset_size * thread_id) / threads_number;
+            let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
+
+            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, DATASET_CHUNK_SIZE);
             async {
-                while let Some(chunk) = {
-                    let mut guard = chunk_generator.lock();
-                    guard.next()
-                } {
+                for chunk in chunk_generator {
                     if cancel_token.is_cancelled() {
                         break;
                     }

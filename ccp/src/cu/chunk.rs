@@ -23,11 +23,11 @@ pub(crate) struct ChunkGenerator {
 }
 
 impl ChunkGenerator {
-    pub(crate) fn new(range_size: u64, chunk_size: u64) -> Self {
+    pub(crate) fn new(range_start: u64, range_end: u64, chunk_size: u64) -> Self {
         Self {
-            next_chunk_start: 0,
+            next_chunk_start: range_start,
             chunk_size,
-            range_end: range_size,
+            range_end,
         }
     }
 }
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_divisible() {
-        let chunker = ChunkGenerator::new(100, 50);
+        let chunker = ChunkGenerator::new(0, 100, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(
             vals,
@@ -80,14 +80,14 @@ mod tests {
 
     #[test]
     fn test_divisible_single() {
-        let chunker = ChunkGenerator::new(50, 50);
+        let chunker = ChunkGenerator::new(0, 50, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(vals, vec![Chunk { start: 0, size: 50 }]);
     }
 
     #[test]
     fn test_uneven() {
-        let chunker = ChunkGenerator::new(120, 50);
+        let chunker = ChunkGenerator::new(0, 120, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(
             vals,
@@ -107,8 +107,24 @@ mod tests {
 
     #[test]
     fn test_uneven_single() {
-        let chunker = ChunkGenerator::new(20, 50);
+        let chunker = ChunkGenerator::new(0, 20, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(vals, vec![Chunk { start: 0, size: 20 }]);
+    }
+
+    #[test]
+    fn test_start() {
+        let chunker = ChunkGenerator::new(10, 25, 11);
+        let vals: Vec<_> = chunker.collect();
+        assert_eq!(
+            vals,
+            vec![
+                Chunk {
+                    start: 10,
+                    size: 11
+                },
+                Chunk { start: 21, size: 4 },
+            ]
+        );
     }
 }
