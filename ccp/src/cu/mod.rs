@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-mod chunker;
+mod chunk;
 mod config;
 pub mod cu_prover;
 mod errors;

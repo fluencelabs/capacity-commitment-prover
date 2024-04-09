@@ -34,7 +34,7 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
-use crate::cu::chunker::ChunkGenerator;
+use crate::cu::chunk::ChunkGenerator;
 use crate::utility_thread::message::ToUtilityInlet;
 
 // chunk size for roughly 10s of execution
@@ -180,12 +180,12 @@ impl CUProver {
 
         let dataset_size = dataset.items_count();
 
-        let chunker = PLMutex::new(ChunkGenerator::new(dataset_size, DATASET_CHUNK_SIZE));
+        let chunk_generator = PLMutex::new(ChunkGenerator::new(dataset_size, DATASET_CHUNK_SIZE));
 
         let closure = |_thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
             async {
                 while let Some(chunk) = {
-                    let mut guard = chunker.lock();
+                    let mut guard = chunk_generator.lock();
                     guard.next()
                 } {
                     if cancel_token.is_cancelled() {
