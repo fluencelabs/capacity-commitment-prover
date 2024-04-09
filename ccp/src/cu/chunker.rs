@@ -1,4 +1,20 @@
-pub(crate) struct Chunker {
+/*
+ * Copyright 2024 Fluence Labs Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+pub(crate) struct ChunkGenerator {
     // inclusive
     start: u64,
     chunk_size: u64,
@@ -6,7 +22,7 @@ pub(crate) struct Chunker {
     end: u64,
 }
 
-impl Chunker {
+impl ChunkGenerator {
     pub(crate) fn new(size: u64, chunk_size: u64) -> Self {
         Self {
             start: 0,
@@ -22,7 +38,7 @@ pub(crate) struct Chunk {
     pub(crate) size: u64,
 }
 
-impl Iterator for Chunker {
+impl Iterator for ChunkGenerator {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -47,7 +63,7 @@ mod tests {
 
     #[test]
     fn test_divisible() {
-        let chunker = Chunker::new(100, 50);
+        let chunker = ChunkGenerator::new(100, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(
             vals,
@@ -63,14 +79,14 @@ mod tests {
 
     #[test]
     fn test_divisible_single() {
-        let chunker = Chunker::new(50, 50);
+        let chunker = ChunkGenerator::new(50, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(vals, vec![Chunk { start: 0, size: 50 }]);
     }
 
     #[test]
     fn test_uneven() {
-        let chunker = Chunker::new(120, 50);
+        let chunker = ChunkGenerator::new(120, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(
             vals,
@@ -90,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_uneven_single() {
-        let chunker = Chunker::new(20, 50);
+        let chunker = ChunkGenerator::new(20, 50);
         let vals: Vec<_> = chunker.collect();
         assert_eq!(vals, vec![Chunk { start: 0, size: 20 }]);
     }
