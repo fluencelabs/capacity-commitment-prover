@@ -98,7 +98,7 @@ impl CUProver {
 
         let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
-        self.initialize_dataset(epoch, cache_handle, dataset_handle.clone(), cancel_token)
+        self.initialize_dataset(cache_handle, dataset_handle.clone(), cancel_token)
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -171,7 +171,6 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         cancel_token: CancellationToken,
@@ -194,13 +193,7 @@ impl CUProver {
                     let start_item = chunk.start;
                     let items_count = chunk.size;
                     thread
-                        .initialize_dataset(
-                            epoch,
-                            cache.clone(),
-                            dataset.clone(),
-                            start_item,
-                            items_count,
-                        )
+                        .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
                         .await?;
                 }
                 Ok(())

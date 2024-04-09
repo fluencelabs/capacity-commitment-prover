@@ -95,17 +95,11 @@ impl HashrateCollector {
         Self::default()
     }
 
-    pub(crate) fn account_record(
-        &mut self,
-        hashrate_record: ThreadHashrateRecord,
-    ) -> EpochObservation {
-        let result = self.observe_epoch(hashrate_record.epoch);
+    pub(crate) fn account_record(&mut self, hashrate_record: ThreadHashrateRecord) {
         self.entries
             .entry(hashrate_record.core_id)
             .or_default()
             .account_record(hashrate_record);
-
-        result
     }
 
     pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, ThreadHashrate> {
@@ -146,7 +140,7 @@ impl HashrateCollector {
             .account_proof_found()
     }
 
-    fn observe_epoch(&mut self, new_epoch: EpochParameters) -> EpochObservation {
+    pub(crate) fn observe_epoch(&mut self, new_epoch: EpochParameters) -> EpochObservation {
         match self.status {
             CollectorStatus::Idle => {
                 self.handler_new_epoch(new_epoch);
