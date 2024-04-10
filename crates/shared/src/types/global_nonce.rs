@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::str::FromStr;
+
 use hex::ToHex;
 use serde::Deserialize;
 use serde::Serialize;
@@ -54,6 +56,14 @@ impl ToHex for GlobalNonce {
 
     fn encode_hex_upper<T: std::iter::FromIterator<char>>(&self) -> T {
         ToHex::encode_hex_upper(&self.0)
+    }
+}
+
+impl FromStr for GlobalNonce {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
     }
 }
 

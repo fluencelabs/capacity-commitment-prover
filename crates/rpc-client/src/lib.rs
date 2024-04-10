@@ -29,6 +29,7 @@
 mod or_hex;
 
 use std::collections::HashMap;
+use std::time::Duration;
 
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::LogicalCoreId;
@@ -80,6 +81,22 @@ impl CCPRpcHttpClient {
         Ok(Self { inner })
     }
 
+    pub async fn with_timeout(
+        endpoint_url: String,
+        request_timeout: Duration,
+    ) -> Result<Self, ClientError> {
+        let builder =
+            jsonrpsee::http_client::HttpClientBuilder::default().request_timeout(request_timeout);
+        let inner = builder.build(endpoint_url)?;
+
+        Ok(Self { inner })
+    }
+
+    #[inline]
+    pub fn from_http_client(client: jsonrpsee::http_client::HttpClient) -> Self {
+        Self { inner: client }
+    }
+
     pub async fn on_active_commitment(
         &self,
         global_nonce: GlobalNonce,
@@ -99,10 +116,12 @@ impl CCPRpcHttpClient {
         .await
     }
 
+    #[inline]
     pub async fn on_no_active_commitment(&self) -> Result<(), ClientError> {
         CCPRpcClient::on_no_active_commitment(&self.inner).await
     }
 
+    #[inline]
     pub async fn get_proofs_after(
         &self,
         proof_idx: ProofIdx,
@@ -111,6 +130,7 @@ impl CCPRpcHttpClient {
         CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
     }
 
+    #[inline]
     pub async fn realloc_utility_cores(
         &self,
         utility_core_ids: Vec<LogicalCoreId>,

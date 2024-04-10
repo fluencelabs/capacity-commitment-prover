@@ -25,6 +25,7 @@ use cpu_utils::CPUTopology;
 
 use super::config::CUProverConfig;
 use super::proving_thread::ProvingThreadAsync;
+use super::proving_thread::ProvingThreadConfig;
 use super::proving_thread::ProvingThreadFacade;
 use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
@@ -53,7 +54,11 @@ impl CUProver {
     ) -> CUResult<Self> {
         let topology = CPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(msr_enforcer, to_utility)?;
+            .allocate(
+                msr_enforcer,
+                to_utility,
+                ProvingThreadConfig::from_cu_prover_config(&config),
+            )?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
@@ -81,7 +86,7 @@ impl CUProver {
 
         let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
-        self.initialize_dataset(epoch, cache_handle, dataset_handle.clone())
+        self.initialize_dataset(cache_handle, dataset_handle.clone())
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -154,7 +159,6 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
     ) -> CUResult<()> {
@@ -171,13 +175,7 @@ impl CUProver {
             let items_count = next_start_item - start_item;
 
             thread
-                .initialize_dataset(
-                    epoch,
-                    cache.clone(),
-                    dataset.clone(),
-                    start_item,
-                    items_count,
-                )
+                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
                 .boxed()
         };
 

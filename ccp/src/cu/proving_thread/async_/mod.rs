@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
+mod config;
 mod errors;
 mod thread;
 
 pub(crate) use errors::ProvingThreadAsyncError;
 pub(crate) use thread::ProvingThreadAsync;
+pub(crate) use thread::ProvingThreadConfig;

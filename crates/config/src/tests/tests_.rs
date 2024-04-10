@@ -24,6 +24,8 @@ use crate::Logs;
 use crate::Optimizations;
 use crate::RpcEndpoint;
 use crate::ThreadsPerCoreAllocationPolicy;
+use crate::Tokio;
+use crate::Workers;
 
 #[test]
 fn parse_basic_config() {
@@ -35,7 +37,7 @@ fn parse_basic_config() {
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        ..<_>::default()
     };
 
     let mut randomx_flags = RandomXFlags::default();
@@ -63,6 +65,8 @@ fn parse_basic_config() {
         optimizations,
         logs,
         state_dir: "../test".into(),
+        workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     assert_eq!(actual_config, expected_config);
@@ -78,7 +82,7 @@ fn parse_config_without_optimiziations() {
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        ..<_>::default()
     };
 
     let randomx_flags = RandomXFlags::recommended_full_mem();
@@ -98,6 +102,12 @@ fn parse_config_without_optimiziations() {
         optimizations,
         logs,
         state_dir: "../test".into(),
+        workers: Workers::default(),
+        tokio: crate::Tokio {
+            worker_threads: None,
+            max_blocking_threads: None,
+            utility_cores_ids: vec![1.into(), 2.into()],
+        },
     };
 
     assert_eq!(actual_config, expected_config);

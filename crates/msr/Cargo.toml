@@ -1,7 +1,7 @@
 [package]
 name = "ccp-msr"
 description = "A library for reading and writing MSR register_idisters on x86_64 CPUs"
-version = "0.7.1"
+version = "0.8.0"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true

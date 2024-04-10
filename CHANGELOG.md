@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.1...ccp-v0.8.0) (2024-03-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **config,ccp:** add more config options ([#99](https://github.com/fluencelabs/capacity-commitment-prover/issues/99))
+
+### Features
+
+* **config,ccp:** add more config options ([#99](https://github.com/fluencelabs/capacity-commitment-prover/issues/99)) ([0188711](https://github.com/fluencelabs/capacity-commitment-prover/commit/0188711cc7476a4cccf47af68cc64745c3bca9a1))
+
+
+### Bug Fixes
+
+* CUProver wasn't setting correct pinned core after repinning ([#114](https://github.com/fluencelabs/capacity-commitment-prover/issues/114)) ([ee56885](https://github.com/fluencelabs/capacity-commitment-prover/commit/ee568852d2df3c705d5583aaa454ce264a59b3cc))
+* **hashrate:** fix instant hashrate computation ([#111](https://github.com/fluencelabs/capacity-commitment-prover/issues/111)) ([36efb58](https://github.com/fluencelabs/capacity-commitment-prover/commit/36efb58f255640605516263bd748f3d33a303386))
+
 ## [0.7.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.0...ccp-v0.7.1) (2024-03-12)
 
 

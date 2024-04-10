@@ -276,7 +276,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -292,6 +292,7 @@ dependencies = [
  "crossterm",
  "csv",
  "env_logger 0.10.2",
+ "eyre",
  "futures",
  "itertools",
  "log",
@@ -313,7 +314,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-config"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -325,7 +326,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp",
  "ccp-config",
@@ -344,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -359,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "bitflags 2.4.2",
  "ccp-shared",
@@ -373,7 +374,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -384,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "async-trait",
  "ccp",
@@ -399,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "hex",
  "newtype_derive",
@@ -409,7 +410,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -418,7 +419,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -552,7 +553,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
 name = "cpu-utils"
-version = "0.7.1"
+version = "0.8.0"
 dependencies = [
  "ccp-shared",
  "ccp_core_affinity",
@@ -1554,9 +1555,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.10"
+version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f3d0b296e374a4e6f3c7b0a1f5a51d748a0d34c85e7dc48fc3fa9a87657fe09"
+checksum = "a4a650543ca06a924e8b371db273b2756685faae30f8487da1b56505a8f78b0c"
 dependencies = [
  "libc",
  "log",

@@ -42,8 +42,8 @@ where
     P: NoxCCPApi + Sync + 'static,
     <P as NoxCCPApi>::Error: Display,
 {
-    pub fn new(prover: Arc<RwLock<P>>) -> Self {
-        let (to_worker, from_facade) = mpsc::channel(100);
+    pub fn new(prover: Arc<RwLock<P>>, facade_queue_size: usize) -> Self {
+        let (to_worker, from_facade) = mpsc::channel(facade_queue_size);
 
         let worker = tokio::task::spawn(facade_loop(prover.clone(), from_facade));
 
@@ -81,7 +81,9 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
             let guard = self.prover.read().await;
             guard
                 .save_state(epoch_parameters, cu_allocation.clone())
-                .await?;
+                .await
+                // CCProverError is not Sync, so we convert it to a string in situ
+                .map_err(|e| eyre::eyre!(e.to_string()))?;
         }
         self.to_worker
             .try_send(FacadeMessage::OnActiveCommitment(
@@ -97,7 +99,11 @@ impl NoxCCPApi for BackgroundFacade<CCProver> {
         // is in progress and writer lock is held.
         {
             let guard = self.prover.read().await;
-            guard.save_no_state().await?;
+            guard
+                .save_no_state()
+                .await
+                // CCProverError is not Sync, so we convert it to a string in situ
+                .map_err(|e| eyre::eyre!(e.to_string()))?;
         }
         self.to_worker
             .send(FacadeMessage::OnNoCommitment)
