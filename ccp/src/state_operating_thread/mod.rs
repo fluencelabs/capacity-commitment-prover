@@ -22,7 +22,6 @@ pub use errors::StateOperatingThreadError;
 pub(crate) use proof_storage::save_reliably;
 pub(crate) use thread::*;
 
-// WIP
 pub(crate) mod message {
     pub(crate) use crate::cu::proving_thread::sync::to_state_operating_message::*;
 }

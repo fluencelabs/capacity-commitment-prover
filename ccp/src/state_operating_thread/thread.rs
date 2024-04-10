@@ -33,14 +33,12 @@ use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
 
-#[allow(dead_code)]
 pub(crate) struct StateOperatingThread {
     to_state_operating: ToStateOperatingInlet,
     cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
-#[allow(dead_code)]
 impl StateOperatingThread {
     pub(crate) fn spawn(
         prev_proof_idx: ProofIdx,
@@ -189,7 +187,7 @@ impl NewProofHandler {
     async fn handle_found_proof(&mut self, proof: &RawProof) -> SOTResult<()> {
         log::debug!("state_operating_thread: new proof_received {proof:?}");
 
-        self.maybe_new_epoch(proof); // WIP
+        self.maybe_new_epoch(proof);
 
         let cc_proof_id = CCProofId::new(
             proof.epoch.global_nonce,

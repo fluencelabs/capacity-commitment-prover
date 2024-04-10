@@ -140,6 +140,7 @@ impl CUProver {
         Ok(())
     }
 
+    #[allow(clippy::needless_lifetimes)]
     pub(crate) async fn stop_nonblocking<'threads>(&'threads self) -> CUResult<()> {
         use futures::FutureExt;
 

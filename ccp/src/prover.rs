@@ -93,7 +93,7 @@ impl NoxCCPApi for CCProver {
         apply_resut
     }
 
-    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
+    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
         self.stop_provers_nonblocking().await?;
         self.join_provers().await?;
 
@@ -274,6 +274,7 @@ impl CCProver {
         self.shutdown().await
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
         let nonblocking_closure =
             move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {

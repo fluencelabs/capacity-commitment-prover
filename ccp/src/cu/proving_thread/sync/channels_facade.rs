@@ -81,9 +81,9 @@ impl ToStateOperating {
     }
 
     pub(crate) fn send_proof(&self, proof: RawProof) -> STResult<()> {
-        let message = ToStateOperatingMessage::proof_found(proof);
+        let to_state_operating_message = ToStateOperatingMessage::proof_found(proof);
         self.to_state_operating
-            .blocking_send(message)
+            .blocking_send(to_state_operating_message)
             .map_err(Into::into)
     }
 
@@ -92,9 +92,9 @@ impl ToStateOperating {
         core_id: LogicalCoreId,
         error: ProvingThreadSyncError,
     ) -> STResult<()> {
-        let message = ToStateOperatingMessage::error_happened(core_id, error);
+        let to_state_operating_message = ToStateOperatingMessage::error_happened(core_id, error);
         self.to_state_operating
-            .blocking_send(message)
+            .blocking_send(to_state_operating_message)
             .map_err(Into::into)
     }
 }
@@ -112,23 +112,23 @@ impl ToStatsCollecting {
     }
 
     pub(crate) fn send_proof(&self, core_id: LogicalCoreId) -> STResult<()> {
-        let message = ToStatsCollectingMessage::proof_found(core_id);
+        let to_stats_collecting_message = ToStatsCollectingMessage::proof_found(core_id);
         self.to_stats_collecting
-            .blocking_send(message)
+            .blocking_send(to_stats_collecting_message)
             .map_err(Into::into)
     }
 
     pub(crate) fn send_hashrate(&self, hashrate_message: ThreadHashrateRecord) -> STResult<()> {
-        let message = ToStatsCollectingMessage::hashrate(hashrate_message);
+        let to_stats_collecting_message = ToStatsCollectingMessage::hashrate(hashrate_message);
         self.to_stats_collecting
-            .blocking_send(message)
+            .blocking_send(to_stats_collecting_message)
             .map_err(Into::into)
     }
 
     pub(crate) fn send_epoch(&self, epoch: EpochParameters) -> STResult<()> {
-        let message = ToStatsCollectingMessage::epoch(epoch);
+        let to_stats_collecting_message = ToStatsCollectingMessage::epoch(epoch);
         self.to_stats_collecting
-            .blocking_send(message)
+            .blocking_send(to_stats_collecting_message)
             .map_err(Into::into)
     }
 }
