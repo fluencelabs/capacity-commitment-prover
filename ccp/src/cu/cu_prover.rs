@@ -36,9 +36,6 @@ use super::CUResult;
 use crate::cu::chunk::ChunkGenerator;
 use crate::utility_thread::message::ToUtilityInlet;
 
-// chunk size for roughly 10s of execution
-const DATASET_CHUNK_SIZE: u64 = 5_000_000;
-
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
 #[derive(Debug)]
@@ -49,6 +46,7 @@ pub struct CUProver {
     cpu_topology: CPUTopology,
     dataset: Dataset,
     status: CUStatus,
+    dataset_chunk_size: u64,
 }
 
 impl CUProver {
@@ -76,6 +74,7 @@ impl CUProver {
             cpu_topology: topology,
             dataset,
             status: CUStatus::Idle,
+            dataset_chunk_size: config.dataset_chunk_size,
         };
         Ok(prover)
     }
@@ -178,6 +177,7 @@ impl CUProver {
 
         let dataset_size = dataset.items_count();
         let threads_number = self.threads.len() as u64;
+        let chunk_size = self.dataset_chunk_size;
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
             let thread_id = thread_id as u64;
@@ -185,8 +185,7 @@ impl CUProver {
             let start_item = (dataset_size * thread_id) / threads_number;
             let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
 
-            let chunk_generator =
-                ChunkGenerator::new(start_item, next_start_item, DATASET_CHUNK_SIZE);
+            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
             async {
                 for chunk in chunk_generator {
                     if cancel_token.is_cancelled() {

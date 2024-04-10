@@ -86,6 +86,8 @@ fn create_config(cores_count: usize) -> CUProverConfig {
         hashes_per_round: 1024,
         async_to_sync_queue_size: 1,
         sync_to_async_queue_size: 1,
+        // ca. 1 second
+        dataset_chunk_size: 500_000,
     }
 }
 

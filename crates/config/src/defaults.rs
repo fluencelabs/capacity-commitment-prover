@@ -26,6 +26,9 @@ const DEFAULT_UTILITY_QUEUE_SIZE: usize = 100;
 const DEFAULT_FACADE_QUEUE_SIZE: usize = 100;
 const DEFAULT_CONTROL_QUEUE_SIZE: usize = 100;
 
+// chunk size for roughly 10s of execution
+const DEFAULT_DATASET_CHUNK_SIZE: u64 = 5_000_000;
+
 pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
 }
@@ -64,4 +67,8 @@ pub(crate) fn default_facade_queue_size() -> usize {
 
 pub(crate) fn default_control_queue_size() -> usize {
     DEFAULT_CONTROL_QUEUE_SIZE
+}
+
+pub(crate) fn default_dataset_chunk_size() -> u64 {
+    DEFAULT_DATASET_CHUNK_SIZE
 }

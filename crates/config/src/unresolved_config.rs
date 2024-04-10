@@ -26,6 +26,7 @@ use super::defaults::default_facade_queue_size;
 use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
+use super::defaults::default_dataset_chunk_size;
 use super::defaults::default_report_hashrate;
 use super::defaults::default_state_path;
 use super::defaults::default_sync_to_async_queue_size;
@@ -144,6 +145,8 @@ pub struct UnresolvedWorkers {
     pub async_to_sync_queue_size: usize,
     #[serde(default = "default_sync_to_async_queue_size")]
     pub sync_to_async_queue_size: usize,
+    #[serde(default = "default_dataset_chunk_size")]
+    pub dataset_chunk_size: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -304,6 +307,7 @@ impl UnresolvedWorkers {
             hashes_per_round: self.hashes_per_round,
             async_to_sync_queue_size: self.async_to_sync_queue_size,
             sync_to_async_queue_size: self.sync_to_async_queue_size,
+            dataset_chunk_size: self.dataset_chunk_size,
         }
     }
 }
@@ -314,6 +318,7 @@ impl Default for UnresolvedWorkers {
             hashes_per_round: default_hashes_per_round(),
             async_to_sync_queue_size: default_async_to_sync_queue_size(),
             sync_to_async_queue_size: default_sync_to_async_queue_size(),
+            dataset_chunk_size: default_dataset_chunk_size(),
         }
     }
 }
