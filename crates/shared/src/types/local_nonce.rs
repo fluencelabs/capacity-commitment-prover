@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 
 pub type LocalNonceInner = [u8; 32];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
 pub struct LocalNonce(LocalNonceInner);
@@ -76,16 +76,26 @@ impl ToHex for LocalNonce {
     }
 }
 
+impl FromStr for LocalNonce {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
+    }
+}
+
+use std::fmt;
+
 impl std::fmt::Display for LocalNonce {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.encode_hex::<String>())
     }
 }
 
-impl FromStr for LocalNonce {
-    type Err = hex::FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        FromHex::from_hex(s)
+impl fmt::Debug for LocalNonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("LocalNonce")
+            .field(&self.to_string())
+            .finish()
     }
 }

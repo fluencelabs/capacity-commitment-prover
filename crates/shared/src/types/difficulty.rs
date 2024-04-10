@@ -23,7 +23,7 @@ use crate::RANDOMX_RESULT_SIZE;
 
 pub type DifficultyInner = [u8; RANDOMX_RESULT_SIZE];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(transparent)]
 #[repr(transparent)]
 pub struct Difficulty(DifficultyInner);
@@ -70,16 +70,26 @@ impl ToHex for Difficulty {
     }
 }
 
-impl std::fmt::Display for Difficulty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.encode_hex::<String>())
-    }
-}
-
 impl FromStr for Difficulty {
     type Err = hex::FromHexError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         FromHex::from_hex(s)
+    }
+}
+
+use std::fmt;
+
+impl fmt::Display for Difficulty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for Difficulty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Difficulty")
+            .field(&self.to_string())
+            .finish()
     }
 }
