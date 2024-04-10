@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use tokio_util::sync::CancellationToken;
+
 use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::cache::CacheHandle;
 use ccp_randomx::dataset::DatasetHandle;
@@ -31,6 +33,7 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
+use crate::cu::chunk::ChunkGenerator;
 use crate::utility_thread::message::ToUtilityInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
@@ -43,6 +46,7 @@ pub struct CUProver {
     cpu_topology: CPUTopology,
     dataset: Dataset,
     status: CUStatus,
+    dataset_chunk_size: u64,
 }
 
 impl CUProver {
@@ -70,11 +74,17 @@ impl CUProver {
             cpu_topology: topology,
             dataset,
             status: CUStatus::Idle,
+            dataset_chunk_size: config.dataset_chunk_size,
         };
         Ok(prover)
     }
 
-    pub(crate) async fn new_epoch(&mut self, epoch: EpochParameters, cu_id: CUID) -> CUResult<()> {
+    pub(crate) async fn new_epoch(
+        &mut self,
+        epoch: EpochParameters,
+        cu_id: CUID,
+        cancel_token: CancellationToken,
+    ) -> CUResult<()> {
         // pause provers to not produce proofs with a changing dataset at the moment
         self.pause().await?;
 
@@ -86,7 +96,7 @@ impl CUProver {
 
         let dataset_handle = self.dataset.handle();
         let cache_handle = cache.handle();
-        self.initialize_dataset(cache_handle, dataset_handle.clone())
+        self.initialize_dataset(cache_handle, dataset_handle.clone(), cancel_token)
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -161,22 +171,35 @@ impl CUProver {
         &'threads mut self,
         cache: CacheHandle,
         dataset: DatasetHandle,
+        cancel_token: CancellationToken,
     ) -> CUResult<()> {
         use futures::FutureExt;
 
-        let threads_number = self.threads.len() as u64;
         let dataset_size = dataset.items_count();
+        let threads_number = self.threads.len() as u64;
+        let chunk_size = self.dataset_chunk_size;
 
         let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
             let thread_id = thread_id as u64;
 
             let start_item = (dataset_size * thread_id) / threads_number;
             let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
-            let items_count = next_start_item - start_item;
 
-            thread
-                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
-                .boxed()
+            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
+            async {
+                for chunk in chunk_generator {
+                    if cancel_token.is_cancelled() {
+                        break;
+                    }
+                    let start_item = chunk.start;
+                    let items_count = chunk.size;
+                    thread
+                        .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
+                        .await?;
+                }
+                Ok(())
+            }
+            .boxed()
         };
 
         run_unordered(self.threads.iter_mut(), closure).await?;

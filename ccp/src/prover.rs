@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tokio::sync::oneshot;
+use tokio_util::sync::CancellationToken;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
@@ -64,6 +65,7 @@ pub struct CCProver {
     msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
     utility_control_inlet: UtilityControlInlet,
+    cancellation_token: CancellationToken,
 }
 
 impl NoxCCPApi for CCProver {
@@ -122,6 +124,7 @@ impl CCProver {
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
         let state_storage = StateStorage::new(config.state_dir.clone());
         let utility_core_ids_handle = CpuIdsHandle::new(config.tokio.utility_cores_ids.clone());
+        let cancellation_token = CancellationToken::new();
 
         Self::create_prover(
             config,
@@ -129,6 +132,7 @@ impl CCProver {
             msr_enforcer,
             state_storage,
             utility_core_ids_handle,
+            cancellation_token,
         )
         .await
     }
@@ -136,6 +140,7 @@ impl CCProver {
     pub async fn from_saved_state(
         config: CCPConfig,
         utility_core_ids_handle: CpuIdsHandle,
+        cancellation_token: CancellationToken,
     ) -> CCResult<Self> {
         let state_storage = StateStorage::new(config.state_dir.clone());
 
@@ -173,6 +178,7 @@ impl CCProver {
             msr_enforcer,
             state_storage,
             utility_core_ids_handle,
+            cancellation_token,
         )
         .await?;
 
@@ -191,6 +197,7 @@ impl CCProver {
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
         utility_core_ids_handle: CpuIdsHandle,
+        cancellation_token: CancellationToken,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
@@ -236,6 +243,7 @@ impl CCProver {
             msr_enforcer,
             utility_core_ids_handle,
             utility_control_inlet,
+            cancellation_token,
         };
 
         Ok(prover)
@@ -450,12 +458,15 @@ impl CCProver {
         let prover_config = self.cu_prover_config.clone();
         let to_utility = self.utility_thread.get_to_utility_channel();
         let msr_enforcer = self.msr_enforcer.clone();
+        let child_cancel_token = self.cancellation_token.clone();
 
         async move {
             let mut prover =
                 CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
                     .await?;
-            prover.new_epoch(epoch, state.new_cu_id).await?;
+            prover
+                .new_epoch(epoch, state.new_cu_id, child_cancel_token)
+                .await?;
 
             Ok(AlignmentPostAction::KeepProver(prover))
         }
@@ -480,8 +491,11 @@ impl CCProver {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
+        let cancel_token = self.cancellation_token.clone();
         async move {
-            prover.new_epoch(epoch, state.new_cu_id).await?;
+            prover
+                .new_epoch(epoch, state.new_cu_id, cancel_token)
+                .await?;
             Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()
@@ -493,9 +507,12 @@ impl CCProver {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
+        let cancel_token = self.cancellation_token.clone();
         async move {
             prover.pin(state.new_core_id).await?;
-            prover.new_epoch(epoch, state.new_cu_id).await?;
+            prover
+                .new_epoch(epoch, state.new_cu_id, cancel_token)
+                .await?;
             Ok(AlignmentPostAction::KeepProver(prover))
         }
         .boxed()

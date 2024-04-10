@@ -36,6 +36,8 @@ path = "./state"
 # async_to_sync_queue_size = 1
 # # sync to async queue size
 # sync_to_async_queue_size = 1
+# # dataset generation chunk size; default value is for ca. 10 seconds of uninterrupted execution
+# dataset_chunk_size = 5000000
 
 [tokio]
 # # Empty list means "all cores"

@@ -31,6 +31,7 @@ use ccp_shared::{
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
+use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::state_storage::CCPState;
@@ -69,7 +70,7 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
     };
 
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle)
+    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
         .await
         .unwrap()
 }

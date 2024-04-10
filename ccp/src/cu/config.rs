@@ -29,6 +29,7 @@ pub struct CUProverConfig {
     pub hashes_per_round: usize,
     pub async_to_sync_queue_size: usize,
     pub sync_to_async_queue_size: usize,
+    pub dataset_chunk_size: u64,
 }
 
 impl CUProverConfig {
@@ -40,6 +41,7 @@ impl CUProverConfig {
             hashes_per_round: workers.hashes_per_round,
             async_to_sync_queue_size: workers.async_to_sync_queue_size,
             sync_to_async_queue_size: workers.sync_to_async_queue_size,
+            dataset_chunk_size: workers.dataset_chunk_size,
         }
     }
 }
