@@ -123,10 +123,10 @@ fn build_tokio_runtime(
                 let tokio_cores = tokio_core_ids_state_unpark.get_cores();
                 tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
 
-                if !tokio_cores.is_empty() {
-                    if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
-                        tracing::error!("Tokio thread repinning failed");
-                    }
+                if !tokio_cores.is_empty()
+                    && !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter())
+                {
+                    tracing::error!("Tokio thread repinning failed");
                 }
                 LAST_SEEN_REPIN_VERSION.set(version);
             }
