@@ -33,11 +33,37 @@ pub(crate) struct StateStorage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub(crate) struct CCPState {
+pub(crate) struct Commitment {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub(crate) struct CCPState {
+    pub(crate) commitment: Option<Commitment>,
     pub(crate) msr_state: ccp_msr::state::MSRState,
     pub(crate) utility_cores: Vec<LogicalCoreId>,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub(crate) struct CCPStateLegacy {
+    #[serde(flatten)]
+    pub(crate) commitment: Commitment,
+    pub(crate) msr_state: ccp_msr::state::MSRState,
+    pub(crate) utility_cores: Vec<LogicalCoreId>,
+}
+
+impl From<Option<CCPStateLegacy>> for CCPState {
+    fn from(value: Option<CCPStateLegacy>) -> Self {
+        match value {
+            Some(state) => Self {
+                commitment: Some(state.commitment),
+                msr_state: state.msr_state,
+                utility_cores: state.utility_cores,
+            },
+            None => <_>::default(),
+        }
+    }
 }
 
 impl StateStorage {
@@ -45,7 +71,7 @@ impl StateStorage {
         Self { state_dir }
     }
 
-    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
+    pub(crate) async fn save_state(&self, state: &CCPState) -> tokio::io::Result<()> {
         let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
 
@@ -55,22 +81,30 @@ impl StateStorage {
         Ok(())
     }
 
-    // TODO should it return error on IO problems?
-    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<Option<CCPState>> {
+    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<CCPState> {
+        use std::io::ErrorKind;
+
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);
 
-        if !path.exists() {
-            return Ok(None);
-        }
+        let state_data = match tokio::fs::read(&path).await {
+            Ok(it) => it,
+            Err(err) => match err.kind() {
+                ErrorKind::NotFound => <_>::default(),
+                _ => return Err(err),
+            },
+        };
 
-        let state_data = tokio::fs::read(&path).await?;
+        // TODO tests on backward compatibility
+        if let Ok(orig_default) = serde_json::from_slice::<Option<CCPStateLegacy>>(&state_data) {
+            return Ok(orig_default.into());
+        }
 
         match serde_json::from_slice(&state_data) {
             Ok(data) => Ok(data),
             Err(e) => {
                 log::warn!("failed to parse state data from {path:?}, ignoring: {e}");
-                Ok(None)
+                Ok(<_>::default())
             }
         }
     }

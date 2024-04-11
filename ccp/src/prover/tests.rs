@@ -35,6 +35,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::state_storage::CCPState;
+use crate::state_storage::Commitment;
 use crate::CCProver;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
@@ -112,8 +113,10 @@ async fn prover_on_active_commitment() {
     let state = load_state(state_dir.path());
 
     let expected_state: Option<CCPState> = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(Commitment {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -399,8 +402,10 @@ async fn prover_on_active_change_epoch() {
 
     let state = load_state(state_dir.path());
     let expected_state = Some(CCPState {
-        epoch_params: epoch_params_second,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(Commitment {
+            epoch_params: epoch_params_second,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -447,8 +452,10 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(Commitment {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -513,8 +520,10 @@ async fn prover_restore_from_state_with_proofs() {
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(Commitment {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });

@@ -67,7 +67,7 @@ impl ToUtilityMessage {
 pub(crate) enum UtilityControlMessage {
     SaveConfig {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
-        state: Option<CCPState>,
+        state: CCPState,
     },
     CleanProofCache {
         notifier: oneshot::Sender<tokio::io::Result<()>>,

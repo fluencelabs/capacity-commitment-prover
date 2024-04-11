@@ -47,6 +47,7 @@ use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_storage::CCPState;
+use crate::state_storage::Commitment;
 use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
@@ -146,32 +147,24 @@ impl CCProver {
 
         let prev_state = state_storage.try_to_load_data().await?;
 
-        let epoch;
-        let msr_enforcer;
+        utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
 
-        match &prev_state {
-            Some(prev_state) => {
-                utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
-
-                // if there is a state, then it means that CCP crashed without setting back
-                // possibly changed original MSR state, so, let's set it back
-                if !config.optimizations.msr_enabled {
-                    cease_prev_msr_policy(prev_state);
-                }
-
-                epoch = Some(prev_state.epoch_params);
-
-                msr_enforcer = MSRModeEnforcer::from_preset(
-                    config.optimizations.msr_enabled,
-                    prev_state.msr_state.msr_preset.clone(),
-                );
-            }
-            None => {
-                epoch = None;
-                msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+        // if there is a state, then it means that CCP crashed without setting back
+        // possibly changed original MSR state, so, let's set it back
+        if let Some(prev_commitment) = &prev_state.commitment {
+            if !config.optimizations.msr_enabled {
+                cease_prev_msr_policy(prev_commitment, &prev_state.msr_state);
             }
         }
+        let msr_enforcer = MSRModeEnforcer::from_preset(
+            config.optimizations.msr_enabled,
+            prev_state.msr_state.msr_preset.clone(),
+        );
 
+        let epoch = prev_state
+            .commitment
+            .as_ref()
+            .map(|commitment| commitment.epoch_params);
         let mut prover = Self::create_prover(
             config,
             epoch,
@@ -182,9 +175,9 @@ impl CCProver {
         )
         .await?;
 
-        if let Some(prev_state) = &prev_state {
+        if let Some(commitment) = &prev_state.commitment {
             prover
-                .apply_cc_parameters(prev_state.epoch_params, &prev_state.cu_allocation)
+                .apply_cc_parameters(commitment.epoch_params, &commitment.cu_allocation)
                 .await?;
         }
 
@@ -271,26 +264,37 @@ impl CCProver {
 
     pub async fn save_state(
         &self,
-        epoch_state: EpochParameters,
+        epoch_params: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> CCResult<()> {
+        let commitment = Commitment {
+            epoch_params,
+            cu_allocation,
+        };
+        self.call_utility_save_state(Some(commitment)).await
+    }
+
+    #[inline]
+    pub async fn save_no_state(&self) -> CCResult<()> {
+        self.call_utility_save_state(None).await
+    }
+
+    async fn call_utility_save_state(&self, commitment: Option<Commitment>) -> CCResult<()> {
+        // TODO update target_commitment
         let original_msr_preset = self.msr_enforcer.original_preset();
         let msr_state = MSRState::new(original_msr_preset.clone());
 
         let utility_cores = self.utility_core_ids_handle.get_cores();
 
         let state = CCPState {
-            epoch_params: epoch_state,
-            cu_allocation,
+            commitment,
             utility_cores,
             msr_state,
         };
-        self.call_utility_save_state(Some(state)).await
-    }
 
-    #[inline]
-    pub async fn save_no_state(&self) -> CCResult<()> {
-        self.call_utility_save_state(None).await
+        let (notifier, wait_for) = oneshot::channel();
+        let message = UtilityControlMessage::SaveConfig { notifier, state };
+        self.execute_utility_call(message, wait_for).await
     }
 
     async fn apply_cc_parameters(
@@ -308,12 +312,6 @@ impl CCProver {
         self.status = CCStatus::Running { epoch: new_epoch };
 
         Ok(())
-    }
-
-    async fn call_utility_save_state(&self, state: Option<CCPState>) -> CCResult<()> {
-        let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::SaveConfig { notifier, state };
-        self.execute_utility_call(message, wait_for).await
     }
 
     async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
@@ -519,13 +517,12 @@ impl CCProver {
         run_unordered(self.cu_provers.drain(), join_closure).await?;
         Ok(())
     }
-
 }
 
-fn cease_prev_msr_policy(prev_state: &CCPState) {
-    let msr_enforcer = MSRModeEnforcer::from_preset(true, prev_state.msr_state.msr_preset.clone());
+fn cease_prev_msr_policy(prev_commitment: &Commitment, msr_state: &MSRState) {
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, msr_state.msr_preset.clone());
 
-    for (&physical_core_id, _) in prev_state.cu_allocation.iter() {
+    for (&physical_core_id, _) in prev_commitment.cu_allocation.iter() {
         let core_id: u32 = physical_core_id.into();
         let logical_core_id = core_id.into();
         if let Err(error) = msr_enforcer.cease(logical_core_id) {
