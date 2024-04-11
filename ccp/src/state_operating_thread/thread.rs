@@ -84,7 +84,7 @@ impl StateOperatingThread {
 }
 
 struct StateOperatingThreadImpl {
-    to_utility: ToStateOperatingOutlet,
+    to_state_operating: ToStateOperatingOutlet,
     control: StateOperatingControlOutlet,
     cancellation: CancellationToken,
     proofs_handler: NewProofHandler,
@@ -94,7 +94,7 @@ struct StateOperatingThreadImpl {
 
 impl StateOperatingThreadImpl {
     pub(crate) fn new(
-        to_utility: ToStateOperatingOutlet,
+        to_state_operating: ToStateOperatingOutlet,
         control: StateOperatingControlOutlet,
         cancellation: CancellationToken,
         proofs_handler: NewProofHandler,
@@ -102,7 +102,7 @@ impl StateOperatingThreadImpl {
         proof_drainer: ProofStorageDrainer,
     ) -> Self {
         Self {
-            to_utility,
+            to_state_operating,
             control,
             cancellation,
             proofs_handler,
@@ -114,7 +114,7 @@ impl StateOperatingThreadImpl {
     pub(crate) async fn state_operating_closure(mut self) {
         loop {
             tokio::select! {
-                Some(state_operating_message) = self.to_utility.recv() => self.handle_to_state_operating_message(state_operating_message).await,
+                Some(state_operating_message) = self.to_state_operating.recv() => self.handle_to_state_operating_message(state_operating_message).await,
                 Some(control_message) = self.control.recv() => self.handle_control_message(control_message).await,
                 _ = self.cancellation.cancelled() => {
                     log::info!("The utility thread was shutdown");
