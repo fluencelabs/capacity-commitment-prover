@@ -71,9 +71,14 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
     };
 
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
-        .await
-        .unwrap()
+    CCProver::from_saved_state(
+        config,
+        utility_core_ids_handle,
+        CancellationToken::new(),
+        100,
+    )
+    .await
+    .unwrap()
 }
 
 fn get_epoch_params() -> EpochParameters {

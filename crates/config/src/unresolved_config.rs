@@ -22,11 +22,11 @@ use serde::Serialize;
 
 use super::defaults::default_async_to_sync_queue_size;
 use super::defaults::default_control_queue_size;
+use super::defaults::default_dataset_chunk_size;
 use super::defaults::default_facade_queue_size;
 use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
 use super::defaults::default_msr_enabled;
-use super::defaults::default_dataset_chunk_size;
 use super::defaults::default_report_hashrate;
 use super::defaults::default_state_path;
 use super::defaults::default_sync_to_async_queue_size;
