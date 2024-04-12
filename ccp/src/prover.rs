@@ -22,6 +22,8 @@ use std::fmt::Display;
 use std::sync::Arc;
 
 use ccp_config::CCPConfig;
+use ccp_msr::state::MSRState;
+use ccp_msr::MSRModeEnforcer;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -39,6 +41,8 @@ use tokio_util::sync::CancellationToken;
 use self::cu_governor::CUGovernor;
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::errors::CCProverError;
+use crate::state_storage::Commitment;
+use crate::state_storage::StateStorage;
 
 pub type CCResult<T> = Result<T, CCProverError>;
 
@@ -55,7 +59,19 @@ impl CCProver {
         let facade_queue_size = config.rpc_endpoint.facade_queue_size;
         let utility_core_ids_handle = CpuIdsHandle::new(config.tokio.utility_cores_ids.clone());
 
-        let cu_governor = CUGovernor::new(config, utility_core_ids_handle.clone()).await?;
+        let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        let cancellation_token = CancellationToken::new();
+
+        let cu_governor = CUGovernor::new(
+            config,
+            None,
+            msr_enforcer,
+            state_storage,
+            utility_core_ids_handle.clone(),
+            cancellation_token,
+        )
+        .await?;
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 
         let prover = Self::create_prover(facade_queue_size, cu_governor, utility_core_ids_handle);
@@ -68,19 +84,46 @@ impl CCProver {
         cancellation_token: CancellationToken,
         facade_queue_size: usize,
     ) -> CCResult<Self> {
-        let cu_governor = CUGovernor::from_saved_state(
+        let state_storage = StateStorage::new(config.state_dir.clone());
+        let prev_state = state_storage.try_to_load_data().await?;
+        utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+        if let Some(prev_commitment) = &prev_state.commitment {
+            if !config.optimizations.msr_enabled {
+                cease_prev_msr_policy(prev_commitment, &prev_state.msr_state);
+            }
+        }
+        let msr_enforcer = MSRModeEnforcer::from_preset(
+            config.optimizations.msr_enabled,
+            prev_state.msr_state.msr_preset.clone(),
+        );
+        let epoch = prev_state
+            .commitment
+            .as_ref()
+            .map(|commitment| commitment.epoch_params);
+        let cu_governor = CUGovernor::new(
             config,
+            epoch,
+            msr_enforcer,
+            state_storage,
             utility_core_ids_handle.clone(),
             cancellation_token,
         )
         .await?;
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 
-        Ok(Self::create_prover(
-            facade_queue_size,
-            cu_governor,
-            utility_core_ids_handle,
-        ))
+        let prover = Self::create_prover(facade_queue_size, cu_governor, utility_core_ids_handle);
+
+        if let Some(commitment) = &prev_state.commitment {
+            prover
+                .to_worker
+                .try_send(FacadeMessage::OnActiveCommitment(
+                    commitment.epoch_params,
+                    commitment.cu_allocation.clone(),
+                ))
+                .expect("TODO error handling");
+        }
+
+        Ok(prover)
     }
 
     fn create_prover(
@@ -235,6 +278,22 @@ async fn receive_last<T>(receiver: &mut mpsc::Receiver<T>) -> Option<T> {
             Err(TryRecvError::Disconnected) => {
                 return None;
             }
+        }
+    }
+}
+
+fn cease_prev_msr_policy(prev_commitment: &Commitment, msr_state: &MSRState) {
+    use ccp_msr::MSREnforce as _;
+
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, msr_state.msr_preset.clone());
+
+    for (&physical_core_id, _) in prev_commitment.cu_allocation.iter() {
+        let core_id: u32 = physical_core_id.into();
+        let logical_core_id = core_id.into();
+        if let Err(error) = msr_enforcer.cease(logical_core_id) {
+            log::error!(
+                "{logical_core_id}: failed to cease MSR policy from previous state with {error}"
+            );
         }
     }
 }

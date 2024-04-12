@@ -24,7 +24,7 @@ use tokio_util::sync::CancellationToken;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
-use ccp_msr::{MSREnforce, MSRModeEnforcer};
+use ccp_msr::MSRModeEnforcer;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -116,70 +116,7 @@ impl ToCCStatus for CUGovernor {
 }
 
 impl CUGovernor {
-    // this method should be used in simple tests only
-    pub async fn new(config: CCPConfig, utility_core_ids_handle: CpuIdsHandle) -> CCResult<Self> {
-        let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
-        let state_storage = StateStorage::new(config.state_dir.clone());
-        let cancellation_token = CancellationToken::new();
-
-        Self::create_governor(
-            config,
-            None,
-            msr_enforcer,
-            state_storage,
-            utility_core_ids_handle,
-            cancellation_token,
-        )
-        .await
-    }
-
-    pub async fn from_saved_state(
-        config: CCPConfig,
-        utility_core_ids_handle: CpuIdsHandle,
-        cancellation_token: CancellationToken,
-    ) -> CCResult<Self> {
-        let state_storage = StateStorage::new(config.state_dir.clone());
-
-        let prev_state = state_storage.try_to_load_data().await?;
-
-        utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
-
-        // if there is a state, then it means that CCP crashed without setting back
-        // possibly changed original MSR state, so, let's set it back
-        if let Some(prev_commitment) = &prev_state.commitment {
-            if !config.optimizations.msr_enabled {
-                cease_prev_msr_policy(prev_commitment, &prev_state.msr_state);
-            }
-        }
-        let msr_enforcer = MSRModeEnforcer::from_preset(
-            config.optimizations.msr_enabled,
-            prev_state.msr_state.msr_preset.clone(),
-        );
-
-        let epoch = prev_state
-            .commitment
-            .as_ref()
-            .map(|commitment| commitment.epoch_params);
-        let mut prover = Self::create_governor(
-            config,
-            epoch,
-            msr_enforcer,
-            state_storage,
-            utility_core_ids_handle,
-            cancellation_token,
-        )
-        .await?;
-
-        if let Some(commitment) = &prev_state.commitment {
-            prover
-                .apply_cc_parameters(commitment.epoch_params, &commitment.cu_allocation)
-                .await?;
-        }
-
-        Ok(prover)
-    }
-
-    async fn create_governor(
+    pub(crate) async fn new(
         config: CCPConfig,
         epoch: Option<EpochParameters>,
         msr_enforcer: MSRModeEnforcer,
@@ -512,19 +449,5 @@ impl CUGovernor {
 
         run_unordered(self.cu_provers.drain(), join_closure).await?;
         Ok(())
-    }
-}
-
-fn cease_prev_msr_policy(prev_commitment: &Commitment, msr_state: &MSRState) {
-    let msr_enforcer = MSRModeEnforcer::from_preset(true, msr_state.msr_preset.clone());
-
-    for (&physical_core_id, _) in prev_commitment.cu_allocation.iter() {
-        let core_id: u32 = physical_core_id.into();
-        let logical_core_id = core_id.into();
-        if let Err(error) = msr_enforcer.cease(logical_core_id) {
-            log::error!(
-                "{logical_core_id}: failed to cease MSR policy from previous state with {error}"
-            );
-        }
     }
 }
