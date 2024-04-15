@@ -251,30 +251,16 @@ impl CCProver {
             .map_err(|_| CCProverError::UtilityClosedError)??)
     }
 
-    pub async fn save_state(
-        &mut self,
-        epoch_params: EpochParameters,
-        cu_allocation: CUAllocation,
-    ) -> CCResult<()> {
-        let commitment = Commitment {
-            epoch_params,
-            cu_allocation,
-        };
-        self.call_utility_save_state(Some(commitment)).await
-    }
-
     #[inline]
-    pub async fn save_no_state(&mut self) -> CCResult<()> {
-        self.call_utility_save_state(None).await
+    pub async fn save_state(&self) -> CCResult<()> {
+        self.call_utility_save_state().await
     }
 
-    async fn call_utility_save_state(&mut self, commitment: Option<Commitment>) -> CCResult<()> {
-        self.target_commitment = commitment.clone();
-
+    async fn call_utility_save_state(&self) -> CCResult<()> {
         let utility_cores = self.utility_core_ids_handle.get_cores();
 
         let state = CCPState {
-            commitment,
+            commitment: self.target_commitment.clone(),
             utility_cores,
             msr_state: self.initial_msr_state.clone(),
         };
@@ -322,24 +308,29 @@ impl NoxCCPApi for CCProver {
 
     async fn on_active_commitment(
         &mut self,
-        epoch_parameters: EpochParameters,
+        epoch_params: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> Result<(), Self::Error> {
-        self.save_state(epoch_parameters, cu_allocation.clone())
+        self.target_commitment = Some(Commitment {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        });
+        self.save_state()
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))?;
 
         self.governor_outlet
             .try_send(GovernorMessage::OnActiveCommitment(
-                epoch_parameters,
+                epoch_params,
                 cu_allocation,
             ))
             .context("on_active_commitment")
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        self.save_no_state()
+        self.target_commitment = None;
+        self.save_state()
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))?;
@@ -360,6 +351,12 @@ impl NoxCCPApi for CCProver {
 
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<cpu_utils::LogicalCoreId>) {
         self.utility_core_ids_handle.set_cores(utility_core_ids);
+        // realloc doesn't return result, ignore any error
+        let _ = self
+            .save_state()
+            .await
+            // CCProverError is not Sync, so we convert it to a string in situ
+            .map_err(|e| eyre::eyre!(e.to_string()));
     }
 }
 
