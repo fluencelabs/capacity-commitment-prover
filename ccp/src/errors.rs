@@ -41,9 +41,9 @@ pub enum CCProverError {
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
 
-    #[error("cannot read from utility task")]
+    #[error("utility task channel is closed")]
     UtilityClosedError,
-    #[error("cannot write to utitlity task")]
+    #[error("utility task channel is full")]
     UtilityFullError,
 }
 
