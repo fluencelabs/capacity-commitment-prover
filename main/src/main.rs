@@ -141,7 +141,6 @@ fn build_tokio_runtime(
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
-    let facade_queue_size = config.rpc_endpoint.facade_queue_size;
     let global_cancellation_token = CancellationToken::new();
 
     tracing::info!("Creating prover from a saved state");
@@ -149,7 +148,6 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
         config,
         tokio_core_ids_state.clone(),
         global_cancellation_token.clone(),
-        facade_queue_size,
     )
     .await
     .map_err(|e| eyre::eyre!(e.to_string()))?;

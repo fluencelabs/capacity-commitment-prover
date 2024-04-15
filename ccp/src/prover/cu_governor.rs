@@ -14,227 +14,79 @@
  * limitations under the License.
  */
 
+use ccp_config::Optimizations;
+use ccp_config::Workers;
 use futures::future;
 use futures::FutureExt;
 use std::collections::HashMap;
-use std::sync::Arc;
-use std::sync::Mutex;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
-use ccp_config::CCPConfig;
-use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
-use ccp_shared::nox_ccp_api::NoxCCPApi;
-use ccp_shared::proof::CCProof;
-use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
-use crate::cpuids_handle::CpuIdsHandle;
+use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
 use crate::cu::proving_thread::sync::to_utility_message::UtilityControlInlet;
 use crate::cu::proving_thread::sync::to_utility_message::UtilityControlMessage;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
 use crate::errors::CCProverError;
-use crate::hashrate::prometheus::PrometheusEndpoint;
-use crate::hashrate::HashrateCollector;
-use crate::hashrate::HashrateHandler;
-use crate::proof_storage::ProofStorageDrainer;
-use crate::state_storage::CCPState;
-use crate::state_storage::Commitment;
-use crate::state_storage::StateStorage;
 use crate::status::CCStatus;
-use crate::status::ToCCStatus;
-use crate::utility_thread::UtilityThread;
 use crate::CCResult;
-
-const PROOF_DIR: &str = "cc_proofs";
 
 pub struct CUGovernor {
     cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
-    utility_thread: UtilityThread,
-    prometheus_endpoint: Option<PrometheusEndpoint>,
-    msr_enforcer: MSRModeEnforcer,
-    utility_core_ids_handle: CpuIdsHandle,
+    // statistics
+    to_utility: ToUtilityInlet,
+    // saved state managment
     utility_control_inlet: UtilityControlInlet,
+    msr_enforcer: MSRModeEnforcer,
     cancellation_token: CancellationToken,
 }
 
-impl NoxCCPApi for CUGovernor {
-    type Error = CCProverError;
-
-    async fn on_active_commitment(
-        &mut self,
-        new_epoch: EpochParameters,
-        new_allocation: CUAllocation,
-    ) -> Result<(), Self::Error> {
-        let apply_resut = self
-            .apply_cc_parameters(new_epoch, &new_allocation)
-            .await
-            .inspect_err(|e| {
-                log::error!("Failed to apply parameters: {e}.  Still trying to save state.");
-            });
-        self.save_state(new_epoch, new_allocation.clone())
-            .await
-            .inspect_err(|e| {
-                log::error!("Failed to save state: {e}");
-            })?;
-
-        apply_resut
-    }
-
-    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
-        self.stop_provers_nonblocking().await?;
-        self.join_provers().await?;
-
-        self.status = CCStatus::Idle;
-
-        self.save_no_state().await?;
-
-        Ok(())
-    }
-
-    #[inline]
-    async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.call_utility_get_proofs_after(proof_idx).await
-    }
-
-    async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>) {
-        self.utility_core_ids_handle.set_cores(utility_core_ids);
-    }
-}
-
-impl ToCCStatus for CUGovernor {
-    fn status(&self) -> CCStatus {
-        self.status
-    }
-}
-
 impl CUGovernor {
-    pub(crate) async fn new(
-        config: CCPConfig,
-        epoch: Option<EpochParameters>,
+    pub(crate) fn new(
+        optimizations_config: Optimizations,
+        workers_config: Workers,
         msr_enforcer: MSRModeEnforcer,
-        state_storage: StateStorage,
-        utility_core_ids_handle: CpuIdsHandle,
         cancellation_token: CancellationToken,
-    ) -> CCResult<Self> {
-        let proof_dir = config.state_dir.join(PROOF_DIR);
-        let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
-        let start_proof_idx = proof_drainer.validate_proofs(&epoch).await?;
+        to_utility: ToUtilityInlet,
+        utility_control_inlet: UtilityControlInlet,
+    ) -> Self {
+        let cu_prover_config = CUProverConfig::new(optimizations_config, workers_config);
 
-        log::info!("continuing from proof index {start_proof_idx}");
-
-        let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
-        let hashrate_handler = HashrateHandler::new(
-            hashrate_collector.clone(),
-            config.state_dir.clone(),
-            config.logs.report_hashrate,
-        )?;
-
-        let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
-        let (utility_control_inlet, utility_control_outlet) =
-            tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
-        let utility_thread = UtilityThread::spawn(
-            start_proof_idx,
-            proof_dir,
-            prev_global_nonce,
-            hashrate_handler,
-            config.rpc_endpoint.utility_queue_size,
-            utility_control_outlet,
-            state_storage,
-            proof_drainer,
-        );
-
-        let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
-            PrometheusEndpoint::new(
-                (endpoint_cfg.host.clone(), endpoint_cfg.port),
-                hashrate_collector,
-            )
-        });
-
-        let cu_prover_config = CUProverConfig::new(config.optimizations, config.workers);
-        let prover = Self {
+        Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
-            utility_thread,
-            prometheus_endpoint,
-            msr_enforcer,
-            utility_core_ids_handle,
+            to_utility,
             utility_control_inlet,
+            msr_enforcer,
             cancellation_token,
-        };
-
-        Ok(prover)
+        }
     }
 
-    // TODO it seems we will be able to remove &, consuming the self
     pub async fn stop(&mut self) -> CCResult<()> {
         // stop all active provers
         self.on_no_active_commitment().await?;
-        self.shutdown().await
-    }
-
-    pub async fn shutdown(&mut self) -> CCResult<()> {
-        log::info!("Shutting down prover...");
-        // stop background thread
-        // TODO
-        self.utility_thread.shutdown().await?;
-
-        if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
-            prometheus_endpoint.shutdown().await?;
-        }
-
-        log::info!("Shutting down prover done");
+        self.shutdown();
         Ok(())
     }
 
-    pub async fn save_state(
-        &self,
-        epoch_params: EpochParameters,
-        cu_allocation: CUAllocation,
-    ) -> CCResult<()> {
-        let commitment = Commitment {
-            epoch_params,
-            cu_allocation,
-        };
-        self.call_utility_save_state(Some(commitment)).await
-    }
-
-    #[inline]
-    pub async fn save_no_state(&self) -> CCResult<()> {
-        self.call_utility_save_state(None).await
-    }
-
-    async fn call_utility_save_state(&self, commitment: Option<Commitment>) -> CCResult<()> {
-        // TODO update target_commitment
-        let original_msr_preset = self.msr_enforcer.original_preset();
-        let msr_state = MSRState::new(original_msr_preset.clone());
-
-        let utility_cores = self.utility_core_ids_handle.get_cores();
-
-        let state = CCPState {
-            commitment,
-            utility_cores,
-            msr_state,
-        };
-
-        let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::SaveConfig { notifier, state };
-        self.execute_utility_call(message, wait_for).await
+    pub fn shutdown(&mut self) {
+        self.cancellation_token.cancel();
     }
 
     async fn apply_cc_parameters(
         &mut self,
         new_epoch: EpochParameters,
         new_allocation: &HashMap<PhysicalCoreId, CUID>,
-    ) -> Result<(), <CUGovernor as NoxCCPApi>::Error> {
+    ) -> Result<(), CCProverError> {
         let roadmap = CCProverAlignmentRoadmap::make(
             new_allocation.clone(),
             new_epoch,
@@ -251,15 +103,6 @@ impl CUGovernor {
         let (notifier, wait_for) = oneshot::channel();
         let message = UtilityControlMessage::CleanProofCache { notifier };
         // if the queue is full, it a sign of serious problem
-        self.execute_utility_call(message, wait_for).await
-    }
-
-    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
-        let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::GetProofs {
-            proof_idx,
-            notifier,
-        };
         self.execute_utility_call(message, wait_for).await
     }
 
@@ -281,6 +124,29 @@ impl CUGovernor {
         Ok(wait_for
             .await
             .map_err(|_| CCProverError::UtilityClosedError)??)
+    }
+
+    pub(crate) async fn on_active_commitment(
+        &mut self,
+        new_epoch: EpochParameters,
+        new_allocation: CUAllocation,
+    ) -> Result<(), CCProverError> {
+        self.apply_cc_parameters(new_epoch, &new_allocation)
+            .await
+            .inspect_err(|e| {
+                log::error!("Failed to apply parameters: {e}.  Still trying to save state.");
+            })
+    }
+
+    pub(crate) async fn on_no_active_commitment<'threads>(
+        &'threads mut self,
+    ) -> Result<(), CCProverError> {
+        self.stop_provers_nonblocking().await?;
+        self.join_provers().await?;
+
+        self.status = CCStatus::Idle;
+
+        Ok(())
     }
 }
 
@@ -357,7 +223,7 @@ impl CUGovernor {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
-        let to_utility = self.utility_thread.get_to_utility_channel();
+        let to_utility = self.to_utility.clone();
         let msr_enforcer = self.msr_enforcer.clone();
         let child_cancel_token = self.cancellation_token.clone();
 
