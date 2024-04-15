@@ -106,10 +106,19 @@ impl CCProver {
             }
         }
 
-        let msr_enforcer = MSRModeEnforcer::from_preset(
-            config.optimizations.msr_enabled,
-            prev_state.msr_state.msr_preset,
-        );
+        let msr_enforcer = if prev_state.msr_state.msr_preset.is_empty() {
+            // empty present can be in the following situations:
+            // 1. no previous config was used
+            //    then loading MSR from OS is must
+            // 2. there is a previous config, but it was run with msr_enabled being false
+            //    then loading MSR is either absolutely cheap (when msr_enabled is still false) or must
+            MSRModeEnforcer::from_os(config.optimizations.msr_enabled)
+        } else {
+            MSRModeEnforcer::from_preset(
+                config.optimizations.msr_enabled,
+                prev_state.msr_state.msr_preset,
+            )
+        };
 
         let prover = Self::create_prover(
             config,
