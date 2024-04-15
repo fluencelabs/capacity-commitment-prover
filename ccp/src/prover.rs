@@ -22,7 +22,6 @@ use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
 use ccp_config::CCPConfig;
-use ccp_msr::state::MSRCpuPreset;
 use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
 use eyre::Context;
@@ -67,6 +66,7 @@ pub struct CCProver {
     prometheus_endpoint: Option<PrometheusEndpoint>,
     utility_core_ids_handle: CpuIdsHandle,
 
+    initial_msr_state: MSRState,
     target_commitment: Option<Commitment>,
 }
 
@@ -105,9 +105,10 @@ impl CCProver {
                 cease_prev_msr_policy(prev_commitment, &prev_state.msr_state);
             }
         }
+
         let msr_enforcer = MSRModeEnforcer::from_preset(
             config.optimizations.msr_enabled,
-            prev_state.msr_state.msr_preset.clone(),
+            prev_state.msr_state.msr_preset,
         );
 
         let prover = Self::create_prover(
@@ -125,7 +126,7 @@ impl CCProver {
 
     async fn create_prover(
         config: CCPConfig,
-        commitment: Option<Commitment>,
+        target_commitment: Option<Commitment>,
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
         utility_core_ids_handle: CpuIdsHandle,
@@ -134,7 +135,7 @@ impl CCProver {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
         let start_proof_idx = proof_drainer
-            .validate_proofs(commitment.as_ref().map(|comm| &comm.epoch_params))
+            .validate_proofs(target_commitment.as_ref().map(|comm| &comm.epoch_params))
             .await?;
         log::info!("continuing from proof index {start_proof_idx}");
 
@@ -145,7 +146,7 @@ impl CCProver {
             config.logs.report_hashrate,
         )?;
 
-        let prev_global_nonce = commitment
+        let prev_global_nonce = target_commitment
             .as_ref()
             .map(|comm| comm.epoch_params.global_nonce.clone());
         let (utility_control_inlet, utility_control_outlet) =
@@ -167,6 +168,8 @@ impl CCProver {
                 hashrate_collector,
             )
         });
+
+        let initial_msr_state = MSRState::new(msr_enforcer.original_preset().clone());
 
         let cu_governor = CUGovernor::new(
             config.optimizations,
@@ -191,7 +194,9 @@ impl CCProver {
             utility_thread,
             utility_control_inlet,
             prometheus_endpoint,
-            target_commitment: commitment,
+
+            initial_msr_state,
+            target_commitment,
         };
 
         if let Some(commitment) = &prover.target_commitment {
@@ -255,10 +260,6 @@ impl CCProver {
     }
 
     async fn call_utility_save_state(&mut self, commitment: Option<Commitment>) -> CCResult<()> {
-        // TODO real data
-        let original_msr_preset = MSRCpuPreset::default();
-        let msr_state = MSRState::new(original_msr_preset.clone());
-
         self.target_commitment = commitment.clone();
 
         let utility_cores = self.utility_core_ids_handle.get_cores();
@@ -266,7 +267,7 @@ impl CCProver {
         let state = CCPState {
             commitment,
             utility_cores,
-            msr_state,
+            msr_state: self.initial_msr_state.clone(),
         };
 
         let (notifier, wait_for) = oneshot::channel();
