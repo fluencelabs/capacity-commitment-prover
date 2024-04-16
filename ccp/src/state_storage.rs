@@ -99,7 +99,6 @@ impl StateStorage {
             },
         };
 
-        // TODO tests on backward compatibility
         if let Ok(orig_default) = serde_json::from_slice::<Option<CCPStateLegacy>>(&state_data) {
             return Ok(orig_default.into());
         }
