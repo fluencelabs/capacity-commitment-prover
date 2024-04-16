@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-use crate::proof::ProofIdx;
+use std::future::IntoFuture;
 
 use super::proof::CCProof;
 use super::types::*;
+use crate::proof::ProofIdx;
 
 pub trait NoxCCPApi: Send {
     type Error: Send;
+    type CommitmentError;
+    type CommitmentReadiness: IntoFuture<Output = Result<(), Self::CommitmentError>>;
 
     /// Aims to apply a (new) allocation of CC compute jobs (which are threads with
     /// particular global_nonce_cu + difficulty) per physical_core_id.
@@ -43,7 +46,7 @@ pub trait NoxCCPApi: Send {
         &mut self,
         epoch_parameters: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<Self::CommitmentReadiness, Self::Error>> + Send;
 
     /// Stops all active jobs.
     fn on_no_active_commitment(

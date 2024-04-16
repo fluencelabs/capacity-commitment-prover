@@ -115,6 +115,8 @@ async fn dataset_creation_works() {
     let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, thread_cfg);
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
+    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+
     thread
         .initialize_dataset(
             actual_cache.handle(),
@@ -124,8 +126,6 @@ async fn dataset_creation_works() {
         )
         .await
         .unwrap();
-
-    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     thread.stop_join().await.unwrap();
     handle.await.unwrap();

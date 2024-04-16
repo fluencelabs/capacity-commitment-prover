@@ -209,11 +209,13 @@ impl CCProver {
         };
 
         if let Some(commitment) = &prover.target_commitment {
+            let (dummy_sender, _receiver) = oneshot::channel();
             prover
                 .governor_outlet
                 .send(GovernorMessage::OnActiveCommitment(
                     commitment.epoch_params,
                     commitment.cu_allocation.clone(),
+                    dummy_sender,
                 ))
                 .await
                 .expect("the queue cannot be full on startup");
@@ -300,19 +302,21 @@ impl CCProver {
 }
 
 enum GovernorMessage {
-    OnActiveCommitment(EpochParameters, CUAllocation),
+    OnActiveCommitment(EpochParameters, CUAllocation, oneshot::Sender<()>),
     OnNoCommitment,
 }
 
 // implement for specific prover to implement granular state saving
 impl NoxCCPApi for CCProver {
     type Error = eyre::Error;
+    type CommitmentError = oneshot::error::RecvError;
+    type CommitmentReadiness = oneshot::Receiver<()>;
 
     async fn on_active_commitment(
         &mut self,
         epoch_params: EpochParameters,
         cu_allocation: CUAllocation,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<oneshot::Receiver<()>, Self::Error> {
         self.target_commitment = Some(Commitment {
             epoch_params,
             cu_allocation: cu_allocation.clone(),
@@ -322,12 +326,16 @@ impl NoxCCPApi for CCProver {
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))?;
 
+        let (sender, receiver) = oneshot::channel();
+
         self.governor_outlet
             .try_send(GovernorMessage::OnActiveCommitment(
                 epoch_params,
                 cu_allocation,
+                sender,
             ))
-            .context("on_active_commitment")
+            .context("on_active_commitment")?;
+        Ok(receiver)
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
@@ -370,13 +378,15 @@ async fn facade_loop(
     while let Some(message) = receive_last(&mut from_facade).await {
         let mut guard = prover.write().await;
         match message {
-            OnActiveCommitment(epoch_parameters, cu_allocation) => {
+            OnActiveCommitment(epoch_parameters, cu_allocation, sender) => {
                 let res = guard
                     .on_active_commitment(epoch_parameters, cu_allocation)
                     .await;
                 if let Err(e) = res {
                     log::error!("nested prover on_active_commitment failed: {e}");
                 }
+                // if receiver is dead, it's ok
+                let _ = sender.send(());
             }
             OnNoCommitment => {
                 let res = guard.on_no_active_commitment().await;

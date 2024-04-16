@@ -114,7 +114,7 @@ where
 
         let mut guard = self.cc_prover.write().await;
         let epoch = EpochParameters::new(global_nonce, difficulty);
-        guard
+        let _init_recv = guard
             .on_active_commitment(epoch, cu_allocation_real)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
