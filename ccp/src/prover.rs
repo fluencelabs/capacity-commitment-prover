@@ -287,8 +287,10 @@ impl CCProver {
     pub async fn shutdown(&mut self) -> CCResult<()> {
         self.cu_governor.write().await.shutdown();
 
-        // TODO does it return some interesting error? log, if so
-        let _ = self.utility_thread.shutdown().await;
+        let shutdown_res = self.utility_thread.shutdown().await;
+        if let Err(shutdown_err) = shutdown_res {
+            log::error!("utility shutdown: {shutdown_err}");
+        }
 
         if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
             prometheus_endpoint.shutdown().await?;
