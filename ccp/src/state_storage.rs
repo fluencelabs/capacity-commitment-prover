@@ -22,7 +22,7 @@ use ccp_shared::types::LogicalCoreId;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::utility_thread::save_reliably;
+use crate::state_operating_thread::save_reliably;
 
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
 const STATE_FILE: &str = "state.json";

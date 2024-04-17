@@ -28,10 +28,10 @@ use tokio_util::sync::CancellationToken;
 
 use super::CUProver;
 use super::CUProverConfig;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
 use crate::cu::status::CUStatus;
 use crate::cu::status::ToCUStatus;
-use crate::utility_thread::message::RawProof;
-use crate::utility_thread::message::ToUtilityMessage;
+use crate::state_operating_thread::message::RawProof;
 
 fn batch_proof_verification(
     epoch: EpochParameters,
@@ -93,14 +93,23 @@ fn create_config(cores_count: usize) -> CUProverConfig {
 
 #[tokio::test]
 async fn idle_cu_prover_can_be_stopped() {
-    let (inlet, mut outlet) = mpsc::channel(1);
-    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+
+    let handle =
+        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
 
     let config = create_config(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
+    let prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
 
     let actual_status = prover.status();
     assert_eq!(actual_status, CUStatus::Idle);
@@ -117,12 +126,20 @@ async fn cu_prover_can_be_stopped() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(1);
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
-    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
+    let handle =
+        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
@@ -144,11 +161,18 @@ async fn cu_prover_can_be_paused() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(1);
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
 
     let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
 
@@ -157,9 +181,9 @@ async fn cu_prover_can_be_paused() {
         let mut proofs_before_pause = Vec::new();
         let mut proofs_after_pause = Vec::new();
 
-        while let Some(message) = outlet.recv().await {
+        while let Some(message) = to_state_operating_outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound { proof, .. } => {
+                ToStateOperatingMessage::ProofFound { proof, .. } => {
                     let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
                     if !*is_thread_paused_locked.borrow() {
                         proofs_before_pause.push(proof);
@@ -206,11 +230,18 @@ async fn cu_prover_produces_correct_proofs() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(2);
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
 
     let epoch_1 = test::generate_epoch_params(1, 0x80);
     let cu_id_1 = test::generate_cu_id(1);
@@ -218,9 +249,9 @@ async fn cu_prover_produces_correct_proofs() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(message) = outlet.recv().await {
+        while let Some(message) = to_state_operating_outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
+                ToStateOperatingMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -253,11 +284,18 @@ async fn cu_prover_produces_correct_proofs() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_works_with_odd_threads_number() {
     let config = create_config(5);
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
@@ -265,9 +303,9 @@ async fn cu_prover_works_with_odd_threads_number() {
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
 
-        while let Some(message) = outlet.recv().await {
+        while let Some(message) = to_state_operating_outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
+                ToStateOperatingMessage::ProofFound { proof, .. } => proofs.push(proof),
                 _ => {}
             }
         }
@@ -291,11 +329,18 @@ async fn cu_prover_changes_epoch_correctly() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(2);
-    let (inlet, mut outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(config, inlet, msr_enforcer, 3.into())
-        .await
-        .unwrap();
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
 
     let epochs_count = 3usize;
 
@@ -312,14 +357,16 @@ async fn cu_prover_changes_epoch_correctly() {
 
         let mut proofs: HashMap<EpochParameters, Vec<_>> = HashMap::new();
 
-        while let Some(message) = outlet.recv().await {
+        while let Some(message) = to_state_operating_outlet.recv().await {
             match message {
-                ToUtilityMessage::ProofFound { proof, .. } => match proofs.entry(proof.epoch) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(vec![proof]);
+                ToStateOperatingMessage::ProofFound { proof, .. } => {
+                    match proofs.entry(proof.epoch) {
+                        Entry::Vacant(entry) => {
+                            entry.insert(vec![proof]);
+                        }
+                        Entry::Occupied(mut entry) => entry.get_mut().push(proof),
                     }
-                    Entry::Occupied(mut entry) => entry.get_mut().push(proof),
-                },
+                }
                 _ => {}
             }
         }

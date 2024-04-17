@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-use std::time::Duration;
 use tokio::sync::mpsc;
-use tokio::time;
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
@@ -25,116 +23,99 @@ use ccp_shared::types::GlobalNonce;
 use tokio_util::sync::CancellationToken;
 
 use super::message::*;
-use super::UTResult;
-use crate::hashrate::HashrateHandler;
+use super::SOTResult;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlOutlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
-use crate::utility_thread::proof_storage::ProofStorage;
 
-const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
-
-pub(crate) struct UtilityThread {
-    to_utility: ToUtilityInlet,
+pub(crate) struct StateOperatingThread {
+    to_state_operating: ToStateOperatingInlet,
     cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
-impl UtilityThread {
+impl StateOperatingThread {
     pub(crate) fn spawn(
         prev_proof_idx: ProofIdx,
         proof_storage_dir: std::path::PathBuf,
         prev_global_nonce: Option<GlobalNonce>,
-        hashrate_handler: HashrateHandler,
-        utility_queue_size: usize,
-        utility_control_outlet: UtilityControlOutlet,
+        state_operating_queue_size: usize,
+        state_operating_control_outlet: StateOperatingControlOutlet,
         state_storage: StateStorage,
         proof_drainer: ProofStorageDrainer,
     ) -> Self {
-        let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
+        let (to_state_operating, from_state_operating) = mpsc::channel(state_operating_queue_size);
 
         let cancellation = CancellationToken::new();
 
         let proof_storage = ProofStorage::new(proof_storage_dir);
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
-        let ut_impl = UtilityThreadImpl::new(
-            from_utility,
-            utility_control_outlet,
+        let sot_impl = StateOperatingThreadImpl::new(
+            from_state_operating,
+            state_operating_control_outlet,
             cancellation.clone(),
             proofs_handler,
-            hashrate_handler,
             state_storage,
             proof_drainer,
         );
 
-        let handle = tokio::spawn(ut_impl.utility_closure());
+        let handle = tokio::spawn(sot_impl.state_operating_closure());
         Self {
-            to_utility,
+            to_state_operating,
             cancellation,
             handle,
         }
     }
 
-    pub(crate) async fn shutdown(&mut self) -> UTResult<()> {
+    pub(crate) async fn shutdown(&mut self) -> SOTResult<()> {
         log::info!("Shutting down utility thread");
         self.cancellation.cancel();
         Ok((&mut self.handle).await?)
     }
 
-    pub(crate) fn get_to_utility_channel(&self) -> ToUtilityInlet {
-        self.to_utility.clone()
+    pub(crate) fn get_to_state_operating_channel(&self) -> ToStateOperatingInlet {
+        self.to_state_operating.clone()
     }
 }
 
-struct UtilityThreadImpl {
-    to_utility: ToUtilityOutlet,
-    control: UtilityControlOutlet,
+struct StateOperatingThreadImpl {
+    to_state_operating: ToStateOperatingOutlet,
+    control: StateOperatingControlOutlet,
     cancellation: CancellationToken,
     proofs_handler: NewProofHandler,
-    hashrate_handler: HashrateHandler,
     state_storage: StateStorage,
     proof_drainer: ProofStorageDrainer,
 }
 
-impl UtilityThreadImpl {
+impl StateOperatingThreadImpl {
     pub(crate) fn new(
-        to_utility: ToUtilityOutlet,
-        control: UtilityControlOutlet,
+        to_state_operating: ToStateOperatingOutlet,
+        control: StateOperatingControlOutlet,
         cancellation: CancellationToken,
         proofs_handler: NewProofHandler,
-        hashrate_handler: HashrateHandler,
         state_storage: StateStorage,
         proof_drainer: ProofStorageDrainer,
     ) -> Self {
         Self {
-            to_utility,
+            to_state_operating,
             control,
             cancellation,
             proofs_handler,
-            hashrate_handler,
             state_storage,
             proof_drainer,
         }
     }
 
-    pub(crate) async fn utility_closure(mut self) {
-        use futures::FutureExt;
-        use futures::StreamExt;
-
-        let mut cum_hashrate_ticker =
-            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
-
-        #[cfg(feature = "crossterm")]
-        let mut terminal_event_reader = crossterm::event::EventStream::new();
-
-        #[cfg(not(feature = "crossterm"))]
-        let mut terminal_event_reader = futures::stream::pending::<()>();
-
+    pub(crate) async fn state_operating_closure(mut self) {
         loop {
             tokio::select! {
-                Some(utility_message) = self.to_utility.recv() => self.handle_to_utility_message(utility_message).await,
+                Some(state_operating_message) = self.to_state_operating.recv() => self.handle_to_state_operating_message(state_operating_message).await,
                 Some(control_message) = self.control.recv() => self.handle_control_message(control_message).await,
-                _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
-                maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = self.cancellation.cancelled() => {
                     log::info!("The utility thread was shutdown");
                     return;
@@ -143,48 +124,36 @@ impl UtilityThreadImpl {
         }
     }
 
-    async fn handle_to_utility_message(&mut self, message: ToUtilityMessage) {
-        use ToUtilityMessage::*;
+    async fn handle_to_state_operating_message(&mut self, message: ToStateOperatingMessage) {
+        use ToStateOperatingMessage::*;
 
         match message {
-            ProofFound { core_id, proof } => {
+            ProofFound { proof } => {
                 if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
                     log::error!("failed to save proof: {error}\nfound proof {proof}");
                 }
-
-                self.hashrate_handler.proof_found(core_id);
             }
             ErrorHappened { core_id, error } => {
                 log::error!("{core_id}: {error}");
             }
-            Hashrate(record) => {
-                log::info!("{record}");
-
-                if let Err(error) = self.hashrate_handler.account_record(record) {
-                    log::error!("hashrate accounting failed: {error}");
-                }
-            }
-            Epoch(epoch) => {
-                if let Err(error) = self.hashrate_handler.handle_epoch(epoch) {
-                    log::error!("epoch processing failed: {error}");
-                }
-            }
         }
     }
 
-    async fn handle_control_message(&mut self, message: UtilityControlMessage) {
+    async fn handle_control_message(&mut self, message: StateOperatingControlMessage) {
+        use StateOperatingControlMessage::*;
+
         match message {
-            UtilityControlMessage::SaveConfig { notifier, state } => {
+            SaveConfig { notifier, state } => {
                 let ret = self.state_storage.save_state(state.as_ref()).await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
-            UtilityControlMessage::CleanProofCache { notifier } => {
+            CleanProofCache { notifier } => {
                 let ret = self.proof_drainer.remove_proofs().await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
-            UtilityControlMessage::GetProofs {
+            GetProofs {
                 proof_idx,
                 notifier,
             } => {
@@ -194,53 +163,6 @@ impl UtilityThreadImpl {
             }
         }
     }
-
-    async fn handle_cum_hashrate_tick(&mut self) {
-        if let Err(error) = self.hashrate_handler.handle_cum_tick() {
-            log::error!("cumulative hashrate tick failed: {error}");
-        }
-    }
-
-    #[cfg(feature = "crossterm")]
-    async fn handle_terminal_event(
-        &mut self,
-        maybe_event: Option<Result<crossterm::event::Event, std::io::Error>>,
-    ) {
-        use crossterm::event::Event;
-        use crossterm::event::KeyCode;
-        use itertools::Itertools;
-
-        if let Some(Ok(event)) = maybe_event {
-            if event == Event::Key(KeyCode::Enter.into()) {
-                let sliding_hashrate = self.hashrate_handler.sliding_hashrate();
-                if sliding_hashrate.is_empty() {
-                    println!("no hashrate for the last 900 secs,\nCCP is either busy with initialization or idle");
-                    return;
-                }
-
-                println!(
-                    "{0: <10} | {1: <10} | {2: <10} | {3: <10}",
-                    "core id", "10 secs", "60 secs", "900 secs"
-                );
-
-                for (core_id, thread_hashrate) in sliding_hashrate
-                    .iter()
-                    .sorted_by_key(|(&core_id, _)| core_id)
-                {
-                    println!(
-                        "{0: <10} | {1: <10.2} | {2: <10.2} | {3: <10.2}",
-                        core_id,
-                        thread_hashrate.window_10.compute_hashrate(),
-                        thread_hashrate.window_60.compute_hashrate(),
-                        thread_hashrate.window_900.compute_hashrate()
-                    );
-                }
-            }
-        }
-    }
-
-    #[cfg(not(feature = "crossterm"))]
-    async fn handle_terminal_event(&mut self, _maybe_event: Option<()>) {}
 }
 
 struct NewProofHandler {
@@ -262,8 +184,8 @@ impl NewProofHandler {
         }
     }
 
-    async fn handle_found_proof(&mut self, proof: &RawProof) -> UTResult<()> {
-        log::debug!("utility_thread: new proof_received {proof:?}");
+    async fn handle_found_proof(&mut self, proof: &RawProof) -> SOTResult<()> {
+        log::debug!("state_operating_thread: new proof_received {proof:?}");
 
         self.maybe_new_epoch(proof);
 

@@ -16,55 +16,42 @@
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
-use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
-pub(crate) use crate::hashrate::ThreadHashrateRecord;
 use crate::state_storage::CCPState;
 
-pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
-pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
-pub(crate) type UtilityControlInlet = mpsc::Sender<UtilityControlMessage>;
-pub(crate) type UtilityControlOutlet = mpsc::Receiver<UtilityControlMessage>;
+pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
+pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
+pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
+pub(crate) type StateOperatingControlOutlet = mpsc::Receiver<StateOperatingControlMessage>;
 
 #[derive(Debug)]
-pub(crate) enum ToUtilityMessage {
+pub(crate) enum ToStateOperatingMessage {
     ProofFound {
-        core_id: LogicalCoreId,
         proof: RawProof,
     },
     ErrorHappened {
         core_id: LogicalCoreId,
         error: ProvingThreadSyncError,
     },
-    Hashrate(ThreadHashrateRecord),
-    Epoch(EpochParameters),
 }
 
-impl ToUtilityMessage {
-    pub(crate) fn proof_found(core_id: LogicalCoreId, proof: RawProof) -> Self {
-        Self::ProofFound { core_id, proof }
+impl ToStateOperatingMessage {
+    pub(crate) fn proof_found(proof: RawProof) -> Self {
+        Self::ProofFound { proof }
     }
 
     pub(crate) fn error_happened(core_id: LogicalCoreId, error: ProvingThreadSyncError) -> Self {
         Self::ErrorHappened { core_id, error }
     }
-
-    pub(crate) fn hashrate(entry: ThreadHashrateRecord) -> Self {
-        Self::Hashrate(entry)
-    }
-
-    pub(crate) fn epoch(epoch: EpochParameters) -> Self {
-        Self::Epoch(epoch)
-    }
 }
 
 #[derive(Debug)]
-pub(crate) enum UtilityControlMessage {
+pub(crate) enum StateOperatingControlMessage {
     SaveConfig {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
         state: Option<CCPState>,

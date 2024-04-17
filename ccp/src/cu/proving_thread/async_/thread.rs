@@ -28,7 +28,8 @@ pub use super::config::ProvingThreadConfig;
 use super::errors::ProvingThreadAsyncError;
 use crate::cu::proving_thread::facade::ProvingThreadFacade;
 use crate::cu::proving_thread::messages::*;
-use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
 use crate::cu::proving_thread::sync::ProvingThreadSync;
 
 #[derive(Debug)]
@@ -43,15 +44,22 @@ impl ProvingThreadAsync {
     pub(crate) fn new(
         core_id: LogicalCoreId,
         msr_enforcer: MSRModeEnforcer,
-        to_utility: ToUtilityInlet,
+        to_state_operating: ToStateOperatingInlet,
+        to_stats_collecting: ToStatsCollectingInlet,
         config: ProvingThreadConfig,
     ) -> Self {
         let (to_sync, from_async) =
             mpsc::channel::<AsyncToSyncMessage>(config.async_to_sync_queue_size);
         let (to_async, from_sync) =
             mpsc::channel::<SyncToAsyncMessage>(config.sync_to_async_queue_size);
-        let sync_thread =
-            ProvingThreadSync::spawn(core_id, msr_enforcer, from_async, to_async, to_utility);
+        let sync_thread = ProvingThreadSync::spawn(
+            core_id,
+            msr_enforcer,
+            from_async,
+            to_async,
+            to_state_operating,
+            to_stats_collecting,
+        );
 
         Self {
             to_sync,

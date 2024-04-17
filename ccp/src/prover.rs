@@ -36,8 +36,8 @@ use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
 use crate::cpuids_handle::CpuIdsHandle;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlInlet;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
@@ -46,11 +46,12 @@ use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
 use crate::state_storage::StateStorage;
+use crate::stats_collecting_thread::StatsCollectingThread;
 use crate::status::CCStatus;
 use crate::status::ToCCStatus;
-use crate::utility_thread::UtilityThread;
 
 const PROOF_DIR: &str = "cc_proofs";
 
@@ -60,11 +61,12 @@ pub struct CCProver {
     cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
-    utility_thread: UtilityThread,
+    state_operating_thread: StateOperatingThread,
+    stats_collecting_thread: StatsCollectingThread,
     prometheus_endpoint: Option<PrometheusEndpoint>,
     msr_enforcer: MSRModeEnforcer,
     utility_core_ids_handle: CpuIdsHandle,
-    utility_control_inlet: UtilityControlInlet,
+    state_operating_control_inlet: StateOperatingControlInlet,
     cancellation_token: CancellationToken,
 }
 
@@ -91,7 +93,7 @@ impl NoxCCPApi for CCProver {
         apply_resut
     }
 
-    async fn on_no_active_commitment<'threads>(&'threads mut self) -> Result<(), Self::Error> {
+    async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
         self.stop_provers_nonblocking().await?;
         self.join_provers().await?;
 
@@ -205,26 +207,28 @@ impl CCProver {
 
         log::info!("continuing from proof index {start_proof_idx}");
 
+        let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
+        let (state_operating_control_inlet, state_operating_control_outlet) =
+            tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
+
+        let state_operating_thread = StateOperatingThread::spawn(
+            start_proof_idx,
+            proof_dir,
+            prev_global_nonce,
+            config.rpc_endpoint.utility_queue_size,
+            state_operating_control_outlet,
+            state_storage,
+            proof_drainer,
+        );
+
         let hashrate_collector = Arc::new(Mutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
             config.state_dir.clone(),
             config.logs.report_hashrate,
         )?;
-
-        let prev_global_nonce = epoch.map(|epoch| epoch.global_nonce);
-        let (utility_control_inlet, utility_control_outlet) =
-            tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
-        let utility_thread = UtilityThread::spawn(
-            start_proof_idx,
-            proof_dir,
-            prev_global_nonce,
-            hashrate_handler,
-            config.rpc_endpoint.utility_queue_size,
-            utility_control_outlet,
-            state_storage,
-            proof_drainer,
-        );
+        let stats_collecting_thread =
+            StatsCollectingThread::spawn(hashrate_handler, config.rpc_endpoint.utility_queue_size);
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
             PrometheusEndpoint::new(
@@ -238,11 +242,12 @@ impl CCProver {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
-            utility_thread,
+            state_operating_thread,
+            stats_collecting_thread,
             prometheus_endpoint,
             msr_enforcer,
             utility_core_ids_handle,
-            utility_control_inlet,
+            state_operating_control_inlet,
             cancellation_token,
         };
 
@@ -267,6 +272,7 @@ impl CCProver {
         self.shutdown().await
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
         let nonblocking_closure =
             move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {
@@ -287,9 +293,10 @@ impl CCProver {
 
     pub async fn shutdown(&mut self) -> CCResult<()> {
         log::info!("Shutting down prover...");
-        // stop background thread
+        // stop service background threads
         // TODO
-        self.utility_thread.shutdown().await?;
+        self.state_operating_thread.shutdown().await?;
+        self.stats_collecting_thread.shutdown().await?;
 
         if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
             prometheus_endpoint.shutdown().await?;
@@ -342,20 +349,20 @@ impl CCProver {
 
     async fn call_utility_save_state(&self, state: Option<CCPState>) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::SaveConfig { notifier, state };
+        let message = StateOperatingControlMessage::SaveConfig { notifier, state };
         self.execute_utility_call(message, wait_for).await
     }
 
     async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::CleanProofCache { notifier };
+        let message = StateOperatingControlMessage::CleanProofCache { notifier };
         // if the queue is full, it a sign of serious problem
         self.execute_utility_call(message, wait_for).await
     }
 
     async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::GetProofs {
+        let message = StateOperatingControlMessage::GetProofs {
             proof_idx,
             notifier,
         };
@@ -364,12 +371,12 @@ impl CCProver {
 
     async fn execute_utility_call<T>(
         &self,
-        message: UtilityControlMessage,
+        message: StateOperatingControlMessage,
         wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 
-        self.utility_control_inlet
+        self.state_operating_control_inlet
             .try_send(message)
             .map_err(|e| match e {
                 // if the queue is full, it a sign of serious problem
@@ -456,14 +463,22 @@ impl CCProver {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
-        let to_utility = self.utility_thread.get_to_utility_channel();
+        let to_state_operating = self.state_operating_thread.get_to_state_operating_channel();
+        let to_stats_collecting = self
+            .stats_collecting_thread
+            .get_to_stats_collecting_channel();
         let msr_enforcer = self.msr_enforcer.clone();
         let child_cancel_token = self.cancellation_token.clone();
 
         async move {
-            let mut prover =
-                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
-                    .await?;
+            let mut prover = CUProver::create(
+                prover_config,
+                to_state_operating,
+                to_stats_collecting,
+                msr_enforcer,
+                state.new_core_id,
+            )
+            .await?;
             prover
                 .new_epoch(epoch, state.new_cu_id, child_cancel_token)
                 .await?;

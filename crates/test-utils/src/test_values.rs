@@ -71,7 +71,7 @@ pub fn generate_random_allocation(
     use rand::Rng;
     let distr = rand::distributions::Uniform::from(range);
     rng.sample_iter(distr)
-        .take(size as usize)
+        .take(size)
         .map(|core_id| {
             (
                 PhysicalCoreId::from(core_id as u32),
