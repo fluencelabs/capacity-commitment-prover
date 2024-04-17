@@ -227,8 +227,6 @@ impl CCProver {
             config.state_dir.clone(),
             config.logs.report_hashrate,
         )?;
-        // let (stats_collecting_control_inlet, stats_collecting_control_outlet) =
-        //     tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
         let stats_collecting_thread =
             StatsCollectingThread::spawn(hashrate_handler, config.rpc_endpoint.utility_queue_size);
 

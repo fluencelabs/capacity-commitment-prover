@@ -43,14 +43,13 @@ impl StatsCollectingThread {
             mpsc::channel(stats_collecting_queue_size);
 
         let cancellation = CancellationToken::new();
-
-        let sct_impl = StatsCollectingImpl::new(
+        let sct_impl = StatsCollectingThreadImpl::new(
             from_stats_collecting,
             cancellation.clone(),
             hashrate_handler,
         );
-
         let handle = tokio::spawn(sct_impl.stats_collecting_closure());
+
         Self {
             to_stats_collecting,
             cancellation,
@@ -69,13 +68,13 @@ impl StatsCollectingThread {
     }
 }
 
-struct StatsCollectingImpl {
+struct StatsCollectingThreadImpl {
     to_stats_collecting: ToStatsCollectingOutlet,
     cancellation: CancellationToken,
     hashrate_handler: HashrateHandler,
 }
 
-impl StatsCollectingImpl {
+impl StatsCollectingThreadImpl {
     pub(crate) fn new(
         to_stats_collecting: ToStatsCollectingOutlet,
         cancellation: CancellationToken,
