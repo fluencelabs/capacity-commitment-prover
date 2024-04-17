@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.9.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.8.0...ccp-v0.9.0) (2024-04-17)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ccp:** fine grain dataset generation ([#125](https://github.com/fluencelabs/capacity-commitment-prover/issues/125))
+
+### Features
+
+* **ccp:** fine grain dataset generation ([#125](https://github.com/fluencelabs/capacity-commitment-prover/issues/125)) ([2595e81](https://github.com/fluencelabs/capacity-commitment-prover/commit/2595e81e284b73c50ae5cfc1cbb6e1f6a926a9a7))
+* **ccp:** split UtilityThread functionality in two: StatsCollecting and StateOperating [fixes VM-589] ([#129](https://github.com/fluencelabs/capacity-commitment-prover/issues/129)) ([fc1ca55](https://github.com/fluencelabs/capacity-commitment-prover/commit/fc1ca55632bf48933c3244fdd460b6eb032d0631))
+* **rpc:** new CCPRpcClient constructors ([#120](https://github.com/fluencelabs/capacity-commitment-prover/issues/120)) ([ba685ae](https://github.com/fluencelabs/capacity-commitment-prover/commit/ba685ae1b2a189aa945d37576f02dc7d6eab41cf))
+* **shared:** implement FromStr for shared types ([#121](https://github.com/fluencelabs/capacity-commitment-prover/issues/121)) ([001f8bc](https://github.com/fluencelabs/capacity-commitment-prover/commit/001f8bceb1cf25df4a06882ee7476e7d1cfcfdbf))
+* **shared:** readable Debug for binary types ([#115](https://github.com/fluencelabs/capacity-commitment-prover/issues/115)) ([2553a77](https://github.com/fluencelabs/capacity-commitment-prover/commit/2553a772f99ae6c4423e1a22b0c61d19d739d22d))
+* **utility-thread:** SyncProvingThread now explicitly notifies UtilityThread with the current epoch building the cache up [fixes VM-594] ([#128](https://github.com/fluencelabs/capacity-commitment-prover/issues/128)) ([fb61ccd](https://github.com/fluencelabs/capacity-commitment-prover/commit/fb61ccd920feed9211bca8d0f618275100c10ccd))
+
+
+### Bug Fixes
+
+* **ccp:** manage state in the utility thread ([#127](https://github.com/fluencelabs/capacity-commitment-prover/issues/127)) ([dc5e3c4](https://github.com/fluencelabs/capacity-commitment-prover/commit/dc5e3c47b5ea3810c82d48b33eb462fc7f0ce543))
+* **main:** do not try to pin to an empty CPU set ([#126](https://github.com/fluencelabs/capacity-commitment-prover/issues/126)) ([4106bd7](https://github.com/fluencelabs/capacity-commitment-prover/commit/4106bd7b962079aebcc657a41f4ac80e25e9c352))
+* **rpc:** make pub use ClientError ([#131](https://github.com/fluencelabs/capacity-commitment-prover/issues/131)) ([270a51d](https://github.com/fluencelabs/capacity-commitment-prover/commit/270a51de9ba388ae9fa43404d1aaa0790e241836))
+
 ## [0.8.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.7.1...ccp-v0.8.0) (2024-03-17)
 
 
