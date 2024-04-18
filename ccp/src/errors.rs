@@ -19,7 +19,8 @@ use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
 use crate::hashrate::HashrateError;
-use crate::utility_thread::UtilityThreadError;
+use crate::state_operating_thread::StateOperatingThreadError;
+use crate::stats_collecting_thread::StatsCollectingThreadError;
 
 #[derive(ThisError, Debug)]
 pub enum CCProverError {
@@ -36,7 +37,10 @@ pub enum CCProverError {
     JoinError(#[from] JoinError),
 
     #[error(transparent)]
-    UtilityThreadError(#[from] UtilityThreadError),
+    StateOperatingThreadError(#[from] StateOperatingThreadError),
+
+    #[error(transparent)]
+    StatsCollectingThreadError(#[from] StatsCollectingThreadError),
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),

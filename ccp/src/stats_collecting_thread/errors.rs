@@ -21,7 +21,7 @@ use thiserror::Error as ThisError;
 use crate::hashrate::HashrateError;
 
 #[derive(ThisError, Debug)]
-pub enum UtilityThreadError {
+pub enum StatsCollectingThreadError {
     #[error(transparent)]
     JoinFailed(#[from] JoinError),
 
@@ -30,7 +30,4 @@ pub enum UtilityThreadError {
 
     #[error(transparent)]
     HashrateError(#[from] HashrateError),
-
-    #[error("error occurred while trying to shutdown the utility thread")]
-    ShutdownError,
 }

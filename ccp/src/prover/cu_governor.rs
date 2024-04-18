@@ -27,9 +27,10 @@ use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
 
 use crate::alignment_roadmap::*;
-use crate::cu::proving_thread::sync::to_utility_message::ToUtilityInlet;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlInlet;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
 use crate::cu::CUProver;
 use crate::cu::CUProverConfig;
 use crate::cu::CUResult;
@@ -41,10 +42,12 @@ pub struct CUGovernor {
     cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
-    // statistics
-    to_utility: ToUtilityInlet,
-    // saved state managment
-    utility_control_inlet: UtilityControlInlet,
+    // in-memory statistics
+    stats_collecting_inlet: ToStatsCollectingInlet,
+    // collecting proofs
+    state_operating_inlnet: ToStateOperatingInlet,
+    // collected proofs managment
+    state_operating_control_inlet: StateOperatingControlInlet,
     msr_enforcer: MSRModeEnforcer,
     cancellation_token: CancellationToken,
 }
@@ -53,10 +56,11 @@ impl CUGovernor {
     pub(crate) fn new(
         optimizations_config: Optimizations,
         workers_config: Workers,
+        stats_collecting_inlnet: ToStatsCollectingInlet,
+        state_operating_inlnet: ToStateOperatingInlet,
+        state_operating_control_inlet: StateOperatingControlInlet,
         msr_enforcer: MSRModeEnforcer,
         cancellation_token: CancellationToken,
-        to_utility: ToUtilityInlet,
-        utility_control_inlet: UtilityControlInlet,
     ) -> Self {
         let cu_prover_config = CUProverConfig::new(optimizations_config, workers_config);
 
@@ -64,8 +68,9 @@ impl CUGovernor {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status: CCStatus::Idle,
-            to_utility,
-            utility_control_inlet,
+            stats_collecting_inlet: stats_collecting_inlnet,
+            state_operating_inlnet,
+            state_operating_control_inlet,
             msr_enforcer,
             cancellation_token,
         }
@@ -101,19 +106,19 @@ impl CUGovernor {
 
     async fn call_utility_cleanup_proof_cache(&self) -> CCResult<()> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::CleanProofCache { notifier };
+        let message = StateOperatingControlMessage::CleanProofCache { notifier };
         // if the queue is full, it a sign of serious problem
         self.execute_utility_call(message, wait_for).await
     }
 
     async fn execute_utility_call<T>(
         &self,
-        message: UtilityControlMessage,
+        message: StateOperatingControlMessage,
         wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 
-        self.utility_control_inlet
+        self.state_operating_control_inlet
             .try_send(message)
             .map_err(|e| match e {
                 // if the queue is full, it a sign of serious problem
@@ -138,9 +143,7 @@ impl CUGovernor {
             })
     }
 
-    pub(crate) async fn on_no_active_commitment<'threads>(
-        &'threads mut self,
-    ) -> Result<(), CCProverError> {
+    pub(crate) async fn on_no_active_commitment(&mut self) -> Result<(), CCProverError> {
         self.stop_provers_nonblocking().await?;
         self.join_provers().await?;
 
@@ -223,14 +226,20 @@ impl CUGovernor {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
-        let to_utility = self.to_utility.clone();
+        let to_state_operating = self.state_operating_inlnet.clone();
+        let to_stats_collecting = self.stats_collecting_inlet.clone();
         let msr_enforcer = self.msr_enforcer.clone();
         let child_cancel_token = self.cancellation_token.clone();
 
         async move {
-            let mut prover =
-                CUProver::create(prover_config, to_utility, msr_enforcer, state.new_core_id)
-                    .await?;
+            let mut prover = CUProver::create(
+                prover_config,
+                to_state_operating,
+                to_stats_collecting,
+                msr_enforcer,
+                state.new_core_id,
+            )
+            .await?;
             prover
                 .new_epoch(epoch, state.new_cu_id, child_cancel_token)
                 .await?;
@@ -299,6 +308,7 @@ impl CUGovernor {
         Ok(())
     }
 
+    #[allow(clippy::needless_lifetimes)]
     async fn stop_provers_nonblocking<'provers>(&'provers self) -> CCResult<()> {
         let nonblocking_closure =
             move |_: usize, (_, prover): (&PhysicalCoreId, &'provers CUProver)| {

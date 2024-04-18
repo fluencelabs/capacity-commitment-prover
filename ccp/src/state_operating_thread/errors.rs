@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-mod errors;
-mod proof_storage;
-mod thread;
+use tokio::task::JoinError;
 
-pub use errors::UtilityThreadError;
-pub(crate) use proof_storage::save_reliably;
-pub(crate) use thread::*;
+use thiserror::Error as ThisError;
 
-pub(crate) mod message {
-    pub(crate) use crate::cu::proving_thread::sync::to_utility_message::*;
+#[derive(ThisError, Debug)]
+pub enum StateOperatingThreadError {
+    #[error(transparent)]
+    JoinFailed(#[from] JoinError),
+
+    #[error(transparent)]
+    IOError(#[from] tokio::io::Error),
 }
-
-pub(crate) type UTResult<T> = Result<T, errors::UtilityThreadError>;

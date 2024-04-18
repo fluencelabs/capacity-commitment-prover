@@ -41,17 +41,18 @@ use ccp_shared::types::EpochParameters;
 
 use self::cu_governor::CUGovernor;
 use crate::cpuids_handle::CpuIdsHandle;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlInlet;
-use crate::cu::proving_thread::sync::to_utility_message::UtilityControlMessage;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
 use crate::errors::CCProverError;
 use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
 use crate::state_storage::Commitment;
 use crate::state_storage::StateStorage;
-use crate::utility_thread::UtilityThread;
+use crate::stats_collecting_thread::StatsCollectingThread;
 
 const PROOF_DIR: &str = "cc_proofs";
 
@@ -61,11 +62,11 @@ pub struct CCProver {
     governor_task: JoinHandle<()>,
     governor_outlet: mpsc::Sender<GovernorMessage>,
     cu_governor: Arc<RwLock<CUGovernor>>,
-    utility_thread: UtilityThread,
-    utility_control_inlet: UtilityControlInlet,
+    state_operating_thread: StateOperatingThread,
+    state_operating_control_inlet: StateOperatingControlInlet,
+    stats_collecting_thread: StatsCollectingThread,
     prometheus_endpoint: Option<PrometheusEndpoint>,
     utility_core_ids_handle: CpuIdsHandle,
-
     initial_msr_state: MSRState,
     target_commitment: Option<Commitment>,
 }
@@ -157,19 +158,22 @@ impl CCProver {
 
         let prev_global_nonce = target_commitment
             .as_ref()
-            .map(|comm| comm.epoch_params.global_nonce.clone());
-        let (utility_control_inlet, utility_control_outlet) =
+            .map(|comm| comm.epoch_params.global_nonce);
+        let (state_operating_control_inlet, state_operating_control_outlet) =
             tokio::sync::mpsc::channel(config.rpc_endpoint.control_queue_size);
-        let utility_thread = UtilityThread::spawn(
+
+        let state_operating_thread = StateOperatingThread::spawn(
             start_proof_idx,
             proof_dir,
             prev_global_nonce,
-            hashrate_handler,
             config.rpc_endpoint.utility_queue_size,
-            utility_control_outlet,
+            state_operating_control_outlet,
             state_storage,
             proof_drainer,
         );
+
+        let stats_collecting_thread =
+            StatsCollectingThread::spawn(hashrate_handler, config.rpc_endpoint.utility_queue_size);
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
             PrometheusEndpoint::new(
@@ -183,10 +187,11 @@ impl CCProver {
         let cu_governor = CUGovernor::new(
             config.optimizations,
             config.workers,
+            stats_collecting_thread.get_to_stats_collecting_channel(),
+            state_operating_thread.get_to_state_operating_channel(),
+            state_operating_control_inlet.clone(),
             msr_enforcer,
             cancellation_token,
-            utility_thread.get_to_utility_channel(),
-            utility_control_inlet.clone(),
         );
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 
@@ -199,10 +204,11 @@ impl CCProver {
             governor_task,
             governor_outlet,
             cu_governor,
-            utility_core_ids_handle,
-            utility_thread,
-            utility_control_inlet,
+            state_operating_thread,
+            state_operating_control_inlet,
+            stats_collecting_thread,
             prometheus_endpoint,
+            utility_core_ids_handle,
 
             initial_msr_state,
             target_commitment,
@@ -220,27 +226,18 @@ impl CCProver {
                 .await
                 .expect("the queue cannot be full on startup");
         }
-
         Ok(prover)
     }
 
-    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
-        let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::GetProofs {
-            proof_idx,
-            notifier,
-        };
-        self.execute_utility_call(message, wait_for).await
-    }
-
+    // TODO rename
     async fn execute_utility_call<T>(
         &self,
-        message: UtilityControlMessage,
+        message: StateOperatingControlMessage,
         wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 
-        self.utility_control_inlet
+        self.state_operating_control_inlet
             .try_send(message)
             .map_err(|e| match e {
                 // if the queue is full, it a sign of serious problem
@@ -268,7 +265,17 @@ impl CCProver {
         };
 
         let (notifier, wait_for) = oneshot::channel();
-        let message = UtilityControlMessage::SaveConfig { notifier, state };
+        let message = StateOperatingControlMessage::SaveConfig { notifier, state };
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    // TODO rename
+    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = StateOperatingControlMessage::GetProofs {
+            proof_idx,
+            notifier,
+        };
         self.execute_utility_call(message, wait_for).await
     }
 
@@ -289,14 +296,34 @@ impl CCProver {
     pub async fn shutdown(&mut self) -> CCResult<()> {
         self.cu_governor.write().await.shutdown();
 
-        let shutdown_res = self.utility_thread.shutdown().await;
-        if let Err(shutdown_err) = shutdown_res {
-            log::error!("utility shutdown: {shutdown_err}");
-        }
+        let state_op_shutdown_res =
+            self.state_operating_thread
+                .shutdown()
+                .await
+                .inspect_err(|shutdown_err| {
+                    log::error!("state_operationg shutdown: {shutdown_err}");
+                });
+
+        let stats_coll_shutdown_res =
+            self.stats_collecting_thread
+                .shutdown()
+                .await
+                .inspect_err(|shutdown_err| {
+                    log::error!("stats_collecting shutdown: {shutdown_err}");
+                });
 
         if let Some(prometheus_endpoint) = &mut self.prometheus_endpoint {
-            prometheus_endpoint.shutdown().await?;
+            prometheus_endpoint
+                .shutdown()
+                .await
+                .inspect_err(|shutdown_err| {
+                    log::error!("prometheus_endpoint shutdown: {shutdown_err}")
+                })?;
         }
+
+        state_op_shutdown_res?;
+        stats_coll_shutdown_res?;
+
         Ok(())
     }
 }
