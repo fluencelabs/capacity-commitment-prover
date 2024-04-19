@@ -99,31 +99,38 @@ impl CCProver {
         let state_storage = StateStorage::new(config.state_dir.clone());
         let prev_state = state_storage.try_to_load_data().await?;
 
-        utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+        let commitment;
+        let msr_enforcer;
 
-        if let Some(prev_commitment) = &prev_state.commitment {
-            if !config.optimizations.msr_enabled {
-                cease_prev_msr_policy(prev_commitment, &prev_state.msr_state);
+        match prev_state {
+            Some(prev_state) => {
+                utility_core_ids_handle.set_cores(prev_state.utility_cores.clone());
+
+                // if there is a state, then it means that CCP crashed without setting back
+                // possibly changed original MSR state, so, let's set it back
+                if !config.optimizations.msr_enabled {
+                    cease_prev_msr_policy(&prev_state);
+                }
+
+                commitment = Some(Commitment {
+                    epoch_params: prev_state.epoch_params,
+                    cu_allocation: prev_state.cu_allocation,
+                });
+
+                msr_enforcer = MSRModeEnforcer::from_preset(
+                    config.optimizations.msr_enabled,
+                    prev_state.msr_state.msr_preset.clone(),
+                );
+            }
+            None => {
+                commitment = None;
+                msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
             }
         }
 
-        let msr_enforcer = if prev_state.msr_state.msr_preset.is_empty() {
-            // empty present can be in the following situations:
-            // 1. no previous config was used
-            //    then loading MSR from OS is must
-            // 2. there is a previous config, but it was run with msr_enabled being false
-            //    then loading MSR is either absolutely cheap (when msr_enabled is still false) or must
-            MSRModeEnforcer::from_os(config.optimizations.msr_enabled)
-        } else {
-            MSRModeEnforcer::from_preset(
-                config.optimizations.msr_enabled,
-                prev_state.msr_state.msr_preset,
-            )
-        };
-
         let prover = Self::create_prover(
             config,
-            prev_state.commitment.clone(),
+            commitment,
             msr_enforcer,
             state_storage,
             utility_core_ids_handle,
@@ -258,12 +265,12 @@ impl CCProver {
     async fn call_utility_save_state(&self) -> CCResult<()> {
         let utility_cores = self.utility_core_ids_handle.get_cores();
 
-        let state = CCPState {
-            commitment: self.target_commitment.clone(),
-            utility_cores,
+        let state = self.target_commitment.as_ref().map(|commitment| CCPState {
+            epoch_params: commitment.epoch_params,
+            cu_allocation: commitment.cu_allocation.clone(),
             msr_state: self.initial_msr_state.clone(),
-        };
-
+            utility_cores,
+        });
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::SaveConfig { notifier, state };
         self.execute_utility_call(message, wait_for).await
@@ -444,12 +451,12 @@ async fn receive_last<T>(receiver: &mut mpsc::Receiver<T>) -> Option<T> {
     }
 }
 
-fn cease_prev_msr_policy(prev_commitment: &Commitment, msr_state: &MSRState) {
+fn cease_prev_msr_policy(prev_state: &CCPState) {
     use ccp_msr::MSREnforce as _;
 
-    let msr_enforcer = MSRModeEnforcer::from_preset(true, msr_state.msr_preset.clone());
+    let msr_enforcer = MSRModeEnforcer::from_preset(true, prev_state.msr_state.msr_preset.clone());
 
-    for &physical_core_id in prev_commitment.cu_allocation.keys() {
+    for &physical_core_id in prev_state.cu_allocation.keys() {
         let core_id: u32 = physical_core_id.into();
         let logical_core_id = core_id.into();
         if let Err(error) = msr_enforcer.cease(logical_core_id) {
