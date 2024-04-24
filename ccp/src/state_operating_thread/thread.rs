@@ -24,11 +24,6 @@ use tokio_util::sync::CancellationToken;
 
 use super::message::*;
 use super::SOTResult;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlOutlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
