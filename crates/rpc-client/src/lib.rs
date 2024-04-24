@@ -33,7 +33,7 @@ use std::time::Duration;
 
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::LogicalCoreId;
-use jsonrpsee::core::ClientError;
+pub use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 
