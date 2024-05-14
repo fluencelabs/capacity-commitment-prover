@@ -22,12 +22,15 @@ use tokio::sync::oneshot;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
+pub(crate) use crate::prover::GovernorMessage;
 use crate::state_storage::CCPState;
 
 pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
 pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
 pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
 pub(crate) type StateOperatingControlOutlet = mpsc::Receiver<StateOperatingControlMessage>;
+pub(crate) type GovernorOperatingInlet = mpsc::Sender<GovernorMessage>;
+pub(crate) type GovernorOperatingOutlet = mpsc::Receiver<GovernorMessage>;
 
 #[derive(Debug)]
 pub(crate) enum ToStateOperatingMessage {

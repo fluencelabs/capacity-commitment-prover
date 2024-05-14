@@ -41,6 +41,8 @@ use ccp_shared::types::EpochParameters;
 
 use self::cu_governor::CUGovernor;
 use crate::cpuids_handle::CpuIdsHandle;
+use crate::cu::proving_thread::sync::to_state_operating_message::GovernorOperatingInlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::GovernorOperatingOutlet;
 use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
 use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
 use crate::errors::CCProverError;
@@ -60,7 +62,7 @@ pub type CCResult<T> = Result<T, CCProverError>;
 
 pub struct CCProver {
     governor_task: JoinHandle<()>,
-    governor_outlet: mpsc::Sender<GovernorMessage>,
+    governor_inlet: GovernorOperatingInlet,
     cu_governor: Arc<RwLock<CUGovernor>>,
     state_operating_thread: StateOperatingThread,
     state_operating_control_inlet: StateOperatingControlInlet,
@@ -209,7 +211,7 @@ impl CCProver {
 
         let prover = Self {
             governor_task,
-            governor_outlet,
+            governor_inlet: governor_outlet,
             cu_governor,
             state_operating_thread,
             state_operating_control_inlet,
@@ -224,7 +226,7 @@ impl CCProver {
         if let Some(commitment) = &prover.target_commitment {
             let (dummy_sender, _receiver) = oneshot::channel();
             prover
-                .governor_outlet
+                .governor_inlet
                 .send(GovernorMessage::OnActiveCommitment(
                     commitment.epoch_params,
                     commitment.cu_allocation.clone(),
@@ -290,7 +292,7 @@ impl CCProver {
         use futures::FutureExt;
 
         // TODO check it once again
-        std::mem::drop(self.governor_outlet);
+        std::mem::drop(self.governor_inlet);
 
         let mut guard = self.cu_governor.write().await;
         try_join! {
@@ -335,7 +337,7 @@ impl CCProver {
     }
 }
 
-enum GovernorMessage {
+pub(crate) enum GovernorMessage {
     OnActiveCommitment(EpochParameters, CUAllocation, oneshot::Sender<()>),
     OnNoCommitment,
 }
@@ -362,7 +364,7 @@ impl NoxCCPApi for CCProver {
 
         let (sender, receiver) = oneshot::channel();
 
-        self.governor_outlet
+        self.governor_inlet
             .try_send(GovernorMessage::OnActiveCommitment(
                 epoch_params,
                 cu_allocation,
@@ -379,7 +381,7 @@ impl NoxCCPApi for CCProver {
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))?;
 
-        self.governor_outlet
+        self.governor_inlet
             .try_send(GovernorMessage::OnNoCommitment)
             .context("on_no_active_commitment")?;
         Ok(())
@@ -404,10 +406,7 @@ impl NoxCCPApi for CCProver {
     }
 }
 
-async fn facade_loop(
-    prover: Arc<RwLock<CUGovernor>>,
-    mut from_facade: mpsc::Receiver<GovernorMessage>,
-) {
+async fn facade_loop(prover: Arc<RwLock<CUGovernor>>, mut from_facade: GovernorOperatingOutlet) {
     use GovernorMessage::*;
     while let Some(message) = receive_last(&mut from_facade).await {
         let mut guard = prover.write().await;
