@@ -23,7 +23,7 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
-use cpu_utils::CPUTopology;
+use cpu_utils::{CPUTopology, HwlocCPUTopology};
 
 use super::config::CUProverConfig;
 use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
@@ -44,7 +44,7 @@ pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
     pinned_core_id: PhysicalCoreId,
     randomx_flags: RandomXFlags,
-    cpu_topology: CPUTopology,
+    cpu_topology: HwlocCPUTopology,
     dataset: Dataset,
     status: CUStatus,
     dataset_chunk_size: u64,
@@ -58,7 +58,7 @@ impl CUProver {
         msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
     ) -> CUResult<Self> {
-        let topology = CPUTopology::new()?;
+        let topology = HwlocCPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
             .allocate(
                 msr_enforcer,

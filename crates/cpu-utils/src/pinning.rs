@@ -18,23 +18,49 @@ use ccp_core_affinity::CoreId;
 
 use crate::LogicalCoreId;
 
-/// Lightweight function which doesn't require topology to pin current thread to the specified core.
-/// Returns true, if pinning was successful.
-pub fn pin_current_thread_to(core_id: LogicalCoreId) -> bool {
-    let core_id = CoreId { id: core_id.into() };
-    ccp_core_affinity::set_for_current(core_id)
+pub const DUMMY: DummyThreadPinner = DummyThreadPinner {};
+pub const DEFAULT: DefaultThreadPinner = DefaultThreadPinner {};
+
+#[cfg_attr(feature = "mockall", mockall::automock)]
+pub trait ThreadPinner: Send + Sync {
+    fn pin_current_thread_to(&self, core_id: LogicalCoreId) -> bool;
+
+    fn pin_current_thread_to_cpuset(&self, core_ids: &[LogicalCoreId]) -> bool;
 }
 
-/// Lightweight function which doesn't require topology to pin current thread to the specified
-/// core ids
-/// Returns true, if pinning was successful.
-pub fn pin_current_thread_to_cpuset(core_ids: impl Iterator<Item = LogicalCoreId>) -> bool {
-    let core_ids = core_ids
-        .map(|core_id| {
-            let id = core_id.into();
-            CoreId { id }
-        })
-        .collect::<Vec<_>>();
+pub struct DefaultThreadPinner;
 
-    ccp_core_affinity::set_mask_for_current(&core_ids)
+impl ThreadPinner for DefaultThreadPinner {
+    #[inline]
+    fn pin_current_thread_to(&self, core_id: LogicalCoreId) -> bool {
+        let core_id = CoreId { id: core_id.into() };
+        ccp_core_affinity::set_for_current(core_id)
+    }
+
+    #[inline]
+    fn pin_current_thread_to_cpuset(&self, core_ids: &[LogicalCoreId]) -> bool {
+        let core_ids = core_ids
+            .iter()
+            .map(|core_id| {
+                let id = (*core_id).into();
+                CoreId { id }
+            })
+            .collect::<Vec<_>>();
+
+        ccp_core_affinity::set_mask_for_current(&core_ids)
+    }
+}
+
+pub struct DummyThreadPinner;
+
+impl ThreadPinner for DummyThreadPinner {
+    #[inline]
+    fn pin_current_thread_to(&self, _core_id: LogicalCoreId) -> bool {
+        true
+    }
+
+    #[inline]
+    fn pin_current_thread_to_cpuset(&self, _core_ids: &[LogicalCoreId]) -> bool {
+        true
+    }
 }
