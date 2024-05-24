@@ -286,19 +286,6 @@ async fn cu_prover_works_with_odd_threads_number() {
     let config = create_config(5);
     let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
     let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
-    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(
-        config,
-        to_state_operating_inlet,
-        to_stats_collecting_inlet,
-        msr_enforcer,
-        3.into(),
-    )
-    .await
-    .unwrap();
-
-    let epoch = test::generate_epoch_params(1, 0xFF);
-    let cu_id = test::generate_cu_id(1);
 
     let handle = tokio::spawn(async move {
         let mut proofs = Vec::new();
@@ -312,6 +299,21 @@ async fn cu_prover_works_with_odd_threads_number() {
 
         proofs
     });
+
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
+
+    let epoch = test::generate_epoch_params(1, 0xFF);
+    let cu_id = test::generate_cu_id(1);
 
     let cancel_token = CancellationToken::new();
     prover.new_epoch(epoch, cu_id, cancel_token).await.unwrap();
@@ -331,26 +333,6 @@ async fn cu_prover_changes_epoch_correctly() {
     let config = create_config(2);
     let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
     let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
-    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut prover = CUProver::create(
-        config,
-        to_state_operating_inlet,
-        to_stats_collecting_inlet,
-        msr_enforcer,
-        3.into(),
-    )
-    .await
-    .unwrap();
-
-    let epochs_count = 3usize;
-
-    let params = (0..epochs_count)
-        .map(|id| {
-            let epoch = test::generate_epoch_params(id as u8, 0x80 + id as u8);
-            let cu_id = test::generate_cu_id(id as u8);
-            (epoch, cu_id)
-        })
-        .collect::<Vec<_>>();
 
     let handle = tokio::spawn(async move {
         use std::collections::hash_map::Entry;
@@ -373,6 +355,27 @@ async fn cu_prover_changes_epoch_correctly() {
 
         proofs
     });
+
+    let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
+    let mut prover = CUProver::create(
+        config,
+        to_state_operating_inlet,
+        to_stats_collecting_inlet,
+        msr_enforcer,
+        3.into(),
+    )
+    .await
+    .unwrap();
+
+    let epochs_count = 3usize;
+
+    let params = (0..epochs_count)
+        .map(|id| {
+            let epoch = test::generate_epoch_params(id as u8, 0x80 + id as u8);
+            let cu_id = test::generate_cu_id(id as u8);
+            (epoch, cu_id)
+        })
+        .collect::<Vec<_>>();
 
     let cancel_token = CancellationToken::new();
     for param_id in 0..epochs_count {

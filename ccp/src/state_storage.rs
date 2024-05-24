@@ -33,6 +33,12 @@ pub(crate) struct StateStorage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub(crate) struct EpochAndAllocation {
+    pub(crate) epoch_params: EpochParameters,
+    pub(crate) cu_allocation: CUAllocation,
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub(crate) struct CCPState {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,

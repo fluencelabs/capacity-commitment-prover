@@ -20,8 +20,8 @@ use rand::rngs::SmallRng;
 use rand::Rng;
 
 use ccp_shared::types::CUAllocation;
-use ccp_shared::types::CUID;
 use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
 
 use super::CCProverAlignmentRoadmap;

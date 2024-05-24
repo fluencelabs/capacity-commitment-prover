@@ -141,6 +141,9 @@ async fn dataset_creation_works() {
     );
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
+    let handle =
+        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
+
     thread
         .initialize_dataset(
             actual_cache.handle(),
@@ -150,9 +153,6 @@ async fn dataset_creation_works() {
         )
         .await
         .unwrap();
-
-    let handle =
-        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
 
     thread.stop_join().await.unwrap();
     handle.await.unwrap();

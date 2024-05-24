@@ -41,7 +41,6 @@ use tracing_subscriber::EnvFilter;
 use ccp::CCProver;
 use ccp_config::load_config;
 use ccp_config::CCPConfig;
-use ccp_rpc_server::BackgroundFacade;
 use ccp_rpc_server::CCPRcpHttpServer;
 
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
@@ -142,13 +141,12 @@ fn build_tokio_runtime(
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
-    let facade_queue_size = config.rpc_endpoint.facade_queue_size;
     let global_cancellation_token = CancellationToken::new();
 
     tracing::info!("Creating prover from a saved state");
     let prover = CCProver::from_saved_state(
         config,
-        tokio_core_ids_state,
+        tokio_core_ids_state.clone(),
         global_cancellation_token.clone(),
     )
     .await
@@ -160,8 +158,7 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
         rpc_bind_address.1
     );
     let prover = Arc::new(RwLock::new(prover));
-    let rpc_endpoint =
-        CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone(), facade_queue_size));
+    let rpc_endpoint = CCPRcpHttpServer::new(prover.clone());
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await
