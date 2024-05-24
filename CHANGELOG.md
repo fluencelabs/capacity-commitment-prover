@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.9.0...ccp-v0.10.0) (2024-05-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ccp:** ccp splitting into async parts ([#130](https://github.com/fluencelabs/capacity-commitment-prover/issues/130))
+
+### Features
+
+* **ccp:** ccp splitting into async parts ([#130](https://github.com/fluencelabs/capacity-commitment-prover/issues/130)) ([955c634](https://github.com/fluencelabs/capacity-commitment-prover/commit/955c63428ee8fba6729a349220c6007d07f31ee2))
+
 ## [0.9.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.8.0...ccp-v0.9.0) (2024-04-17)
 
 
