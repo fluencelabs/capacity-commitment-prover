@@ -11,6 +11,12 @@
 
 * **ccp:** ccp splitting into async parts ([#130](https://github.com/fluencelabs/capacity-commitment-prover/issues/130)) ([955c634](https://github.com/fluencelabs/capacity-commitment-prover/commit/955c63428ee8fba6729a349220c6007d07f31ee2))
 
+  It make RPC API more responsive, and prevents 2-minutes delay on `ccp` restart.
+
+  This is a breaking change for `ccp` libraries, but the binary's arguments, serialization formats and RPC interfaces stay the same.
+
+
+
 ## [0.9.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.8.0...ccp-v0.9.0) (2024-04-17)
 
 
