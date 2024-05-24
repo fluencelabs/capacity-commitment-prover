@@ -33,7 +33,7 @@ pub(crate) struct StateStorage {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub(crate) struct Commitment {
+pub(crate) struct EpochAndAllocation {
     pub(crate) epoch_params: EpochParameters,
     pub(crate) cu_allocation: CUAllocation,
 }

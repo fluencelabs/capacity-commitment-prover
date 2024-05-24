@@ -52,7 +52,7 @@ use crate::hashrate::HashrateHandler;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
-use crate::state_storage::Commitment;
+use crate::state_storage::EpochAndAllocation;
 use crate::state_storage::StateStorage;
 use crate::stats_collecting_thread::StatsCollectingThread;
 
@@ -70,7 +70,7 @@ pub struct CCProver {
     prometheus_endpoint: Option<PrometheusEndpoint>,
     utility_core_ids_handle: CpuIdsHandle,
     initial_msr_state: MSRState,
-    target_commitment: Option<Commitment>,
+    target_allocation: Option<EpochAndAllocation>,
 }
 
 impl CCProver {
@@ -114,7 +114,7 @@ impl CCProver {
                     cease_prev_msr_policy(&prev_state);
                 }
 
-                commitment = Some(Commitment {
+                commitment = Some(EpochAndAllocation {
                     epoch_params: prev_state.epoch_params,
                     cu_allocation: prev_state.cu_allocation,
                 });
@@ -145,7 +145,7 @@ impl CCProver {
 
     async fn create_prover(
         config: CCPConfig,
-        target_commitment: Option<Commitment>,
+        target_commitment: Option<EpochAndAllocation>,
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
         utility_core_ids_handle: CpuIdsHandle,
@@ -220,10 +220,10 @@ impl CCProver {
             utility_core_ids_handle,
 
             initial_msr_state,
-            target_commitment,
+            target_allocation: target_commitment,
         };
 
-        if let Some(commitment) = &prover.target_commitment {
+        if let Some(commitment) = &prover.target_allocation {
             let (dummy_sender, _receiver) = oneshot::channel();
             prover
                 .governor_inlet
@@ -267,7 +267,7 @@ impl CCProver {
     async fn call_utility_save_state(&self) -> CCResult<()> {
         let utility_cores = self.utility_core_ids_handle.get_cores();
 
-        let state = self.target_commitment.as_ref().map(|commitment| CCPState {
+        let state = self.target_allocation.as_ref().map(|commitment| CCPState {
             epoch_params: commitment.epoch_params,
             cu_allocation: commitment.cu_allocation.clone(),
             msr_state: self.initial_msr_state.clone(),
@@ -353,7 +353,7 @@ impl NoxCCPApi for CCProver {
         epoch_params: EpochParameters,
         cu_allocation: CUAllocation,
     ) -> Result<oneshot::Receiver<()>, Self::Error> {
-        self.target_commitment = Some(Commitment {
+        self.target_allocation = Some(EpochAndAllocation {
             epoch_params,
             cu_allocation: cu_allocation.clone(),
         });
@@ -375,7 +375,7 @@ impl NoxCCPApi for CCProver {
     }
 
     async fn on_no_active_commitment(&mut self) -> Result<(), Self::Error> {
-        self.target_commitment = None;
+        self.target_allocation = None;
         self.save_state()
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
