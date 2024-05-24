@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
+use std::collections::HashMap;
+
 use ccp_config::Optimizations;
 use ccp_config::Workers;
-use futures::future;
-use futures::FutureExt;
-use std::collections::HashMap;
-use tokio::sync::oneshot;
-use tokio_util::sync::CancellationToken;
-
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
+use futures::future;
+use futures::FutureExt;
+use tokio::sync::oneshot;
+use tokio_util::sync::CancellationToken;
 
 use crate::alignment_roadmap::*;
 use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
@@ -38,7 +38,8 @@ use crate::errors::CCProverError;
 use crate::status::CCStatus;
 use crate::CCResult;
 
-pub struct CUGovernor {
+/// An part of CCProver that controls CU units, keeping all the changing state.
+pub(crate) struct CUGovernor {
     cu_provers: HashMap<PhysicalCoreId, CUProver>,
     cu_prover_config: CUProverConfig,
     status: CCStatus,
