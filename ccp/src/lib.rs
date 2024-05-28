@@ -31,6 +31,7 @@ pub mod cpuids_handle;
 mod cu;
 mod errors;
 mod hashrate;
+mod proof_queue;
 mod proof_storage;
 pub mod prover;
 pub(crate) mod state_operating_thread;
