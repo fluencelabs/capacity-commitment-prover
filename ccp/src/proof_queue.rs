@@ -59,6 +59,10 @@ impl ProofQueue {
             .push_back(proof);
     }
 
+    pub(crate) fn reset(&mut self) {
+        self.cu_proofs.clear();
+    }
+
     pub(crate) fn get_proofs(
         &mut self,
         batch_length: usize,
@@ -277,5 +281,16 @@ mod test {
 
         assert!(res1.is_none());
         assert!(res2.is_some());
+    }
+
+    #[test]
+    fn test_reset() {
+        let mut queue = gen_queue(14);
+        queue
+            .get_proofs(1, 7, &<_>::default())
+            .expect("valid proofs");
+        queue.reset();
+        let proofs2 = queue.get_proofs(1, 7, &<_>::default());
+        assert!(proofs2.is_none());
     }
 }
