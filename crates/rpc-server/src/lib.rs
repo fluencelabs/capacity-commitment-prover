@@ -134,19 +134,35 @@ where
     #[instrument(skip(self))]
     async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
-        limit: usize,
-    ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        _limit: usize,
+    ) -> Result<HashMap<CUID, Vec<CCProof>>, ErrorObjectOwned> {
         let guard = self.cc_prover.write().await;
-        let mut proofs = guard
-            .get_proofs_after(proof_idx)
+        let proofs = guard
+            .get_proofs_after(last_known_proofs)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
-        if proofs.len() > limit {
-            proofs.select_nth_unstable_by_key(limit, |p| p.id.idx);
-            proofs = proofs.drain(0..limit).collect();
-        }
-        proofs.sort_unstable_by_key(|p| p.id.idx);
+        // TODO as read is now changes state, do not use greedy read; limit the size during the read
+        // if proofs.len() > limit {
+        //     proofs.select_nth_unstable_by_key(limit, |p| p.id.idx);
+        //     proofs = proofs.drain(0..limit).collect();
+        // }
+        // proofs.sort_unstable_by_key(|p| p.id.idx);
+        Ok(proofs)
+    }
+
+    #[instrument(skip(self))]
+    async fn get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, ErrorObjectOwned> {
+        let guard = self.cc_prover.write().await;
+        let proofs = guard
+            .get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
+            .await
+            .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(proofs)
     }
 

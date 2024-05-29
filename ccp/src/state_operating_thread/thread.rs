@@ -144,15 +144,31 @@ impl StateOperatingThreadImpl {
                 let _ = notifier.send(ret);
             }
             CleanProofCache { notifier } => {
-                let ret = self.proof_drainer.remove_proofs().await;
+                let ret = self.proof_drainer.clear_proofs().await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
-            GetProofs {
-                proof_idx,
+            GetBatchProofs {
+                batch_length,
+                batch_count,
+                last_known_proofs,
                 notifier,
             } => {
-                let ret = self.proof_drainer.get_proofs_after(proof_idx).await;
+                let ret = self
+                    .proof_drainer
+                    .get_batch_proofs_after(batch_length, batch_count, &last_known_proofs)
+                    .await;
+                // if receiver is dead, there is nothing we can do
+                let _ = notifier.send(ret);
+            }
+            GetAllProofs {
+                last_known_proofs,
+                notifier,
+            } => {
+                let ret = self
+                    .proof_drainer
+                    .get_all_proofs_after(&last_known_proofs)
+                    .await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
@@ -184,6 +200,10 @@ impl NewProofHandler {
 
         self.maybe_new_epoch(proof);
 
+        // increment early to not use zero idx (as it is used as "no previous idx" in the API)
+        // and do not use previous idx
+        self.proof_idx.increment();
+
         let cc_proof_id = CCProofId::new(
             proof.epoch.global_nonce,
             proof.epoch.difficulty,
@@ -196,7 +216,6 @@ impl NewProofHandler {
             proof.result_hash,
         );
         self.proof_storage.store_new_proof(cc_proof).await?;
-        self.proof_idx.increment();
 
         Ok(())
     }

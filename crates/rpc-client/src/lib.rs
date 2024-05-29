@@ -62,9 +62,17 @@ pub trait CCPRpc {
     #[method(name = "get_proofs_after")]
     async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<Vec<CCProof>, ErrorObjectOwned>;
+    ) -> Result<HashMap<CUID, Vec<CCProof>>, ErrorObjectOwned>;
+
+    #[method(name = "get_batch_proofs_after")]
+    async fn get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, ErrorObjectOwned>;
 
     #[method(name = "realloc_utility_cores", param_kind = map)]
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
@@ -124,10 +132,26 @@ impl CCPRpcHttpClient {
     #[inline]
     pub async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<Vec<CCProof>, ClientError> {
-        CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
+    ) -> Result<HashMap<CUID, Vec<CCProof>>, ClientError> {
+        CCPRpcClient::get_proofs_after(&self.inner, last_known_proofs, limit).await
+    }
+
+    #[inline]
+    pub async fn get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, ClientError> {
+        CCPRpcClient::get_batch_proofs_after(
+            &self.inner,
+            batch_length,
+            batch_count,
+            last_known_proofs,
+        )
+        .await
     }
 
     #[inline]

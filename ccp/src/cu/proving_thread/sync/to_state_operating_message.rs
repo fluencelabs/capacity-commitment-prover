@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+use std::collections::HashMap;
+
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::CUID;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -62,8 +65,14 @@ pub(crate) enum StateOperatingControlMessage {
     CleanProofCache {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
     },
-    GetProofs {
-        proof_idx: ProofIdx,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<CCProof>>>,
+    GetAllProofs {
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        notifier: oneshot::Sender<tokio::io::Result<HashMap<CUID, Vec<CCProof>>>>,
+    },
+    GetBatchProofs {
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        notifier: oneshot::Sender<tokio::io::Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>>>,
     },
 }

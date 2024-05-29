@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -36,12 +35,14 @@ struct CuState {
 }
 
 impl CuState {
-    #[inline]
     fn push_back(&mut self, proof: CCProof) {
         self.proofs.push_back(proof)
     }
 
-    #[inline]
+    fn len(&self) -> usize {
+        self.proofs.len()
+    }
+
     fn try_get_batch(&mut self, batch_length: usize) -> Option<Vec<CCProof>> {
         if self.proofs.len() >= batch_length {
             // TODO is there anyting better than a VecDec drain?
@@ -58,14 +59,7 @@ impl CuState {
 }
 
 impl ProofQueue {
-    pub(crate) fn new<'a>(proofs: impl Iterator<Item = Cow<'a, CCProof>>) -> Self {
-        let mut self_ = Self::default();
-        for proof in proofs {
-            self_.insert(proof.into_owned());
-        }
-        self_
-    }
-
+    // TODO not updated!!!
     pub(crate) fn insert(&mut self, proof: CCProof) {
         self.cu_proofs
             .entry(proof.cu_id)
@@ -73,11 +67,11 @@ impl ProofQueue {
             .push_back(proof);
     }
 
-    pub(crate) fn reset(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.cu_proofs.clear();
     }
 
-    pub(crate) fn get_proofs(
+    pub(crate) fn get_batched_proofs_after(
         &mut self,
         batch_length: usize,
         batch_count: usize,
@@ -94,7 +88,7 @@ impl ProofQueue {
         let available_batches: usize = self
             .cu_proofs
             .values()
-            .map(|state| state.proofs.len() / batch_length)
+            .map(|state| state.len() / batch_length)
             .sum();
         if available_batches < batch_count {
             return None;
@@ -130,6 +124,18 @@ impl ProofQueue {
         }
 
         Some(collected_batches)
+    }
+
+    pub(crate) fn get_all_proofs_after(
+        &mut self,
+        last_known_proofs: &HashMap<CUID, ProofIdx>,
+    ) -> HashMap<CUID, Vec<CCProof>> {
+        self.rewind_forward(last_known_proofs.iter());
+
+        std::mem::take(&mut self.cu_proofs)
+            .into_iter()
+            .map(|(cu_id, state)| (cu_id, state.proofs.into()))
+            .collect()
     }
 
     fn rewind_forward<'a>(
@@ -221,32 +227,40 @@ mod test {
     #[test]
     fn test_empty() {
         let mut queue = ProofQueue::default();
-        assert!(queue.get_proofs(10, 5, &<_>::default()).is_none());
+        assert!(queue
+            .get_batched_proofs_after(10, 5, &<_>::default())
+            .is_none());
     }
 
     #[test]
     fn test_exactly() {
         let mut queue = gen_queue(30);
-        assert!(queue.get_proofs(6, 5, &<_>::default()).is_some());
+        assert!(queue
+            .get_batched_proofs_after(6, 5, &<_>::default())
+            .is_some());
     }
 
     #[test]
     fn test_one_short() {
         let mut queue = gen_queue(29);
-        assert!(queue.get_proofs(6, 5, &<_>::default()).is_none());
+        assert!(queue
+            .get_batched_proofs_after(6, 5, &<_>::default())
+            .is_none());
     }
 
     #[test]
     fn test_one_more() {
         let mut queue = gen_queue(31);
-        assert!(queue.get_proofs(6, 5, &<_>::default()).is_some());
+        assert!(queue
+            .get_batched_proofs_after(6, 5, &<_>::default())
+            .is_some());
     }
 
     #[test]
     fn test_exactly_uneven() {
         let mut queue = gen_queue(8);
         let proofs = queue
-            .get_proofs(1, 7, &<_>::default())
+            .get_batched_proofs_after(1, 7, &<_>::default())
             .expect("valid proofs");
         let long_count = proofs
             .into_values()
@@ -259,10 +273,10 @@ mod test {
     fn test_rewind_on_success1() {
         let mut queue = gen_queue(14);
         let proofs1 = queue
-            .get_proofs(1, 7, &<_>::default())
+            .get_batched_proofs_after(1, 7, &<_>::default())
             .expect("valid proofs");
         let proofs2 = queue
-            .get_proofs(1, 7, &<_>::default())
+            .get_batched_proofs_after(1, 7, &<_>::default())
             .expect("valid proofs");
         let all_proofs1 = proofs1.into_values().flatten().collect::<HashSet<_>>();
         let all_proofs2 = proofs2.into_values().flatten().collect::<HashSet<_>>();
@@ -272,17 +286,17 @@ mod test {
     #[test]
     fn test_rewind_on_success2() {
         let mut queue = gen_queue(13);
-        let res1 = queue.get_proofs(1, 7, &<_>::default());
+        let res1 = queue.get_batched_proofs_after(1, 7, &<_>::default());
         assert!(res1.is_some());
-        let res2 = queue.get_proofs(1, 7, &<_>::default());
+        let res2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
         assert!(res2.is_none());
     }
 
     #[test]
     fn test_no_rewind_on_failure() {
         let mut queue = gen_queue(6);
-        let res1 = queue.get_proofs(1, 7, &<_>::default());
-        let res2 = queue.get_proofs(1, 6, &<_>::default());
+        let res1 = queue.get_batched_proofs_after(1, 7, &<_>::default());
+        let res2 = queue.get_batched_proofs_after(1, 6, &<_>::default());
 
         assert!(res1.is_none());
         assert!(res2.is_some());
@@ -292,10 +306,10 @@ mod test {
     fn test_reset() {
         let mut queue = gen_queue(14);
         queue
-            .get_proofs(1, 7, &<_>::default())
+            .get_batched_proofs_after(1, 7, &<_>::default())
             .expect("valid proofs");
-        queue.reset();
-        let proofs2 = queue.get_proofs(1, 7, &<_>::default());
+        queue.clear();
+        let proofs2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
         assert!(proofs2.is_none());
     }
 }

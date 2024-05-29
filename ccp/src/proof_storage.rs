@@ -15,68 +15,61 @@
  */
 
 use ccp_shared::types::EpochParameters;
+use ccp_shared::types::CUID;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs::DirEntry;
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 
+use crate::proof_queue::ProofQueue;
+
 #[derive(Debug)]
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
+    proof_queue: ProofQueue,
 }
 
 impl ProofStorageDrainer {
     pub fn new(proof_directory: PathBuf) -> Self {
-        Self { proof_directory }
+        Self {
+            proof_directory,
+            proof_queue: <_>::default(),
+        }
     }
 
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
-    pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
+    pub async fn clear_proofs(&mut self) -> tokio::io::Result<()> {
+        self.proof_queue.clear();
+
         if tokio::fs::try_exists(&self.proof_directory).await? {
             tokio::fs::remove_dir_all(&self.proof_directory).await?;
         }
         tokio::fs::create_dir(&self.proof_directory).await
     }
 
+    /// Get batches proofs from the queue.
+    pub async fn get_batch_proofs_after(
+        &mut self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: &HashMap<CUID, ProofIdx>,
+    ) -> tokio::io::Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>> {
+        Ok(self
+            .proof_queue
+            .get_batched_proofs_after(batch_length, batch_count, last_known_proofs))
+    }
+
     /// Gets proofs from the proof directory, which proof_id is strictly bigger than
     /// the provided proof id.
-    pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> tokio::io::Result<Vec<CCProof>> {
-        let mut proofs = Vec::new();
-
-        ensure_dir(&self.proof_directory).await?;
-
-        let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
-        loop {
-            match directory.next_entry().await {
-                Ok(Some(entry)) => {
-                    if !Self::is_file_suitable(&entry, proof_idx).await? {
-                        continue;
-                    }
-
-                    let file_content = tokio::fs::read(entry.path()).await?;
-                    let proof: CCProof = match serde_json::from_slice(&file_content) {
-                        Ok(proof) => proof,
-                        Err(e) => {
-                            log::warn!(
-                                "failed to parse proof file {:?}: {}, ignoring",
-                                entry.path(),
-                                e
-                            );
-                            continue;
-                        }
-                    };
-
-                    proofs.push(proof);
-                }
-                Ok(None) => {
-                    return Ok(proofs);
-                }
-                Err(e) => return Err(e),
-            }
-        }
+    pub async fn get_all_proofs_after(
+        &mut self,
+        last_known_proofs: &HashMap<CUID, ProofIdx>,
+    ) -> tokio::io::Result<HashMap<CUID, Vec<CCProof>>> {
+        Ok(self.proof_queue.get_all_proofs_after(last_known_proofs))
     }
 
     pub async fn validate_proofs(
@@ -105,9 +98,7 @@ impl ProofStorageDrainer {
                         } else {
                             let path = entry.path();
                             log::warn!("removing a proof file with wrong epoch: {path:?}");
-                            // We treat it as a hard error because an unremoved incorrect file may
-                            // be returned from get_proofs_after call.
-                            tokio::fs::remove_file(path).await?;
+                            let _ = tokio::fs::remove_file(path).await;
                         }
                     }
                 }

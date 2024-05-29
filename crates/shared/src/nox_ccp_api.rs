@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use std::collections::HashMap;
 use std::future::IntoFuture;
 
 use super::proof::CCProof;
@@ -53,11 +54,21 @@ pub trait NoxCCPApi: Send {
         &mut self,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
-    /// Returns proofs after the provided proof idx for current epoch.
+    /// Returns proofs after the provided last known proof indexes for current epoch.
     fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
-    ) -> impl std::future::Future<Output = Result<Vec<CCProof>, Self::Error>> + Send;
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> impl std::future::Future<Output = Result<HashMap<CUID, Vec<CCProof>>, Self::Error>> + Send;
+
+    /// Returns proof batch after the last provided proof idx for current epoch.
+    fn get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> impl std::future::Future<
+        Output = Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, Self::Error>,
+    > + Send;
 
     /// Set utility
     fn realloc_utility_cores(

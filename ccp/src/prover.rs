@@ -18,12 +18,14 @@ mod cu_governor;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
+use ccp_shared::types::CUID;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -278,11 +280,29 @@ impl CCProver {
         self.execute_utility_call(message, wait_for).await
     }
 
-    // TODO rename
-    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
+    async fn call_utility_get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> CCResult<Option<HashMap<CUID, Vec<Vec<CCProof>>>>> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = StateOperatingControlMessage::GetProofs {
-            proof_idx,
+        let message = StateOperatingControlMessage::GetBatchProofs {
+            batch_length,
+            batch_count,
+            last_known_proofs,
+            notifier,
+        };
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn call_utility_get_all_proofs_after(
+        &self,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> CCResult<HashMap<CUID, Vec<CCProof>>> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = StateOperatingControlMessage::GetAllProofs {
+            last_known_proofs,
             notifier,
         };
         self.execute_utility_call(message, wait_for).await
@@ -388,8 +408,24 @@ impl NoxCCPApi for CCProver {
     }
 
     #[inline]
-    async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.call_utility_get_proofs_after(proof_idx)
+    async fn get_proofs_after(
+        &self,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> Result<HashMap<CUID, Vec<CCProof>>, Self::Error> {
+        self.call_utility_get_all_proofs_after(last_known_proofs)
+            .await
+            // CCProverError is not Sync, so we convert it to a string in situ
+            .map_err(|e| eyre::eyre!(e.to_string()))
+    }
+
+    #[inline]
+    async fn get_batch_proofs_after(
+        &self,
+        batch_length: usize,
+        batch_count: usize,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, Self::Error> {
+        self.call_utility_get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))
