@@ -32,7 +32,6 @@ pub(crate) struct ProofQueue {
 
 #[derive(Debug, Default)]
 struct CuState {
-    last_evicted: ProofIdx,
     proofs: VecDeque<CCProof>,
 }
 
@@ -40,6 +39,21 @@ impl CuState {
     #[inline]
     fn push_back(&mut self, proof: CCProof) {
         self.proofs.push_back(proof)
+    }
+
+    #[inline]
+    fn try_get_batch(&mut self, batch_length: usize) -> Option<Vec<CCProof>> {
+        if self.proofs.len() >= batch_length {
+            // TODO is there anyting better than a VecDec drain?
+            // VecDec::split_off seems to produce a contiguous VecDec that can be turned into Vec at O(1),
+            // but it is not guaranteed
+            //
+            // you may think that iterator chunking would work here, but it is may be too greedy and one
+            // can lose items (i.e. proofs)
+            Some(self.proofs.drain(..batch_length).collect_vec())
+        } else {
+            None
+        }
     }
 }
 
@@ -73,7 +87,7 @@ impl ProofQueue {
             return None;
         }
 
-        // TODO update from disk as well; it needs a data source for it
+        // TODO update from disk if lags? it needs a data source for it
         self.rewind_forward(last_known_proofs.iter());
 
         // first, check that the required number of batches is available
@@ -86,11 +100,11 @@ impl ProofQueue {
             return None;
         }
 
-        // we have to wrap the modifiable value into a RefCell to make the iter clonable and be used in the Cycle
+        // we have to wrap the modifiable value into a RefCell to make the iter clonable and usable in the Cycle
         let cu_iters = self
             .cu_proofs
             .iter_mut()
-            .map(|(cuid, state)| (cuid, RefCell::new(&mut state.proofs)))
+            .map(|(cuid, state)| (cuid, RefCell::new(state)))
             .collect_vec();
         // we try to get proofs in round-robin fashion.  Alternative algorithms are possible too, for example,
         // preferring longest queues (with a binary heap)
@@ -101,20 +115,11 @@ impl ProofQueue {
 
         while collected_count < batch_count {
             // it doesn't loop infinitely because we have verified to have enough batches (`available_batches`)
-            for (&cuid, chunk_source) in &mut cu_round_robin_iters {
-                let mut chunk_source = chunk_source.borrow_mut();
+            for (&cuid, cu_state) in &mut cu_round_robin_iters {
+                let mut cu_state = cu_state.borrow_mut();
 
-                if chunk_source.len() >= batch_length {
-                    // TODO is there anyting better than a VecDec drain?
-                    // VecDec::split_off seems to produce a contiguous VecDec that can be turned into Vec at O(1),
-                    // but it is not guaranteed
-                    //
-                    // you may think that iterator chunking would work here, but it is may be too greedy and one
-                    // can lose items (i.e. proofs)
-                    let chunk = (&mut *chunk_source).drain(..batch_length).collect_vec();
-                    assert_eq!(chunk.len(), batch_length);
-
-                    collected_batches.entry(cuid).or_default().push(chunk);
+                if let Some(batch) = cu_state.try_get_batch(batch_length) {
+                    collected_batches.entry(cuid).or_default().push(batch);
                     collected_count += 1;
 
                     // we have found a batch; now retry the search from the next CU if needed, until
