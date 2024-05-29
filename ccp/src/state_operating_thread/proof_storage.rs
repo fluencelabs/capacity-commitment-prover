@@ -20,9 +20,12 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use ccp_shared::proof::CCProof;
+use parking_lot::Mutex as PLMutex;
 
+use crate::proof_queue::ProofQueue;
 use crate::proof_storage::ensure_dir;
 
 const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
@@ -31,12 +34,16 @@ const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't 
 pub struct ProofStorage {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
+    proof_queue: Arc<PLMutex<ProofQueue>>,
 }
 
 /// Intended to store proofs in storage.
 impl ProofStorage {
-    pub fn new(proof_directory: PathBuf) -> Self {
-        Self { proof_directory }
+    pub fn new(proof_directory: PathBuf, proof_queue: Arc<PLMutex<ProofQueue>>) -> Self {
+        Self {
+            proof_directory,
+            proof_queue,
+        }
     }
 
     pub async fn store_new_proof(&self, proof: CCProof) -> tokio::io::Result<()> {
@@ -44,6 +51,7 @@ impl ProofStorage {
         let proof_as_string = serde_json::to_string(&proof).expect(EXPECT_DEFAULT_SERIALIZER);
         let proof_path = self.proof_directory.join(proof.id.idx.to_string());
         tokio::task::spawn_blocking(move || save_reliably(&proof_path, proof_as_string)).await??;
+        self.proof_queue.lock().insert(proof);
         Ok(())
     }
 }

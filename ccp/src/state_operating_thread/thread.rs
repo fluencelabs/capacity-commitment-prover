@@ -48,7 +48,7 @@ impl StateOperatingThread {
 
         let cancellation = CancellationToken::new();
 
-        let proof_storage = ProofStorage::new(proof_storage_dir);
+        let proof_storage = ProofStorage::new(proof_storage_dir, proof_drainer.proof_queue.clone());
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
         let sot_impl = StateOperatingThreadImpl::new(
             from_state_operating,

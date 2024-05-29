@@ -16,8 +16,10 @@
 
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
+use parking_lot::Mutex as PLMutex;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs::DirEntry;
 
 use ccp_shared::proof::CCProof;
@@ -29,7 +31,7 @@ use crate::proof_queue::ProofQueue;
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
-    proof_queue: ProofQueue,
+    pub(crate) proof_queue: Arc<PLMutex<ProofQueue>>,
 }
 
 impl ProofStorageDrainer {
@@ -43,7 +45,7 @@ impl ProofStorageDrainer {
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
     pub async fn clear_proofs(&mut self) -> tokio::io::Result<()> {
-        self.proof_queue.clear();
+        self.proof_queue.lock().clear();
 
         if tokio::fs::try_exists(&self.proof_directory).await? {
             tokio::fs::remove_dir_all(&self.proof_directory).await?;
@@ -58,9 +60,11 @@ impl ProofStorageDrainer {
         batch_count: usize,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
     ) -> tokio::io::Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>> {
-        Ok(self
-            .proof_queue
-            .get_batched_proofs_after(batch_length, batch_count, last_known_proofs))
+        Ok(self.proof_queue.lock().get_batched_proofs_after(
+            batch_length,
+            batch_count,
+            last_known_proofs,
+        ))
     }
 
     /// Gets proofs from the proof directory, which proof_id is strictly bigger than
@@ -69,7 +73,10 @@ impl ProofStorageDrainer {
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
     ) -> tokio::io::Result<HashMap<CUID, Vec<CCProof>>> {
-        Ok(self.proof_queue.get_all_proofs_after(last_known_proofs))
+        Ok(self
+            .proof_queue
+            .lock()
+            .get_all_proofs_after(last_known_proofs))
     }
 
     pub async fn validate_proofs(
@@ -140,13 +147,6 @@ impl ProofStorageDrainer {
                 Ok(None)
             }
         }
-    }
-
-    async fn is_file_suitable(entry: &DirEntry, proof_idx: ProofIdx) -> tokio::io::Result<bool> {
-        let entry_proof_idx = Self::proof_idx_from_filename(entry).await?;
-        Ok(entry_proof_idx
-            .map(|current_proof_idx| proof_idx < current_proof_idx)
-            .unwrap_or(false))
     }
 }
 
