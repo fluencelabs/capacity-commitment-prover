@@ -13,6 +13,7 @@ path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+cpu-utils.workspace = true
 ccp-shared.workspace = true
 ccp-randomx.workspace = true
 rand.workspace = true

@@ -51,7 +51,6 @@ use cpu_utils::pinning::ThreadPinner;
 
 use tokio::sync::RwLock;
 
-
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
     cc_prover: Arc<RwLock<P>>,

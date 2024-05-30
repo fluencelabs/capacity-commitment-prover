@@ -17,8 +17,6 @@
 use ccp_core_affinity::CoreId;
 
 use crate::LogicalCoreId;
-
-pub const DUMMY: DummyThreadPinner = DummyThreadPinner {};
 pub const DEFAULT: DefaultThreadPinner = DefaultThreadPinner {};
 
 #[cfg_attr(feature = "mockall", mockall::automock)]
@@ -48,19 +46,5 @@ impl ThreadPinner for DefaultThreadPinner {
             .collect::<Vec<_>>();
 
         ccp_core_affinity::set_mask_for_current(&core_ids)
-    }
-}
-
-pub struct DummyThreadPinner;
-
-impl ThreadPinner for DummyThreadPinner {
-    #[inline]
-    fn pin_current_thread_to(&self, _core_id: LogicalCoreId) -> bool {
-        true
-    }
-
-    #[inline]
-    fn pin_current_thread_to_cpuset(&self, _core_ids: &[LogicalCoreId]) -> bool {
-        true
     }
 }

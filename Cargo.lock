@@ -414,6 +414,7 @@ version = "0.10.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
+ "cpu-utils",
  "rand 0.8.5",
 ]
 

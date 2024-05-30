@@ -23,7 +23,8 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
-use cpu_utils::{CPUTopology, HwlocCPUTopology};
+use cpu_utils::CPUTopology;
+use cpu_utils::HwlocCPUTopology;
 
 use super::config::CUProverConfig;
 use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;

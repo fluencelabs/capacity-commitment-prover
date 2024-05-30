@@ -22,4 +22,4 @@ hwlocality.workspace = true
 nonempty.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-mockall = { version = "0.12.1", optional = true }
+mockall = { workspace = true, optional = true }

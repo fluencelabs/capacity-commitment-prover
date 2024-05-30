@@ -20,7 +20,8 @@ use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
-use cpu_utils::{CPUTopology, HwlocCPUTopology};
+use cpu_utils::CPUTopology;
+use cpu_utils::HwlocCPUTopology;
 
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
