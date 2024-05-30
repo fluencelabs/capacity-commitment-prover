@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.0...ccp-v0.10.1) (2024-05-30)
+
+
+### Features
+
+* **cpu-utils:** introduced new abstraction for pinning and topology fetching ([#134](https://github.com/fluencelabs/capacity-commitment-prover/issues/134)) ([696720d](https://github.com/fluencelabs/capacity-commitment-prover/commit/696720da12f559fe2e43ebb7339c0c5878ad89e0))
+
 ## [0.10.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.9.0...ccp-v0.10.0) (2024-05-24)
 
 
