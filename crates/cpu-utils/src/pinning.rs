@@ -17,6 +17,7 @@
 use ccp_core_affinity::CoreId;
 
 use crate::LogicalCoreId;
+
 pub const DEFAULT: DefaultThreadPinner = DefaultThreadPinner {};
 
 #[cfg_attr(feature = "mockall", mockall::automock)]
