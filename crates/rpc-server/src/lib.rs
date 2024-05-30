@@ -47,6 +47,8 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
+use cpu_utils::pinning::ThreadPinner;
+
 use tokio::sync::RwLock;
 
 pub struct CCPRcpHttpServer<P> {
@@ -156,7 +158,7 @@ where
         // for it to park-unpark
         let pid = std::thread::current().id();
         tracing::info!("Instantly Repinning tokio thread {pid:?} to cores {utility_core_ids:?}");
-        if !cpu_utils::pinning::pin_current_thread_to_cpuset(utility_core_ids.clone().into_iter()) {
+        if !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&utility_core_ids) {
             tracing::error!("Tokio thread repinning failed");
         }
 

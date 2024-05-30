@@ -12,11 +12,14 @@ publish = true
 path = "src/lib.rs"
 doctest = false
 
+[features]
+mockall = ["dep:mockall"]
+
 [dependencies]
 ccp-shared.workspace = true
-
 ccp_core_affinity.workspace = true
 hwlocality.workspace = true
 nonempty.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+mockall = { workspace = true, optional = true }

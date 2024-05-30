@@ -26,5 +26,6 @@
     unreachable_patterns
 )]
 
+pub mod pinning;
 pub mod randomx;
 pub mod test_values;

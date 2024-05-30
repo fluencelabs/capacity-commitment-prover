@@ -22,6 +22,7 @@ use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::Cache;
 use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
+use cpu_utils::pinning::ThreadPinner;
 use cpu_utils::LogicalCoreId;
 
 use super::channels_facade::ToAsync;
@@ -91,7 +92,7 @@ impl ProvingThreadSync {
         let to_stats_collecting = ToStatsCollecting::new(to_stats_collecting);
 
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
-            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
+            if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(core_id) {
                 to_state_operating
                     .send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
             } else if let Err(error) = msr_enforcer.enforce(core_id) {
@@ -219,7 +220,7 @@ impl ProvingThreadSync {
                     to_state_operating.send_error(core_id, error.into())?;
                 }
 
-                if !cpu_utils::pinning::pin_current_thread_to(params.core_id) {
+                if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(params.core_id) {
                     to_state_operating.send_error(
                         core_id,
                         ProvingThreadSyncError::pinning_failed(params.core_id),
