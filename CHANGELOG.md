@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.1...ccp-v0.10.2) (2024-05-31)
+
+
+### Bug Fixes
+
+* **test-utils:** enable publishing ([#138](https://github.com/fluencelabs/capacity-commitment-prover/issues/138)) ([9828e57](https://github.com/fluencelabs/capacity-commitment-prover/commit/9828e57f0cd62cdd9d39a67908f024d24c3ca2de))
+
 ## [0.10.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.0...ccp-v0.10.1) (2024-05-30)
 
 
