@@ -18,6 +18,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
+use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUID;
@@ -76,7 +77,7 @@ impl ProofQueue {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> Vec<(CUID, Vec<CCProof>)> {
+    ) -> CCBatchedProofs {
         if batch_length == 0 {
             return vec![];
         }

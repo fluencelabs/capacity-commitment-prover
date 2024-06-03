@@ -19,7 +19,7 @@ use std::future::IntoFuture;
 
 use super::proof::CCProof;
 use super::types::*;
-use crate::proof::ProofIdx;
+use crate::proof::{CCBatchedProofs, ProofIdx};
 
 pub trait NoxCCPApi: Send {
     type Error: Send;
@@ -66,7 +66,7 @@ pub trait NoxCCPApi: Send {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> impl std::future::Future<Output = Result<Vec<(CUID, Vec<CCProof>)>, Self::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<CCBatchedProofs, Self::Error>> + Send;
 
     /// Set utility
     fn realloc_utility_cores(

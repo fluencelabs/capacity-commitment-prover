@@ -29,6 +29,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
@@ -159,7 +160,7 @@ where
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<Vec<(CUID, Vec<CCProof>)>, ErrorObjectOwned> {
+    ) -> Result<CCBatchedProofs, ErrorObjectOwned> {
         let guard = self.cc_prover.write().await;
         let proofs = guard
             .get_batch_proofs_after(batch_length, batch_count, last_known_proofs)

@@ -25,7 +25,6 @@ use std::sync::Mutex as StdMutex;
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
-use ccp_shared::types::CUID;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -36,10 +35,12 @@ use tokio::try_join;
 use tokio_util::sync::CancellationToken;
 
 use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
+use ccp_shared::types::CUID;
 
 use self::cu_governor::CUGovernor;
 use crate::cpuids_handle::CpuIdsHandle;
@@ -285,7 +286,7 @@ impl CCProver {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> CCResult<Vec<(CUID, Vec<CCProof>)>> {
+    ) -> CCResult<CCBatchedProofs> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetBatchProofs {
             batch_length,
@@ -424,7 +425,7 @@ impl NoxCCPApi for CCProver {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<Vec<(CUID, Vec<CCProof>)>, Self::Error> {
+    ) -> Result<CCBatchedProofs, Self::Error> {
         self.call_utility_get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ

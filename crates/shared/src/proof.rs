@@ -84,3 +84,5 @@ impl CCProof {
         self.id.idx > other.id.idx
     }
 }
+
+pub type CCBatchedProofs = Vec<(types::CUID, Vec<CCProof>)>;

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use parking_lot::Mutex as PLMutex;
@@ -59,7 +60,7 @@ impl ProofStorageDrainer {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> tokio::io::Result<Vec<(CUID, Vec<CCProof>)>> {
+    ) -> tokio::io::Result<CCBatchedProofs> {
         Ok(self.proof_queue.lock().get_batched_proofs_after(
             batch_length,
             batch_count,
