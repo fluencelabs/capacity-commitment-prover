@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,5 +26,6 @@
     unreachable_patterns
 )]
 
+pub mod pinning;
 pub mod randomx;
 pub mod test_values;

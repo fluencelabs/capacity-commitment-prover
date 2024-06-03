@@ -1,18 +1,19 @@
 [package]
 name = "ccp-test-utils"
 description = "Various test utils for CCP"
-version = "0.10.0"
+version = "0.10.2"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-publish = false
+publish = true
 
 [lib]
 path = "src/lib.rs"
 doctest = false
 
 [dependencies]
+cpu-utils.workspace = true
 ccp-shared.workspace = true
 ccp-randomx.workspace = true
 rand.workspace = true

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ use ccp::CCProver;
 use ccp_config::load_config;
 use ccp_config::CCPConfig;
 use ccp_rpc_server::CCPRcpHttpServer;
+use cpu_utils::pinning::ThreadPinner;
 
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
 
@@ -102,7 +103,7 @@ fn build_tokio_runtime(
             tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
             // initial core set may be empty, it is OK
             if !tokio_cores.is_empty()
-                && !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter())
+                && !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&tokio_cores)
             {
                 tracing::error!("Tokio thread pinning failed");
             }
@@ -123,7 +124,7 @@ fn build_tokio_runtime(
                 tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
 
                 if !tokio_cores.is_empty()
-                    && !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter())
+                    && !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&tokio_cores)
                 {
                     tracing::error!("Tokio thread repinning failed");
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-use hwlocality::ffi::PositiveInt;
 use nonempty::NonEmpty;
 
 use crate::errors::CPUTopologyError;
@@ -22,12 +21,22 @@ use crate::CTResult;
 use crate::LogicalCoreId;
 use crate::PhysicalCoreId;
 
+#[cfg_attr(feature = "mockall", mockall::automock)]
+pub trait CPUTopology {
+    fn physical_cores(&self) -> CTResult<NonEmpty<PhysicalCoreId>>;
+
+    fn logical_cores_for_physical(
+        &self,
+        core_id: PhysicalCoreId,
+    ) -> CTResult<NonEmpty<LogicalCoreId>>;
+}
+
 #[derive(Debug)]
-pub struct CPUTopology {
+pub struct HwlocCPUTopology {
     topology: hwlocality::Topology,
 }
 
-impl CPUTopology {
+impl HwlocCPUTopology {
     pub fn new() -> CTResult<Self> {
         let topology = hwlocality::Topology::new()?;
         Ok(Self { topology })
@@ -36,7 +45,10 @@ impl CPUTopology {
     pub fn physical_cores_count_len(&self) -> usize {
         self.physical_cores().map(|r| r.len()).unwrap_or(0)
     }
-    pub fn physical_cores(&self) -> CTResult<NonEmpty<PhysicalCoreId>> {
+}
+
+impl CPUTopology for HwlocCPUTopology {
+    fn physical_cores(&self) -> CTResult<NonEmpty<PhysicalCoreId>> {
         use hwlocality::object::types::ObjectType;
 
         let physical_core_ids = self
@@ -48,7 +60,7 @@ impl CPUTopology {
         NonEmpty::from_vec(physical_core_ids).ok_or_else(|| CPUTopologyError::PhysicalCoresNotFound)
     }
 
-    pub fn logical_cores_for_physical(
+    fn logical_cores_for_physical(
         &self,
         core_id: PhysicalCoreId,
     ) -> CTResult<NonEmpty<LogicalCoreId>> {
@@ -76,25 +88,5 @@ impl CPUTopology {
 
         NonEmpty::from_vec(logical_core_ids)
             .ok_or_else(|| CPUTopologyError::logical_cores_not_found(core_id))
-    }
-
-    pub fn pin_current_thread_to_cpuset(
-        &mut self,
-        allowed_core_ids: impl Iterator<Item = LogicalCoreId>,
-    ) -> CTResult<()> {
-        use hwlocality::cpu::binding::CpuBindingFlags;
-        use hwlocality::cpu::cpuset::CpuSet;
-
-        let allowed_core_ids = allowed_core_ids
-            .map(|core_id| {
-                PositiveInt::try_from(<LogicalCoreId as Into<usize>>::into(core_id))
-                    .map_err(|_| CPUTopologyError::logical_core_too_big(core_id))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let cpu_set = CpuSet::from_iter(allowed_core_ids);
-
-        self.topology
-            .bind_cpu(&cpu_set, CpuBindingFlags::THREAD)
-            .map_err(Into::into)
     }
 }

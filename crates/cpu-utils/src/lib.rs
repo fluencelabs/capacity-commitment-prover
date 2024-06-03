@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,4 +35,7 @@ pub type CTResult<T> = Result<T, CPUTopologyError>;
 pub use ccp_shared::types::LogicalCoreId;
 pub use ccp_shared::types::PhysicalCoreId;
 pub use cpu_topology::CPUTopology;
+pub use cpu_topology::HwlocCPUTopology;
+#[cfg(feature = "mockall")]
+pub use cpu_topology::MockCPUTopology;
 pub use errors::CPUTopologyError;

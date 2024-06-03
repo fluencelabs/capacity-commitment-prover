@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use cpu_utils::CPUTopology;
+use cpu_utils::HwlocCPUTopology;
 
 use super::RoundRobinDistributor;
 use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
@@ -40,7 +41,7 @@ impl ThreadAllocator {
     pub(crate) fn new(
         policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
-        topology: &CPUTopology,
+        topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocator> {
         let allocation_strategy = Self::create_allocate_strategy(policy, core_id, topology)?;
 
@@ -77,7 +78,7 @@ impl ThreadAllocator {
     pub(crate) fn create_allocate_strategy(
         policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
-        topology: &CPUTopology,
+        topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
         use super::ThreadDistributionPolicy;
 
