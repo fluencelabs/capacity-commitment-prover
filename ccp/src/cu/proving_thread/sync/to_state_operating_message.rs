@@ -73,6 +73,6 @@ pub(crate) enum StateOperatingControlMessage {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-        notifier: oneshot::Sender<tokio::io::Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>>>,
+        notifier: oneshot::Sender<tokio::io::Result<Vec<(CUID, Vec<CCProof>)>>>,
     },
 }

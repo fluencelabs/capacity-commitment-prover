@@ -72,7 +72,7 @@ pub trait CCPRpc {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, ErrorObjectOwned>;
+    ) -> Result<Vec<(CUID, Vec<CCProof>)>, ErrorObjectOwned>;
 
     #[method(name = "realloc_utility_cores", param_kind = map)]
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
@@ -144,7 +144,7 @@ impl CCPRpcHttpClient {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, ClientError> {
+    ) -> Result<Vec<(CUID, Vec<CCProof>)>, ClientError> {
         CCPRpcClient::get_batch_proofs_after(
             &self.inner,
             batch_length,

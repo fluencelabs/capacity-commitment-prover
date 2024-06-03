@@ -59,7 +59,7 @@ impl ProofStorageDrainer {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> tokio::io::Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>> {
+    ) -> tokio::io::Result<Vec<(CUID, Vec<CCProof>)>> {
         Ok(self.proof_queue.lock().get_batched_proofs_after(
             batch_length,
             batch_count,

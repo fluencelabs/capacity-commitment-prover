@@ -66,9 +66,7 @@ pub trait NoxCCPApi: Send {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> impl std::future::Future<
-        Output = Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, Self::Error>,
-    > + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<(CUID, Vec<CCProof>)>, Self::Error>> + Send;
 
     /// Set utility
     fn realloc_utility_cores(

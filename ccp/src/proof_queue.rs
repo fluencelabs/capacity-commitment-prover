@@ -76,9 +76,9 @@ impl ProofQueue {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> Option<HashMap<CUID, Vec<Vec<CCProof>>>> {
+    ) -> Vec<(CUID, Vec<CCProof>)> {
         if batch_length == 0 {
-            return None;
+            return vec![];
         }
 
         // TODO update from disk if lags? it needs a data source for it
@@ -91,7 +91,7 @@ impl ProofQueue {
             .map(|state| state.len() / batch_length)
             .sum();
         if available_batches < batch_count {
-            return None;
+            return vec![];
         }
 
         // we have to wrap the modifiable value into a RefCell to make the iter clonable and usable in the Cycle
@@ -104,17 +104,15 @@ impl ProofQueue {
         // preferring longest queues (with a binary heap)
         let mut cu_round_robin_iters = cu_iters.iter().cycle();
 
-        let mut collected_batches = HashMap::<CUID, Vec<Vec<CCProof>>>::with_capacity(batch_count);
-        let mut collected_count = 0;
+        let mut collected_batches = Vec::<(CUID, Vec<CCProof>)>::with_capacity(batch_count);
 
-        while collected_count < batch_count {
+        while collected_batches.len() < batch_count {
             // it doesn't loop infinitely because we have verified to have enough batches (`available_batches`)
             for (&cuid, cu_state) in &mut cu_round_robin_iters {
                 let mut cu_state = cu_state.borrow_mut();
 
                 if let Some(batch) = cu_state.try_get_batch(batch_length) {
-                    collected_batches.entry(cuid).or_default().push(batch);
-                    collected_count += 1;
+                    collected_batches.push((cuid, batch));
 
                     // we have found a batch; now retry the search from the next CU if needed, until
                     // exact number of batches is collected
@@ -123,7 +121,7 @@ impl ProofQueue {
             }
         }
 
-        Some(collected_batches)
+        collected_batches
     }
 
     pub(crate) fn get_all_proofs_after(

@@ -285,7 +285,7 @@ impl CCProver {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> CCResult<Option<HashMap<CUID, Vec<Vec<CCProof>>>>> {
+    ) -> CCResult<Vec<(CUID, Vec<CCProof>)>> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetBatchProofs {
             batch_length,
@@ -424,7 +424,7 @@ impl NoxCCPApi for CCProver {
         batch_length: usize,
         batch_count: usize,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<Option<HashMap<CUID, Vec<Vec<CCProof>>>>, Self::Error> {
+    ) -> Result<Vec<(CUID, Vec<CCProof>)>, Self::Error> {
         self.call_utility_get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
