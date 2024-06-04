@@ -232,7 +232,7 @@ mod test {
         let mut queue = ProofQueue::default();
         assert!(queue
             .get_batched_proofs_after(10, 5, &<_>::default())
-            .is_none());
+            .is_empty());
     }
 
     #[test]
@@ -240,7 +240,7 @@ mod test {
         let mut queue = gen_queue(30);
         assert!(queue
             .get_batched_proofs_after(6, 5, &<_>::default())
-            .is_some());
+            .is_empty());
     }
 
     #[test]
@@ -248,26 +248,25 @@ mod test {
         let mut queue = gen_queue(29);
         assert!(queue
             .get_batched_proofs_after(6, 5, &<_>::default())
-            .is_none());
+            .is_empty());
     }
 
     #[test]
     fn test_one_more() {
         let mut queue = gen_queue(31);
-        assert!(queue
+        assert!(!queue
             .get_batched_proofs_after(6, 5, &<_>::default())
-            .is_some());
+            .is_empty());
     }
 
     #[test]
     fn test_exactly_uneven() {
         let mut queue = gen_queue(8);
         let proofs = queue
-            .get_batched_proofs_after(1, 7, &<_>::default())
-            .expect("valid proofs");
+            .get_batched_proofs_after(1, 7, &<_>::default());
         let long_count = proofs
-            .into_values()
-            .filter(|chunks| chunks.len() > 1)
+            .iter()
+            .filter(|(_, chunks)| chunks.len() > 1)
             .count();
         assert_eq!(long_count, 2);
     }
@@ -276,13 +275,11 @@ mod test {
     fn test_rewind_on_success1() {
         let mut queue = gen_queue(14);
         let proofs1 = queue
-            .get_batched_proofs_after(1, 7, &<_>::default())
-            .expect("valid proofs");
+            .get_batched_proofs_after(1, 7, &<_>::default());
         let proofs2 = queue
-            .get_batched_proofs_after(1, 7, &<_>::default())
-            .expect("valid proofs");
-        let all_proofs1 = proofs1.into_values().flatten().collect::<HashSet<_>>();
-        let all_proofs2 = proofs2.into_values().flatten().collect::<HashSet<_>>();
+            .get_batched_proofs_after(1, 7, &<_>::default());
+        let all_proofs1 = proofs1.iter().map(|(_, chunk)| chunk).flatten().collect::<HashSet<_>>();
+        let all_proofs2 = proofs2.iter().map(|(_, chunk)| chunk).flatten().collect::<HashSet<_>>();
         assert_eq!(all_proofs1.intersection(&all_proofs2).count(), 0);
     }
 
@@ -290,9 +287,9 @@ mod test {
     fn test_rewind_on_success2() {
         let mut queue = gen_queue(13);
         let res1 = queue.get_batched_proofs_after(1, 7, &<_>::default());
-        assert!(res1.is_some());
+        assert!(!res1.is_empty());
         let res2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
-        assert!(res2.is_none());
+        assert!(!res2.is_empty());
     }
 
     #[test]
@@ -301,18 +298,17 @@ mod test {
         let res1 = queue.get_batched_proofs_after(1, 7, &<_>::default());
         let res2 = queue.get_batched_proofs_after(1, 6, &<_>::default());
 
-        assert!(res1.is_none());
-        assert!(res2.is_some());
+        assert!(res1.is_empty());
+        assert!(!res2.is_empty());
     }
 
     #[test]
     fn test_reset() {
         let mut queue = gen_queue(14);
         queue
-            .get_batched_proofs_after(1, 7, &<_>::default())
-            .expect("valid proofs");
+            .get_batched_proofs_after(1, 7, &<_>::default());
         queue.clear();
         let proofs2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
-        assert!(proofs2.is_none());
+        assert!(proofs2.is_empty());
     }
 }
