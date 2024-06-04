@@ -44,23 +44,22 @@ impl CuState {
         self.proofs.len()
     }
 
-    fn try_get_batch(&mut self, batch_length: usize) -> Option<Vec<CCProof>> {
-        if self.proofs.len() >= batch_length {
-            // TODO is there anyting better than a VecDec drain?
-            // VecDec::split_off seems to produce a contiguous VecDec that can be turned into Vec at O(1),
-            // but it is not guaranteed
-            //
-            // you may think that iterator chunking would work here, but it is may be too greedy and one
-            // can lose items (i.e. proofs)
-            Some(self.proofs.drain(..batch_length).collect_vec())
-        } else {
-            None
-        }
+    fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
+        self.into_iter()
+    }
+}
+
+impl<'state> IntoIterator for &'state CuState {
+    type Item = &'state CCProof;
+
+    type IntoIter = <&'state VecDeque<CCProof> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.proofs.iter()
     }
 }
 
 impl ProofQueue {
-    // TODO not updated!!!
     pub(crate) fn insert(&mut self, proof: CCProof) {
         self.cu_proofs
             .entry(proof.cu_id)
@@ -82,6 +81,7 @@ impl ProofQueue {
             return vec![];
         }
 
+        // this is the only destructive operation in this function
         // TODO update from disk if lags? it needs a data source for it
         self.rewind_forward(last_known_proofs.iter());
 
@@ -99,7 +99,7 @@ impl ProofQueue {
         let cu_iters = self
             .cu_proofs
             .iter_mut()
-            .map(|(cuid, state)| (cuid, RefCell::new(state)))
+            .map(|(cuid, state)| (cuid, RefCell::new(state.iter())))
             .collect_vec();
         // we try to get proofs in round-robin fashion.  Alternative algorithms are possible too, for example,
         // preferring longest queues (with a binary heap)
@@ -109,10 +109,14 @@ impl ProofQueue {
 
         while collected_batches.len() < batch_count {
             // it doesn't loop infinitely because we have verified to have enough batches (`available_batches`)
-            for (&cuid, cu_state) in &mut cu_round_robin_iters {
-                let mut cu_state = cu_state.borrow_mut();
+            for (&cuid, cu_proofs_iter) in &mut cu_round_robin_iters {
+                let mut cu_proofs_iter = cu_proofs_iter.borrow_mut();
 
-                if let Some(batch) = cu_state.try_get_batch(batch_length) {
+                if cu_proofs_iter.len() >= batch_length {
+                    let batch = (&mut *cu_proofs_iter)
+                        .take(batch_length)
+                        .cloned()
+                        .collect_vec();
                     collected_batches.push((cuid, batch));
 
                     // we have found a batch; now retry the search from the next CU if needed, until
