@@ -73,7 +73,7 @@ impl ProofStorageDrainer {
     pub async fn get_all_proofs_after(
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> tokio::io::Result<HashMap<CUID, Vec<CCProof>>> {
+    ) -> tokio::io::Result<CCBatchedProofs> {
         Ok(self
             .proof_queue
             .lock()

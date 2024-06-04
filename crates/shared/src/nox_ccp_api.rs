@@ -17,7 +17,6 @@
 use std::collections::HashMap;
 use std::future::IntoFuture;
 
-use super::proof::CCProof;
 use super::types::*;
 use crate::proof::{CCBatchedProofs, ProofIdx};
 
@@ -58,7 +57,7 @@ pub trait NoxCCPApi: Send {
     fn get_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> impl std::future::Future<Output = Result<HashMap<CUID, Vec<CCProof>>, Self::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<CCBatchedProofs, Self::Error>> + Send;
 
     /// Returns proof batch after the last provided proof idx for current epoch.
     fn get_batch_proofs_after(

@@ -36,7 +36,6 @@ use tokio_util::sync::CancellationToken;
 
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCBatchedProofs;
-use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
@@ -300,7 +299,7 @@ impl CCProver {
     async fn call_utility_get_all_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> CCResult<HashMap<CUID, Vec<CCProof>>> {
+    ) -> CCResult<CCBatchedProofs> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetAllProofs {
             last_known_proofs,
@@ -412,7 +411,7 @@ impl NoxCCPApi for CCProver {
     async fn get_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-    ) -> Result<HashMap<CUID, Vec<CCProof>>, Self::Error> {
+    ) -> Result<CCBatchedProofs, Self::Error> {
         self.call_utility_get_all_proofs_after(last_known_proofs)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ

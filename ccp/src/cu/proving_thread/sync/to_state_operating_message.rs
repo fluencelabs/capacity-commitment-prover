@@ -17,7 +17,6 @@
 use std::collections::HashMap;
 
 use ccp_shared::proof::CCBatchedProofs;
-use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUID;
 use cpu_utils::LogicalCoreId;
@@ -68,7 +67,7 @@ pub(crate) enum StateOperatingControlMessage {
     },
     GetAllProofs {
         last_known_proofs: HashMap<CUID, ProofIdx>,
-        notifier: oneshot::Sender<tokio::io::Result<HashMap<CUID, Vec<CCProof>>>>,
+        notifier: oneshot::Sender<tokio::io::Result<CCBatchedProofs>>,
     },
     GetBatchProofs {
         batch_length: usize,

@@ -132,7 +132,7 @@ impl ProofQueue {
     pub(crate) fn get_all_proofs_after(
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
-    ) -> HashMap<CUID, Vec<CCProof>> {
+    ) -> CCBatchedProofs {
         self.rewind_forward(last_known_proofs.iter());
 
         std::mem::take(&mut self.cu_proofs)

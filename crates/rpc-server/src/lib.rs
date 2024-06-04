@@ -41,7 +41,6 @@ use tokio::net::ToSocketAddrs;
 use ccp_rpc_client::CCPRpcServer;
 use ccp_rpc_client::OrHex;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
-use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::EpochParameters;
@@ -139,7 +138,7 @@ where
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         _limit: usize,
-    ) -> Result<HashMap<CUID, Vec<CCProof>>, ErrorObjectOwned> {
+    ) -> Result<CCBatchedProofs, ErrorObjectOwned> {
         let guard = self.cc_prover.write().await;
         let proofs = guard
             .get_proofs_after(last_known_proofs)

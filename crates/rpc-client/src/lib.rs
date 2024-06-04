@@ -36,7 +36,6 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 
 use ccp_shared::proof::CCBatchedProofs;
-use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
@@ -65,7 +64,7 @@ pub trait CCPRpc {
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<HashMap<CUID, Vec<CCProof>>, ErrorObjectOwned>;
+    ) -> Result<CCBatchedProofs, ErrorObjectOwned>;
 
     #[method(name = "get_batch_proofs_after")]
     async fn get_batch_proofs_after(
@@ -135,7 +134,7 @@ impl CCPRpcHttpClient {
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<HashMap<CUID, Vec<CCProof>>, ClientError> {
+    ) -> Result<CCBatchedProofs, ClientError> {
         CCPRpcClient::get_proofs_after(&self.inner, last_known_proofs, limit).await
     }
 
