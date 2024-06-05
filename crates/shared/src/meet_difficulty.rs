@@ -23,6 +23,6 @@ pub trait MeetDifficulty {
 
 impl MeetDifficulty for ResultHash {
     fn meet_difficulty(&self, difficulty: &Difficulty) -> bool {
-        self.as_ref() < difficulty.as_ref()
+        self.as_ref() <= difficulty.as_ref()
     }
 }
