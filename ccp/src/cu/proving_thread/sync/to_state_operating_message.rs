@@ -67,6 +67,7 @@ pub(crate) enum StateOperatingControlMessage {
     },
     GetAllProofs {
         last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
         notifier: oneshot::Sender<tokio::io::Result<CCBatchedProofs>>,
     },
     GetBatchProofs {

@@ -299,10 +299,12 @@ impl CCProver {
     async fn call_utility_get_all_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
     ) -> CCResult<CCBatchedProofs> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetAllProofs {
             last_known_proofs,
+            limit,
             notifier,
         };
         self.execute_utility_call(message, wait_for).await
@@ -411,8 +413,9 @@ impl NoxCCPApi for CCProver {
     async fn get_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
     ) -> Result<CCBatchedProofs, Self::Error> {
-        self.call_utility_get_all_proofs_after(last_known_proofs)
+        self.call_utility_get_all_proofs_after(last_known_proofs, limit)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))

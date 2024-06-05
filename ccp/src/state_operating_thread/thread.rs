@@ -163,11 +163,12 @@ impl StateOperatingThreadImpl {
             }
             GetAllProofs {
                 last_known_proofs,
+                limit,
                 notifier,
             } => {
                 let ret = self
                     .proof_drainer
-                    .get_all_proofs_after(&last_known_proofs)
+                    .get_all_proofs_after(&last_known_proofs, limit)
                     .await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);

@@ -17,6 +17,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
+use std::ops::RangeBounds;
 
 use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::proof::CCProof;
@@ -46,6 +47,10 @@ impl CuState {
 
     fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
+    }
+
+    fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = CCProof> + '_ {
+        self.proofs.drain(range)
     }
 }
 
@@ -78,7 +83,7 @@ impl ProofQueue {
         last_known_proofs: &HashMap<CUID, ProofIdx>,
     ) -> CCBatchedProofs {
         if batch_length == 0 {
-            return vec![];
+            return <_>::default();
         }
 
         // this is the only destructive operation in this function
@@ -92,7 +97,7 @@ impl ProofQueue {
             .map(|state| state.len() / batch_length)
             .sum();
         if available_batches < batch_count {
-            return vec![];
+            return <_>::default();
         }
 
         // we have to wrap the modifiable value into a RefCell to make the iter clonable and usable in the Cycle
@@ -132,13 +137,23 @@ impl ProofQueue {
     pub(crate) fn get_all_proofs_after(
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
+        mut limit: usize,
     ) -> CCBatchedProofs {
         self.rewind_forward(last_known_proofs.iter());
 
-        std::mem::take(&mut self.cu_proofs)
-            .into_iter()
-            .map(|(cu_id, state)| (cu_id, state.proofs.into()))
-            .collect()
+        let mut output = CCBatchedProofs::default();
+
+        for (cuid, state) in self.cu_proofs.iter_mut() {
+            if state.len() > 0 {
+                let remnant = std::cmp::min(limit, state.len());
+                output.push((*cuid, state.drain(..remnant).collect()));
+                limit -= remnant;
+            }
+            if limit == 0 {
+                break;
+            }
+        }
+        output
     }
 
     fn rewind_forward<'a>(
@@ -262,24 +277,26 @@ mod test {
     #[test]
     fn test_exactly_uneven() {
         let mut queue = gen_queue(8);
-        let proofs = queue
-            .get_batched_proofs_after(1, 7, &<_>::default());
-        let long_count = proofs
-            .iter()
-            .filter(|(_, chunks)| chunks.len() > 1)
-            .count();
+        let proofs = queue.get_batched_proofs_after(1, 7, &<_>::default());
+        let long_count = proofs.iter().filter(|(_, chunks)| chunks.len() > 1).count();
         assert_eq!(long_count, 2);
     }
 
     #[test]
     fn test_rewind_on_success1() {
         let mut queue = gen_queue(14);
-        let proofs1 = queue
-            .get_batched_proofs_after(1, 7, &<_>::default());
-        let proofs2 = queue
-            .get_batched_proofs_after(1, 7, &<_>::default());
-        let all_proofs1 = proofs1.iter().map(|(_, chunk)| chunk).flatten().collect::<HashSet<_>>();
-        let all_proofs2 = proofs2.iter().map(|(_, chunk)| chunk).flatten().collect::<HashSet<_>>();
+        let proofs1 = queue.get_batched_proofs_after(1, 7, &<_>::default());
+        let proofs2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
+        let all_proofs1 = proofs1
+            .iter()
+            .map(|(_, chunk)| chunk)
+            .flatten()
+            .collect::<HashSet<_>>();
+        let all_proofs2 = proofs2
+            .iter()
+            .map(|(_, chunk)| chunk)
+            .flatten()
+            .collect::<HashSet<_>>();
         assert_eq!(all_proofs1.intersection(&all_proofs2).count(), 0);
     }
 
@@ -305,8 +322,7 @@ mod test {
     #[test]
     fn test_reset() {
         let mut queue = gen_queue(14);
-        queue
-            .get_batched_proofs_after(1, 7, &<_>::default());
+        queue.get_batched_proofs_after(1, 7, &<_>::default());
         queue.clear();
         let proofs2 = queue.get_batched_proofs_after(1, 7, &<_>::default());
         assert!(proofs2.is_empty());

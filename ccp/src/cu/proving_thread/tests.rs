@@ -306,7 +306,7 @@ async fn cc_job_pausable() {
         let mut proofs_after_pause = Vec::new();
 
         while let Some(message) = ingredients.to_state_operating.recv().await {
-            match message {
+            match (message) {
                 ToStateOperatingMessage::ProofFound { proof, .. } => {
                     let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
                     if !*is_thread_paused_locked.borrow() {

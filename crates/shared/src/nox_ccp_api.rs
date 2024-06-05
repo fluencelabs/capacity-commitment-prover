@@ -57,6 +57,7 @@ pub trait NoxCCPApi: Send {
     fn get_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
     ) -> impl std::future::Future<Output = Result<CCBatchedProofs, Self::Error>> + Send;
 
     /// Returns proof batch after the last provided proof idx for current epoch.

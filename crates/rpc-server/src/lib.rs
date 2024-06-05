@@ -137,11 +137,11 @@ where
     async fn get_proofs_after(
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
-        _limit: usize,
+        limit: usize,
     ) -> Result<CCBatchedProofs, ErrorObjectOwned> {
         let guard = self.cc_prover.write().await;
         let proofs = guard
-            .get_proofs_after(last_known_proofs)
+            .get_proofs_after(last_known_proofs, limit)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         // TODO as read is now changes state, do not use greedy read; limit the size during the read
