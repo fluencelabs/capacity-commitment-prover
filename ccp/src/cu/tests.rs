@@ -15,7 +15,7 @@
  */
 
 use std::collections::HashMap;
-use tokio::sync::mpsc;
+use std::sync;
 
 use ccp_config::ThreadsPerCoreAllocationPolicy;
 use ccp_msr::MSRModeEnforcer;
@@ -24,14 +24,17 @@ use ccp_shared::meet_difficulty::MeetDifficulty;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use super::CUProver;
 use super::CUProverConfig;
 use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
 use crate::cu::status::CUStatus;
 use crate::cu::status::ToCUStatus;
 use crate::state_operating_thread::message::RawProof;
+use crate::state_operating_thread::message::ToStateOperatingOutlet;
 
 fn batch_proof_verification(
     epoch: EpochParameters,
@@ -91,13 +94,80 @@ fn create_config(cores_count: usize) -> CUProverConfig {
     }
 }
 
+pub(crate) async fn proof_sink(
+    mut to_state_operating: ToStateOperatingOutlet,
+    mut to_stats_collecting: ToStatsCollectingOutlet,
+) {
+    loop {
+        tokio::select! {
+            state = to_state_operating.recv() => {
+                match state {
+                    Some(_) => {}
+                    None => break,
+                }
+            }
+            _ = to_stats_collecting.recv() => {}
+        }
+    }
+}
+
+pub(crate) async fn collect_proofs(
+    mut to_state_operating: ToStateOperatingOutlet,
+    mut to_stats_collecting: ToStatsCollectingOutlet,
+) -> Vec<RawProof> {
+    let mut proofs = vec![];
+    loop {
+        tokio::select! {
+            state = to_state_operating.recv() => {
+                match state {
+                    Some(ToStateOperatingMessage::ProofFound { proof, .. }) => proofs.push(proof),
+                    Some(_) => {}
+                    None => break,
+                }
+            }
+            _ = to_stats_collecting.recv() => {}
+        }
+    }
+    proofs
+}
+
+pub(crate) async fn collect_proofs_with_flag(
+    mut to_state_operating: ToStateOperatingOutlet,
+    mut to_stats_collecting: ToStatsCollectingOutlet,
+    flag: sync::Arc<sync::Mutex<bool>>,
+) -> (Vec<RawProof>, Vec<RawProof>) {
+    let mut proofs_before = vec![];
+    let mut proofs_after = vec![];
+    loop {
+        tokio::select! {
+            state = to_state_operating.recv() => {
+                match state {
+                    Some(ToStateOperatingMessage::ProofFound { proof, .. }) => {
+                        if *flag.lock().unwrap() {
+                            proofs_after.push(proof)
+                        } else {
+                            proofs_before.push(proof)
+                        }
+                    },
+                    Some(_) => {}
+                    None => break,
+                }
+            }
+            _ = to_stats_collecting.recv() => {}
+        }
+    }
+    (proofs_before, proofs_after)
+}
+
 #[tokio::test]
 async fn idle_cu_prover_can_be_stopped() {
-    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(1);
 
-    let handle =
-        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
+    let handle = tokio::spawn(proof_sink(
+        to_state_operating_outlet,
+        to_stats_collecting_outlet,
+    ));
 
     let config = create_config(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
@@ -126,8 +196,8 @@ async fn cu_prover_can_be_stopped() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(1);
-    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut prover = CUProver::create(
         config,
@@ -138,8 +208,10 @@ async fn cu_prover_can_be_stopped() {
     )
     .await
     .unwrap();
-    let handle =
-        tokio::spawn(async move { while let Some(_) = to_state_operating_outlet.recv().await {} });
+    let handle = tokio::spawn(proof_sink(
+        to_state_operating_outlet,
+        to_stats_collecting_outlet,
+    ));
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
@@ -161,8 +233,8 @@ async fn cu_prover_can_be_paused() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(1);
-    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut prover = CUProver::create(
         config,
@@ -174,29 +246,13 @@ async fn cu_prover_can_be_paused() {
     .await
     .unwrap();
 
-    let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
+    let is_thread_paused = sync::Arc::new(sync::Mutex::new(false));
 
-    let is_thread_paused_cloned = is_thread_paused.clone();
-    let handle = tokio::spawn(async move {
-        let mut proofs_before_pause = Vec::new();
-        let mut proofs_after_pause = Vec::new();
-
-        while let Some(message) = to_state_operating_outlet.recv().await {
-            match message {
-                ToStateOperatingMessage::ProofFound { proof, .. } => {
-                    let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
-                    if !*is_thread_paused_locked.borrow() {
-                        proofs_before_pause.push(proof);
-                    } else {
-                        proofs_after_pause.push(proof);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        (proofs_before_pause, proofs_after_pause)
-    });
+    let handle = tokio::spawn(collect_proofs_with_flag(
+        to_state_operating_outlet,
+        to_stats_collecting_outlet,
+        is_thread_paused.clone(),
+    ));
 
     let epoch = test::generate_epoch_params(1, 0xFF);
     let cu_id = test::generate_cu_id(1);
@@ -213,8 +269,8 @@ async fn cu_prover_can_be_paused() {
     assert_eq!(status, CUStatus::Idle);
 
     {
-        let is_thread_paused_locked = is_thread_paused.lock().unwrap();
-        *is_thread_paused_locked.borrow_mut() = true;
+        let mut is_thread_paused_locked = is_thread_paused.lock().unwrap();
+        *is_thread_paused_locked = true;
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
@@ -230,8 +286,8 @@ async fn cu_prover_produces_correct_proofs() {
     let _ = env_logger::builder().is_test(true).try_init();
 
     let config = create_config(2);
-    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(1);
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut prover = CUProver::create(
         config,
@@ -246,17 +302,10 @@ async fn cu_prover_produces_correct_proofs() {
     let epoch_1 = test::generate_epoch_params(1, 0x80);
     let cu_id_1 = test::generate_cu_id(1);
 
-    let handle = tokio::spawn(async move {
-        let mut proofs = Vec::new();
-
-        while let Some(message) = to_state_operating_outlet.recv().await {
-            match message {
-                ToStateOperatingMessage::ProofFound { proof, .. } => proofs.push(proof),
-                _ => {}
-            }
-        }
-        proofs
-    });
+    let handle = tokio::spawn(collect_proofs(
+        to_state_operating_outlet,
+        to_stats_collecting_outlet,
+    ));
 
     let cancel_token = CancellationToken::new();
     prover
@@ -284,21 +333,13 @@ async fn cu_prover_produces_correct_proofs() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 5)]
 async fn cu_prover_works_with_odd_threads_number() {
     let config = create_config(5);
-    let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_state_operating_inlet, to_state_operating_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(1);
 
-    let handle = tokio::spawn(async move {
-        let mut proofs = Vec::new();
-
-        while let Some(message) = to_state_operating_outlet.recv().await {
-            match message {
-                ToStateOperatingMessage::ProofFound { proof, .. } => proofs.push(proof),
-                _ => {}
-            }
-        }
-
-        proofs
-    });
+    let handle = tokio::spawn(collect_proofs(
+        to_state_operating_outlet,
+        to_stats_collecting_outlet,
+    ));
 
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
 
@@ -332,24 +373,22 @@ async fn cu_prover_changes_epoch_correctly() {
 
     let config = create_config(2);
     let (to_state_operating_inlet, mut to_state_operating_outlet) = mpsc::channel(1);
-    let (to_stats_collecting_inlet, _to_stats_collecting_outlet) = mpsc::channel(1);
+    let (to_stats_collecting_inlet, mut to_stats_collecting_outlet) = mpsc::channel(1);
 
     let handle = tokio::spawn(async move {
-        use std::collections::hash_map::Entry;
-
         let mut proofs: HashMap<EpochParameters, Vec<_>> = HashMap::new();
-
-        while let Some(message) = to_state_operating_outlet.recv().await {
-            match message {
-                ToStateOperatingMessage::ProofFound { proof, .. } => {
-                    match proofs.entry(proof.epoch) {
-                        Entry::Vacant(entry) => {
-                            entry.insert(vec![proof]);
+        loop {
+            tokio::select! {
+                message = to_state_operating_outlet.recv() => {
+                    match message {
+                        Some(ToStateOperatingMessage::ProofFound { proof, .. }) => {
+                            proofs.entry(proof.epoch).or_default().push(proof);
                         }
-                        Entry::Occupied(mut entry) => entry.get_mut().push(proof),
+                        Some(_) => {}
+                        None => break,
                     }
                 }
-                _ => {}
+                _ = to_stats_collecting_outlet.recv() => {}
             }
         }
 
