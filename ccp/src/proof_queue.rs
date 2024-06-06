@@ -95,8 +95,17 @@ impl ProofQueue {
                 .map(|(cuid, batch_req)| (cuid, &batch_req.last_seen_proof_idx)),
         );
 
+        self.collect_batches(reqs, min_batch_count, max_batch_count)
+    }
+
+    fn collect_batches(
+        &self,
+        reqs: &HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> Vec<BatchResponse> {
         // first, check that the required number of batches is available
-        let available_batches: usize = self
+        let available_batches_count: usize = self
             .cu_proofs
             .iter()
             .filter_map(|(cid, state)| {
@@ -104,16 +113,16 @@ impl ProofQueue {
                     .and_then(|batch_req| state.len().checked_div(batch_req.proof_batch_size))
             })
             .sum();
-        if available_batches < min_batch_count {
+        if available_batches_count < min_batch_count {
             return <_>::default();
         }
 
-        let batches_to_collect = std::cmp::min(available_batches, max_batch_count);
+        let batches_to_collect = std::cmp::min(available_batches_count, max_batch_count);
 
         // we have to wrap the modifiable value into a RefCell to make the iter clonable and usable in the Cycle
         let cu_iters = self
             .cu_proofs
-            .iter_mut()
+            .iter()
             .map(|(cuid, state)| (cuid, RefCell::new(state.iter())))
             .collect_vec();
         // we try to get proofs in round-robin fashion.  Alternative algorithms are possible too, for example,
@@ -123,7 +132,7 @@ impl ProofQueue {
         let mut collected_batches = Vec::<BatchResponse>::with_capacity(min_batch_count);
 
         while collected_batches.len() < batches_to_collect {
-            // it doesn't loop infinitely because we have verified to have enough batches (`available_batches`)
+            // it doesn't loop infinitely because we have verified to have enough batches (`available_batches_count`)
             for (&cuid, cu_proofs_iter) in &mut cu_round_robin_iters {
                 let mut cu_proofs_iter = cu_proofs_iter.borrow_mut();
 
