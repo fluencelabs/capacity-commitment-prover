@@ -145,12 +145,6 @@ where
             .get_proofs_after(last_known_proofs, limit)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
-        // TODO as read is now changes state, do not use greedy read; limit the size during the read
-        // if proofs.len() > limit {
-        //     proofs.select_nth_unstable_by_key(limit, |p| p.id.idx);
-        //     proofs = proofs.drain(0..limit).collect();
-        // }
-        // proofs.sort_unstable_by_key(|p| p.id.idx);
         Ok(proofs)
     }
 
