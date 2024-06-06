@@ -29,6 +29,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::async_trait;
@@ -156,13 +157,13 @@ where
     #[instrument(skip(self))]
     async fn get_batch_proofs_after(
         &self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: HashMap<CUID, ProofIdx>,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> Result<CCBatchedProofs, ErrorObjectOwned> {
         let guard = self.cc_prover.write().await;
         let proofs = guard
-            .get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
+            .get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(proofs)

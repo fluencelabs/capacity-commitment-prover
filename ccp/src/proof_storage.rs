@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
@@ -57,15 +58,14 @@ impl ProofStorageDrainer {
     /// Get batches proofs from the queue.
     pub async fn get_batch_proofs_after(
         &mut self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: &HashMap<CUID, ProofIdx>,
+        reqs: &HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> tokio::io::Result<CCBatchedProofs> {
-        Ok(self.proof_queue.lock().get_batched_proofs_after(
-            batch_length,
-            batch_count,
-            last_known_proofs,
-        ))
+        Ok(self
+            .proof_queue
+            .lock()
+            .get_batched_proofs_after(reqs, min_batch_count, max_batch_count))
     }
 
     /// Gets proofs from the proof directory, which proof_id is strictly bigger than

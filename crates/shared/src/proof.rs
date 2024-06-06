@@ -85,4 +85,25 @@ impl CCProof {
     }
 }
 
-pub type CCBatchedProofs = Vec<(types::CUID, Vec<CCProof>)>;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchRequest {
+    pub last_seen_proof_idx: ProofIdx,
+    pub proof_batch_size: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchResponse {
+    pub cu_id: types::CUID,
+    pub proof_batches: Vec<CCProof>,
+}
+
+impl BatchResponse {
+    pub fn new(cu_id: types::CUID, proof_batches: Vec<CCProof>) -> Self {
+        Self {
+            cu_id,
+            proof_batches,
+        }
+    }
+}
+
+pub type CCBatchedProofs = Vec<BatchResponse>;

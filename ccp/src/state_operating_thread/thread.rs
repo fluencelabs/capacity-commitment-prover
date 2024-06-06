@@ -149,14 +149,14 @@ impl StateOperatingThreadImpl {
                 let _ = notifier.send(ret);
             }
             GetBatchProofs {
-                batch_length,
-                batch_count,
-                last_known_proofs,
+                reqs,
+                min_batch_count,
+                max_batch_count,
                 notifier,
             } => {
                 let ret = self
                     .proof_drainer
-                    .get_batch_proofs_after(batch_length, batch_count, &last_known_proofs)
+                    .get_batch_proofs_after(&reqs, min_batch_count, max_batch_count)
                     .await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);

@@ -25,6 +25,7 @@ use std::sync::Mutex as StdMutex;
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
+use ccp_shared::proof::BatchRequest;
 use eyre::Context;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -282,15 +283,15 @@ impl CCProver {
 
     async fn call_utility_get_batch_proofs_after(
         &self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: HashMap<CUID, ProofIdx>,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> CCResult<CCBatchedProofs> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetBatchProofs {
-            batch_length,
-            batch_count,
-            last_known_proofs,
+            reqs,
+            min_batch_count,
+            max_batch_count,
             notifier,
         };
         self.execute_utility_call(message, wait_for).await
@@ -424,11 +425,11 @@ impl NoxCCPApi for CCProver {
     #[inline]
     async fn get_batch_proofs_after(
         &self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: HashMap<CUID, ProofIdx>,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> Result<CCBatchedProofs, Self::Error> {
-        self.call_utility_get_batch_proofs_after(batch_length, batch_count, last_known_proofs)
+        self.call_utility_get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))

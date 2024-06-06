@@ -113,12 +113,12 @@ async fn wait_for_proofs(
         .collect();
     for _retry in 0..retries {
         tokio::time::sleep(retry_delay).await;
-        let proofs = prover.get_proofs_after(after.clone()).await?;
+        let proofs = prover.get_proofs_after(after.clone(), 1000).await?;
         if proofs.len() > length {
             return Ok(proofs);
         }
     }
-    prover.get_proofs_after(after).await
+    prover.get_proofs_after(after, 1000).await
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -151,11 +151,11 @@ async fn prover_on_active_commitment() {
         .collect();
 
     let proofs = prover
-        .get_proofs_after(last_known_proofs)
+        .get_proofs_after(last_known_proofs, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     assert!(
@@ -197,7 +197,7 @@ async fn prover_on_no_active_commitment() {
     prover.on_no_active_commitment().await.unwrap();
 
     let proofs = prover
-        .get_proofs_after(<_>::default())
+        .get_proofs_after(<_>::default(), 1000)
         .await
         .expect("reading proofs");
     assert!(proofs.is_empty());
@@ -227,11 +227,11 @@ async fn prover_on_active_no_active_commitment() {
         .collect();
 
     let proofs_before = prover
-        .get_proofs_after(last_known_proofs.clone())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
         .unwrap()
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
@@ -242,11 +242,11 @@ async fn prover_on_active_no_active_commitment() {
     let expected_state = None;
 
     let proofs_after = prover
-        .get_proofs_after(last_known_proofs)
+        .get_proofs_after(last_known_proofs, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     prover.stop().await.unwrap();
@@ -300,11 +300,11 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
         .collect();
 
     let proofs_before = prover
-        .get_proofs_after(last_known_proofs.clone())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
@@ -317,11 +317,11 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
     commitment_init_recv2.await.unwrap();
 
     let proofs_after = prover
-        .get_proofs_after(last_known_proofs)
+        .get_proofs_after(last_known_proofs, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
     assert!(proofs_after.is_empty(), "{:?}", proofs_after);
 
@@ -412,11 +412,11 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
-        .get_proofs_after(last_known_proofs_small)
+        .get_proofs_after(last_known_proofs_small, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
@@ -434,11 +434,11 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
-        .get_proofs_after(last_known_proofs_large)
+        .get_proofs_after(last_known_proofs_large, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     assert!(
@@ -474,11 +474,11 @@ async fn prover_on_active_change_epoch() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
-        .get_proofs_after(last_known_proofs.clone())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
@@ -501,11 +501,11 @@ async fn prover_on_active_change_epoch() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
-        .get_proofs_after(last_known_proofs)
+        .get_proofs_after(last_known_proofs, 1000)
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     prover.stop().await.unwrap();
@@ -561,7 +561,7 @@ async fn prover_restore_from_state_with_no_proofs() {
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     assert!(
@@ -681,7 +681,7 @@ async fn prover_restore_from_state_with_proofs() {
         .await
         .expect("reading proofs")
         .into_iter()
-        .flat_map(|(_cuid, proofs)| proofs)
+        .flat_map(|res| res.proof_batches)
         .collect::<Vec<CCProof>>();
 
     assert!(

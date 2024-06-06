@@ -35,6 +35,7 @@ pub use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 
+use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
@@ -69,9 +70,9 @@ pub trait CCPRpc {
     #[method(name = "get_batch_proofs_after")]
     async fn get_batch_proofs_after(
         &self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: HashMap<CUID, ProofIdx>,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> Result<CCBatchedProofs, ErrorObjectOwned>;
 
     #[method(name = "realloc_utility_cores", param_kind = map)]
@@ -141,17 +142,12 @@ impl CCPRpcHttpClient {
     #[inline]
     pub async fn get_batch_proofs_after(
         &self,
-        batch_length: usize,
-        batch_count: usize,
-        last_known_proofs: HashMap<CUID, ProofIdx>,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
     ) -> Result<CCBatchedProofs, ClientError> {
-        CCPRpcClient::get_batch_proofs_after(
-            &self.inner,
-            batch_length,
-            batch_count,
-            last_known_proofs,
-        )
-        .await
+        CCPRpcClient::get_batch_proofs_after(&self.inner, reqs, min_batch_count, max_batch_count)
+            .await
     }
 
     #[inline]
