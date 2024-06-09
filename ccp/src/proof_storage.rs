@@ -15,7 +15,7 @@
  */
 
 use ccp_shared::proof::BatchRequest;
-use ccp_shared::proof::CCBatchedProofs;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 use parking_lot::Mutex as PLMutex;
@@ -61,7 +61,7 @@ impl ProofStorageDrainer {
         reqs: &HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> tokio::io::Result<CCBatchedProofs> {
+    ) -> tokio::io::Result<Vec<BatchResponse>> {
         Ok(self
             .proof_queue
             .lock()
@@ -74,7 +74,7 @@ impl ProofStorageDrainer {
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> tokio::io::Result<CCBatchedProofs> {
+    ) -> tokio::io::Result<Vec<BatchResponse>> {
         Ok(self
             .proof_queue
             .lock()

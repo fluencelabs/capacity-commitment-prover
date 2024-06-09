@@ -21,7 +21,6 @@ use std::ops::RangeBounds;
 
 use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::BatchResponse;
-use ccp_shared::proof::CCBatchedProofs;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUID;
@@ -83,7 +82,7 @@ impl ProofMultiQueue {
         reqs: &HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> CCBatchedProofs {
+    ) -> Vec<BatchResponse> {
         if max_batch_count == 0 {
             return <_>::default();
         }
@@ -159,10 +158,10 @@ impl ProofMultiQueue {
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
         mut limit: usize,
-    ) -> CCBatchedProofs {
+    ) -> Vec<BatchResponse> {
         self.rewind_forward(last_known_proofs.iter());
 
-        let mut output = CCBatchedProofs::default();
+        let mut output = Vec::<BatchResponse>::new();
 
         for (cuid, state) in self.cu_proofs.iter_mut() {
             if state.len() > 0 {

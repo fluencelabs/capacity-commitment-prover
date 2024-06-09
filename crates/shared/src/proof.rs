@@ -105,5 +105,3 @@ impl BatchResponse {
         }
     }
 }
-
-pub type CCBatchedProofs = Vec<BatchResponse>;

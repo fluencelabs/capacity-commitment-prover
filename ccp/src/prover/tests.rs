@@ -23,13 +23,15 @@ use ccp_config::CCPConfig;
 use ccp_config::Tokio;
 use ccp_config::Workers;
 use ccp_randomx::ResultHash;
-use ccp_shared::proof::CCBatchedProofs;
-use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
+use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::BatchResponse;
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::CCProofId;
+use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::CUAllocation;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LocalNonce;
-use ccp_shared::{
-    nox_ccp_api::NoxCCPApi,
-    types::{CUAllocation, EpochParameters, CUID},
-};
+use ccp_shared::types::CUID;
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
@@ -106,7 +108,7 @@ async fn wait_for_proofs(
     retries: usize,
     retry_delay: Duration,
     cuids: &[CUID],
-) -> eyre::Result<CCBatchedProofs> {
+) -> eyre::Result<Vec<BatchResponse>> {
     let after: HashMap<CUID, ProofIdx> = cuids
         .iter()
         .map(|cuid| (*cuid, "0".parse().unwrap()))

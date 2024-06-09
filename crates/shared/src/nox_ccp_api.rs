@@ -18,7 +18,9 @@ use std::collections::HashMap;
 use std::future::IntoFuture;
 
 use super::types::*;
-use crate::proof::{BatchRequest, CCBatchedProofs, ProofIdx};
+use crate::proof::BatchRequest;
+use crate::proof::BatchResponse;
+use crate::proof::ProofIdx;
 
 pub trait NoxCCPApi: Send {
     type Error: Send;
@@ -58,7 +60,7 @@ pub trait NoxCCPApi: Send {
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> impl std::future::Future<Output = Result<CCBatchedProofs, Self::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<BatchResponse>, Self::Error>> + Send;
 
     /// Returns proof batch after the last provided proof idx for current epoch.
     fn get_batch_proofs_after(
@@ -66,7 +68,7 @@ pub trait NoxCCPApi: Send {
         reqs: HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> impl std::future::Future<Output = Result<CCBatchedProofs, Self::Error>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<BatchResponse>, Self::Error>> + Send;
 
     /// Set utility
     fn realloc_utility_cores(

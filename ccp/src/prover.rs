@@ -36,7 +36,7 @@ use tokio::try_join;
 use tokio_util::sync::CancellationToken;
 
 use ccp_shared::nox_ccp_api::NoxCCPApi;
-use ccp_shared::proof::CCBatchedProofs;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
@@ -286,7 +286,7 @@ impl CCProver {
         reqs: HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> CCResult<CCBatchedProofs> {
+    ) -> CCResult<Vec<BatchResponse>> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetBatchProofs {
             reqs,
@@ -301,7 +301,7 @@ impl CCProver {
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> CCResult<CCBatchedProofs> {
+    ) -> CCResult<Vec<BatchResponse>> {
         let (notifier, wait_for) = oneshot::channel();
         let message = StateOperatingControlMessage::GetAllProofs {
             last_known_proofs,
@@ -415,7 +415,7 @@ impl NoxCCPApi for CCProver {
         &self,
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<CCBatchedProofs, Self::Error> {
+    ) -> Result<Vec<BatchResponse>, Self::Error> {
         self.call_utility_get_all_proofs_after(last_known_proofs, limit)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
@@ -428,7 +428,7 @@ impl NoxCCPApi for CCProver {
         reqs: HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> Result<CCBatchedProofs, Self::Error> {
+    ) -> Result<Vec<BatchResponse>, Self::Error> {
         self.call_utility_get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
