@@ -259,7 +259,7 @@ mod test {
                 0, 0, 0, 0, 0, 0, 0,
             ]);
             let proof = CCProof::new(proof_id, local_nonce, *cu_id, result_hash);
-            queue.insert(proof)
+            queue.insert(proof);
         }
 
         queue
@@ -415,9 +415,53 @@ mod test {
         let mut queue = gen_queue(14);
         let req = get_simple_requests(1);
 
-        queue.get_batched_proofs_after(&req, 7, 7);
+        let _ = queue.get_batched_proofs_after(&req, 7, 7);
         queue.clear();
         let proofs2 = queue.get_batched_proofs_after(&req, 7, 7);
         assert!(proofs2.is_empty());
+    }
+
+    #[test]
+    fn test_max_queue_1() {
+        let mut queue = gen_queue(17); // 3cuids * 3proofs + 2 * 4
+        let req = get_simple_requests(2);
+
+        let proofs = queue.get_batched_proofs_after(&req, 3, 6);
+        assert_eq!(proofs.len(), 6);
+    }
+
+    #[test]
+    fn test_max_queue_2() {
+        let mut queue = gen_queue(17); // 3cuids * 3proofs + 2 * 4
+        let req = get_simple_requests(2);
+
+        let proofs = queue.get_batched_proofs_after(&req, 3, 8);
+        assert_eq!(proofs.len(), 7);
+    }
+
+    #[test]
+    fn test_max_queue_exact() {
+        let mut queue = gen_queue(17);
+        let req = get_simple_requests(2);
+
+        let proofs = queue.get_batched_proofs_after(&req, 3, 7);
+        assert_eq!(proofs.len(), 7);
+    }
+
+    #[test]
+    fn test_uneven_requests() {
+        let mut queue = gen_queue(5 * 4);
+
+        let mut req = get_simple_requests(4);
+        req.insert(
+            CUID1,
+            BatchRequest {
+                last_seen_proof_idx: <_>::default(),
+                proof_batch_size: 2,
+            },
+        );
+
+        let proofs = queue.get_batched_proofs_after(&req, 5, 6);
+        assert_eq!(proofs.len(), 6);
     }
 }
