@@ -27,13 +27,13 @@ use tokio::fs::DirEntry;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 
-use crate::proof_queue::ProofQueue;
+use crate::proof_queue::ProofMultiQueue;
 
 #[derive(Debug)]
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
-    pub(crate) proof_queue: Arc<PLMutex<ProofQueue>>,
+    pub(crate) proof_queue: Arc<PLMutex<ProofMultiQueue>>,
 }
 
 impl ProofStorageDrainer {

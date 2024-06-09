@@ -27,9 +27,9 @@ use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUID;
 use itertools::Itertools;
 
-// TODO it is not quite a queue; cache?
+/// A batching multi-queue of proofs grouped by CUIDs.
 #[derive(Debug, Default)]
-pub(crate) struct ProofQueue {
+pub(crate) struct ProofMultiQueue {
     cu_proofs: HashMap<CUID, CuState>,
 }
 
@@ -66,7 +66,7 @@ impl<'state> IntoIterator for &'state CuState {
     }
 }
 
-impl ProofQueue {
+impl ProofMultiQueue {
     pub(crate) fn insert(&mut self, proof: CCProof) {
         self.cu_proofs
             .entry(proof.cu_id)
@@ -208,7 +208,7 @@ mod test {
         types::{Difficulty, GlobalNonce, LocalNonce, CUID},
     };
 
-    use crate::proof_queue::ProofQueue;
+    use crate::proof_queue::ProofMultiQueue;
 
     const CUID1: CUID = CUID::new([
         33, 247, 206, 99, 242, 79, 217, 190, 58, 45, 87, 221, 151, 162, 217, 11, 43, 151, 160, 77,
@@ -231,8 +231,8 @@ mod test {
         205, 187, 145, 129, 243, 53, 14, 38, 4, 248, 246, 36, 233,
     ]);
 
-    fn gen_queue(count: u8) -> ProofQueue {
-        let mut queue = ProofQueue::default();
+    fn gen_queue(count: u8) -> ProofMultiQueue {
+        let mut queue = ProofMultiQueue::default();
 
         let global_nonce = GlobalNonce::from_str(
             "851bdb35e2e7cd1645beed2893e27bb247e80b22a4d5fa11696352d74a4b8fe0",
@@ -294,7 +294,7 @@ mod test {
 
     #[test]
     fn test_empty() {
-        let mut queue = ProofQueue::default();
+        let mut queue = ProofMultiQueue::default();
         let req = get_simple_requests(6);
         assert!(queue.get_batched_proofs_after(&req, 5, 10).is_empty());
     }

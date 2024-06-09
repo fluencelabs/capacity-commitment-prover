@@ -25,7 +25,7 @@ use std::sync::Arc;
 use ccp_shared::proof::CCProof;
 use parking_lot::Mutex as PLMutex;
 
-use crate::proof_queue::ProofQueue;
+use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ensure_dir;
 
 const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't fail";
@@ -34,12 +34,12 @@ const EXPECT_DEFAULT_SERIALIZER: &str = "the default serde serializer shouldn't 
 pub struct ProofStorage {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
-    proof_queue: Arc<PLMutex<ProofQueue>>,
+    proof_queue: Arc<PLMutex<ProofMultiQueue>>,
 }
 
 /// Intended to store proofs in storage.
 impl ProofStorage {
-    pub fn new(proof_directory: PathBuf, proof_queue: Arc<PLMutex<ProofQueue>>) -> Self {
+    pub fn new(proof_directory: PathBuf, proof_queue: Arc<PLMutex<ProofMultiQueue>>) -> Self {
         Self {
             proof_directory,
             proof_queue,
