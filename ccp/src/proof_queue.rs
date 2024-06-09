@@ -342,13 +342,11 @@ mod test {
         let proofs2 = queue.get_batched_proofs_after(&req, 7, 7);
         let all_proofs1 = proofs1
             .iter()
-            .map(|res| &res.proof_batches)
-            .flatten()
+            .flat_map(|res| &res.proof_batches)
             .collect::<HashSet<_>>();
         let all_proofs2 = proofs2
             .iter()
-            .map(|res| &res.proof_batches)
-            .flatten()
+            .flat_map(|res| &res.proof_batches)
             .collect::<HashSet<_>>();
 
         assert_eq!(all_proofs1, all_proofs2);
