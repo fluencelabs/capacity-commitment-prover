@@ -33,14 +33,14 @@ use crate::proof_queue::ProofMultiQueue;
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
-    pub(crate) proof_queue: Arc<PLMutex<ProofMultiQueue>>,
+    proof_queue: Arc<PLMutex<ProofMultiQueue>>,
 }
 
 impl ProofStorageDrainer {
-    pub fn new(proof_directory: PathBuf) -> Self {
+    pub fn new(proof_directory: PathBuf, proof_queue: Arc<PLMutex<ProofMultiQueue>>) -> Self {
         Self {
             proof_directory,
-            proof_queue: <_>::default(),
+            proof_queue,
         }
     }
 

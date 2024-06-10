@@ -66,6 +66,10 @@ impl<'state> IntoIterator for &'state CuState {
 }
 
 impl ProofMultiQueue {
+    pub(crate) fn new() -> Self {
+        <_>::default()
+    }
+
     pub(crate) fn insert(&mut self, proof: CCProof) {
         self.cu_proofs
             .entry(proof.cu_id)

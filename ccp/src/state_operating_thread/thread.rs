@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+use std::sync::Arc;
+
+use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 
 use ccp_shared::proof::CCProof;
@@ -24,6 +27,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::message::*;
 use super::SOTResult;
+use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
@@ -42,13 +46,14 @@ impl StateOperatingThread {
         state_operating_queue_size: usize,
         state_operating_control_outlet: StateOperatingControlOutlet,
         state_storage: StateStorage,
+        proof_multi_queue: Arc<PLMutex<ProofMultiQueue>>,
         proof_drainer: ProofStorageDrainer,
     ) -> Self {
         let (to_state_operating, from_state_operating) = mpsc::channel(state_operating_queue_size);
 
         let cancellation = CancellationToken::new();
 
-        let proof_storage = ProofStorage::new(proof_storage_dir, proof_drainer.proof_queue.clone());
+        let proof_storage = ProofStorage::new(proof_storage_dir, proof_multi_queue.clone());
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
         let sot_impl = StateOperatingThreadImpl::new(
             from_state_operating,

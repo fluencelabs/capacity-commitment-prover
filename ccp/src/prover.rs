@@ -27,6 +27,7 @@ use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::proof::BatchRequest;
 use eyre::Context;
+use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
@@ -52,6 +53,7 @@ use crate::errors::CCProverError;
 use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
+use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
@@ -155,7 +157,10 @@ impl CCProver {
         cancellation_token: CancellationToken,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
-        let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let proof_multi_queue = Arc::new(PLMutex::new(ProofMultiQueue::new()));
+
+        let mut proof_drainer =
+            ProofStorageDrainer::new(proof_dir.clone(), proof_multi_queue.clone());
         let start_proof_idx = proof_drainer
             .validate_proofs(target_commitment.as_ref().map(|comm| &comm.epoch_params))
             .await?;
@@ -181,6 +186,7 @@ impl CCProver {
             config.rpc_endpoint.utility_queue_size,
             state_operating_control_outlet,
             state_storage,
+            proof_multi_queue,
             proof_drainer,
         );
 
