@@ -31,15 +31,15 @@ mod or_hex;
 use std::collections::HashMap;
 use std::time::Duration;
 
-use ccp_shared::proof::ProofIdx;
-use ccp_shared::types::LogicalCoreId;
 pub use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::types::ErrorObjectOwned;
+pub use jsonrpsee::types::ErrorObjectOwned;
 
 use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
 
