@@ -16,16 +16,14 @@
 
 use std::str::FromStr;
 
-use hex::ToHex;
-use serde::Deserialize;
-use serde::Serialize;
-
 use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 pub type GlobalNonceInner = [u8; 32];
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
 #[repr(transparent)]
 pub struct GlobalNonce(GlobalNonceInner);
 

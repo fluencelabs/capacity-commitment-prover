@@ -16,15 +16,16 @@
 
 use std::str::FromStr;
 
-use hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
+use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 use crate::RANDOMX_RESULT_SIZE;
 
 pub type DifficultyInner = [u8; RANDOMX_RESULT_SIZE];
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(transparent)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default)]
 #[repr(transparent)]
 pub struct Difficulty(DifficultyInner);
 
