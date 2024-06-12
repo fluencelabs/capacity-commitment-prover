@@ -38,7 +38,6 @@ use jsonrpsee::types::ErrorObjectOwned;
 use tokio::net::ToSocketAddrs;
 
 use ccp_rpc_client::CCPRpcServer;
-use ccp_rpc_client::OrHex;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -91,33 +90,14 @@ where
     #[instrument(skip(self))]
     async fn on_active_commitment(
         &self,
-        global_nonce: OrHex<GlobalNonce>,
-        difficulty: OrHex<Difficulty>,
-        cu_allocation: HashMap<PhysicalCoreId, OrHex<CUID>>,
+        global_nonce: GlobalNonce,
+        difficulty: Difficulty,
+        cu_allocation: HashMap<PhysicalCoreId, CUID>,
     ) -> Result<(), ErrorObjectOwned> {
-        let global_nonce: GlobalNonce = global_nonce
-            .clone()
-            .unhex()
-            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(global_nonce)))?;
-        let difficulty = difficulty
-            .clone()
-            .unhex()
-            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty)))?;
-
-        let mut cu_allocation_real = HashMap::<_, CUID>::new();
-        for (id, cuid) in cu_allocation {
-            cu_allocation_real.insert(
-                id,
-                cuid.clone()
-                    .unhex()
-                    .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(cuid)))?,
-            );
-        }
-
         let mut guard = self.cc_prover.write().await;
         let epoch = EpochParameters::new(global_nonce, difficulty);
         let _init_recv = guard
-            .on_active_commitment(epoch, cu_allocation_real)
+            .on_active_commitment(epoch, cu_allocation)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())
