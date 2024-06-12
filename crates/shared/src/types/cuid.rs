@@ -23,7 +23,6 @@ use serde_with::SerializeDisplay;
 
 pub type CUIDInner = [u8; 32];
 
-#[serde_with::serde_as]
 #[derive(
     Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default, PartialOrd, Ord,
 )]
