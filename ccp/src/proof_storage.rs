@@ -85,10 +85,12 @@ impl ProofStorageDrainer {
         &mut self,
         epoch: Option<&EpochParameters>,
     ) -> tokio::io::Result<ProofIdx> {
-        let mut max_proof_idx = None;
         ensure_dir(&self.proof_directory).await?;
 
+        log::info!("validate proofs from disk for epoch {epoch:?}");
+
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
+        let mut proofs = vec![];
         loop {
             match directory.next_entry().await {
                 Ok(Some(entry)) => {
@@ -100,10 +102,7 @@ impl ProofStorageDrainer {
 
                         let found_epoch: EpochParameters = proof.id.into();
                         if Some(&found_epoch) == epoch {
-                            max_proof_idx = Some(std::cmp::max(
-                                max_proof_idx.unwrap_or_default(),
-                                entry_proof_id,
-                            ));
+                            proofs.push(proof);
                         } else {
                             let path = entry.path();
                             log::warn!("removing a proof file with wrong epoch: {path:?}");
@@ -112,15 +111,26 @@ impl ProofStorageDrainer {
                     }
                 }
                 Ok(None) => {
-                    // We should return an idx that utility thread can use, i.e. new one.
-                    if let Some(idx) = max_proof_idx.as_mut() {
-                        idx.increment()
-                    }
-                    return Ok(max_proof_idx.unwrap_or_default());
+                    break;
                 }
                 Err(e) => return Err(e),
             }
         }
+
+        proofs.sort_unstable_by_key(|proof| proof.id.idx);
+        let mut max_proof_idx = proofs.last().map(|proof| proof.id.idx);
+        {
+            let mut proof_queue_guard = self.proof_queue.lock();
+
+            for proof in proofs {
+                proof_queue_guard.insert(proof);
+            }
+        }
+        // We should return an idx that utility thread can use, i.e. new one.
+        if let Some(idx) = max_proof_idx.as_mut() {
+            idx.increment()
+        }
+        Ok(max_proof_idx.unwrap_or_default())
     }
 
     async fn proof_idx_from_filename(entry: &DirEntry) -> tokio::io::Result<Option<ProofIdx>> {
