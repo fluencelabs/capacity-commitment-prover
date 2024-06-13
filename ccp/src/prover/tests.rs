@@ -24,6 +24,7 @@ use ccp_config::Tokio;
 use ccp_config::Workers;
 use ccp_randomx::ResultHash;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::BatchResponse;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
@@ -126,6 +127,60 @@ async fn wait_for_proofs(
         }
     }
     prover.get_proofs_after(after, 1000).await
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_get_batch_proofs_after() {
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let mut prover = get_prover(state_dir.path()).await;
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().copied().collect();
+    let commitment_init_recv = prover
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
+        .await
+        .unwrap();
+    commitment_init_recv.await.unwrap();
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    dbg!(
+        wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
+            .await
+            .expect("reading proofs")
+    );
+
+    let reqs: HashMap<CUID, BatchRequest> = cu_allocation
+        .values()
+        .map(|cuid| {
+            (
+                *cuid,
+                BatchRequest {
+                    last_seen_proof_idx: "0".parse().unwrap(),
+                    proof_batch_size: 2,
+                },
+            )
+        })
+        .collect();
+
+    let batched_proofs = prover
+        .get_batch_proofs_after(reqs.clone(), 2, 5)
+        .await
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        batched_proofs.len() > 0,
+        "{:?}",
+        batched_proofs,
+    );
+
+    prover.stop().await.unwrap();
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
