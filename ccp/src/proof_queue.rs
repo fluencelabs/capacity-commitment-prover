@@ -17,7 +17,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::VecDeque;
-use std::ops::RangeBounds;
 
 use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::BatchResponse;
@@ -48,10 +47,6 @@ impl CuState {
 
     fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
         self.into_iter()
-    }
-
-    fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = CCProof> + '_ {
-        self.proofs.drain(range)
     }
 }
 
@@ -170,7 +165,10 @@ impl ProofMultiQueue {
         for (cuid, state) in self.cu_proofs.iter_mut() {
             if state.len() > 0 {
                 let remnant = std::cmp::min(limit, state.len());
-                output.push(BatchResponse::new(*cuid, state.drain(..remnant).collect()));
+                output.push(BatchResponse::new(
+                    *cuid,
+                    state.iter().take(remnant).cloned().collect(),
+                ));
                 limit -= remnant;
             }
             if limit == 0 {
