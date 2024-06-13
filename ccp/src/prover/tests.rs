@@ -116,7 +116,12 @@ async fn wait_for_proofs(
     for _retry in 0..retries {
         tokio::time::sleep(retry_delay).await;
         let proofs = prover.get_proofs_after(after.clone(), 1000).await?;
-        if proofs.len() > length {
+
+        let proof_count = proofs
+            .iter()
+            .map(|batch| batch.proof_batches.len())
+            .sum::<usize>();
+        if proof_count > length {
             return Ok(proofs);
         }
     }
