@@ -120,7 +120,7 @@ where
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
     ) -> Result<Vec<BatchResponse>, ErrorObjectOwned> {
-        let guard = self.cc_prover.write().await;
+        let guard = self.cc_prover.read().await;
         let proofs = guard
             .get_proofs_after(last_known_proofs, limit)
             .await
@@ -135,7 +135,7 @@ where
         min_batch_count: usize,
         max_batch_count: usize,
     ) -> Result<Vec<BatchResponse>, ErrorObjectOwned> {
-        let guard = self.cc_prover.write().await;
+        let guard = self.cc_prover.read().await;
         let proofs = guard
             .get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
             .await
