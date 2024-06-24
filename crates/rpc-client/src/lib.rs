@@ -26,24 +26,20 @@
     unreachable_patterns
 )]
 
-mod or_hex;
-
 use std::collections::HashMap;
 use std::time::Duration;
 
-use ccp_shared::proof::ProofIdx;
-use ccp_shared::types::LogicalCoreId;
 pub use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
-use jsonrpsee::types::ErrorObjectOwned;
+pub use jsonrpsee::types::ErrorObjectOwned;
 
 use ccp_shared::proof::CCProof;
+use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
-
-pub use crate::or_hex::OrHex;
 
 // n.b.: the rpc macro also defines CcpRpcClient type which is a working async JSON RPC client.
 #[rpc(server, client, namespace = "ccp")]
@@ -51,9 +47,9 @@ pub trait CCPRpc {
     #[method(name = "on_active_commitment", param_kind = map)]
     async fn on_active_commitment(
         &self,
-        global_nonce: OrHex<GlobalNonce>,
-        difficulty: OrHex<Difficulty>,
-        cu_allocation: HashMap<PhysicalCoreId, OrHex<CUID>>,
+        global_nonce: GlobalNonce,
+        difficulty: Difficulty,
+        cu_allocation: HashMap<PhysicalCoreId, CUID>,
     ) -> Result<(), ErrorObjectOwned>;
 
     #[method(name = "on_no_active_commitment")]
@@ -103,17 +99,8 @@ impl CCPRpcHttpClient {
         difficulty: Difficulty,
         cu_allocation: HashMap<PhysicalCoreId, CUID>,
     ) -> Result<(), ClientError> {
-        let cu_allocation = cu_allocation
-            .into_iter()
-            .map(|(k, v)| (k, v.into()))
-            .collect();
-        CCPRpcClient::on_active_commitment(
-            &self.inner,
-            global_nonce.into(),
-            difficulty.into(),
-            cu_allocation,
-        )
-        .await
+        CCPRpcClient::on_active_commitment(&self.inner, global_nonce, difficulty, cu_allocation)
+            .await
     }
 
     #[inline]

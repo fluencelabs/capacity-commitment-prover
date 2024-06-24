@@ -16,13 +16,14 @@
 
 use std::str::FromStr;
 
-use hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
+use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 pub type LocalNonceInner = [u8; 32];
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
 #[repr(transparent)]
 pub struct LocalNonce(LocalNonceInner);
 

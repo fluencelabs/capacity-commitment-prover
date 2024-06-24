@@ -2,7 +2,7 @@
 FROM ubuntu:jammy
 
 ARG TARGETARCH
-ARG VERSION="0.10.2" x-release-please-version
+ARG VERSION="0.11.0" x-release-please-version
 
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys
 LABEL org.opencontainers.image.base.name="ubuntu:jammy"

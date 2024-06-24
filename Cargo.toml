@@ -20,16 +20,16 @@ members = [
 ]
 
 [workspace.dependencies]
-ccp = { path = "./ccp", version = "0.10.0" }
-ccp-config = { path = "./crates/config", version = "0.10.0" }
-ccp-randomx = { path = "./crates/randomx", version = "0.10.0" }
-ccp-msr = { path = "./crates/msr", version = "0.10.0" }
-ccp-rpc-client = { version = "0.10.0", path = "./crates/rpc-client" }
-ccp-rpc-server = { version = "0.10.0", path = "./crates/rpc-server" }
-ccp-shared = { path = "./crates/shared", version = "0.10.0" }
-ccp-test-utils = { path = "./crates/test-utils", version = "0.10.0" }
-ccp-utils = { path = "./crates/utils", version = "0.10.0" }
-cpu-utils = { path = "./crates/cpu-utils", version = "0.10.0" }
+ccp = { path = "./ccp", version = "0.11.0" }
+ccp-config = { path = "./crates/config", version = "0.11.0" }
+ccp-randomx = { path = "./crates/randomx", version = "0.11.0" }
+ccp-msr = { path = "./crates/msr", version = "0.11.0" }
+ccp-rpc-client = { version = "0.11.0", path = "./crates/rpc-client" }
+ccp-rpc-server = { version = "0.11.0", path = "./crates/rpc-server" }
+ccp-shared = { path = "./crates/shared", version = "0.11.0" }
+ccp-test-utils = { path = "./crates/test-utils", version = "0.11.0" }
+ccp-utils = { path = "./crates/utils", version = "0.11.0" }
+cpu-utils = { path = "./crates/cpu-utils", version = "0.11.0" }
 
 async-trait = "0.1.77"
 futures = "0.3"
@@ -68,6 +68,7 @@ nix = { version = "0.27.1", features = ["uio"] }
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_with = "3.8.1"
 sha3 = "0.10"
 tempdir = "0.3.7"
 tempfile = "3.10.1"

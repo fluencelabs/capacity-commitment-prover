@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.11.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.2...ccp-v0.11.0) (2024-06-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* fix difficulty checking ([#141](https://github.com/fluencelabs/capacity-commitment-prover/issues/141))
+
+### Bug Fixes
+
+* fix difficulty checking ([#141](https://github.com/fluencelabs/capacity-commitment-prover/issues/141)) ([95f8cf8](https://github.com/fluencelabs/capacity-commitment-prover/commit/95f8cf8c7594262bf9a4b699b2920115178e4089))
+* **rpc:** reexport jsonrpsee::..::ErrorObjectOwned ([#145](https://github.com/fluencelabs/capacity-commitment-prover/issues/145)) ([5a0ed57](https://github.com/fluencelabs/capacity-commitment-prover/commit/5a0ed5757c45cad4f2beea49e6883b3d45cdce73))
+
 ## [0.10.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.1...ccp-v0.10.2) (2024-05-31)
 
 

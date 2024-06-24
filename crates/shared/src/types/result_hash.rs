@@ -18,15 +18,16 @@ use std::str::FromStr;
 
 use hex::FromHex;
 use hex::ToHex;
-use serde::Deserialize;
-use serde::Serialize;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 pub const RANDOMX_RESULT_SIZE: usize = 32;
 
 pub type ResultHashInner = [u8; RANDOMX_RESULT_SIZE];
 
-#[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(
+    Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, SerializeDisplay, DeserializeFromStr,
+)]
 #[repr(transparent)]
 pub struct ResultHash(ResultHashInner);
 
