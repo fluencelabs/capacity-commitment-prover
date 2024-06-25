@@ -150,6 +150,7 @@ pub struct UnresolvedWorkers {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedTokio {
     pub worker_threads: Option<usize>,
     pub max_blocking_threads: Option<usize>,
