@@ -16,6 +16,7 @@
 
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
@@ -34,6 +35,7 @@ use test_log::test;
 use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
+use crate::persistence::StorageMetrics;
 use crate::state_storage::CCPState;
 use crate::CCProver;
 
@@ -70,10 +72,19 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         tokio: Tokio::default(),
     };
 
+    let state_storage_metrics = Arc::<StorageMetrics>::default();
+    let proof_storage_metrics = Arc::<StorageMetrics>::default();
+
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
-        .await
-        .unwrap()
+    CCProver::from_saved_state(
+        config,
+        utility_core_ids_handle,
+        CancellationToken::new(),
+        state_storage_metrics,
+        proof_storage_metrics,
+    )
+    .await
+    .unwrap()
 }
 
 fn get_epoch_params() -> EpochParameters {

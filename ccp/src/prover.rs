@@ -49,6 +49,7 @@ use crate::errors::CCProverError;
 use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
+use crate::persistence::StorageMetrics;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
@@ -78,16 +79,21 @@ impl CCProver {
         let utility_core_ids_handle = CpuIdsHandle::new(config.tokio.utility_cores_ids.clone());
 
         let msr_enforcer = MSRModeEnforcer::from_os(config.optimizations.msr_enabled);
-        let state_storage = StateStorage::new(config.state_dir.clone());
+        let state_storage_metrics = Arc::<StorageMetrics>::default();
+        let state_storage =
+            StateStorage::new(config.state_dir.clone(), state_storage_metrics.clone());
         let cancellation_token = CancellationToken::new();
 
+        let proof_storage_metrics = Arc::<StorageMetrics>::default();
         let prover = Self::create_prover(
             config,
             None,
             msr_enforcer,
             state_storage,
+            state_storage_metrics,
             utility_core_ids_handle,
             cancellation_token,
+            proof_storage_metrics,
         )
         .await?;
         Ok(prover)
@@ -97,8 +103,11 @@ impl CCProver {
         config: CCPConfig,
         utility_core_ids_handle: CpuIdsHandle,
         cancellation_token: CancellationToken,
+        state_storage_metrics: Arc<StorageMetrics>,
+        proof_storage_metrics: Arc<StorageMetrics>,
     ) -> CCResult<Self> {
-        let state_storage = StateStorage::new(config.state_dir.clone());
+        let state_storage =
+            StateStorage::new(config.state_dir.clone(), state_storage_metrics.clone());
         let prev_state = state_storage.try_to_load_data().await?;
 
         let commitment;
@@ -135,8 +144,10 @@ impl CCProver {
             commitment,
             msr_enforcer,
             state_storage,
+            state_storage_metrics,
             utility_core_ids_handle,
             cancellation_token,
+            proof_storage_metrics,
         )
         .await?;
 
@@ -148,8 +159,10 @@ impl CCProver {
         target_commitment: Option<EpochAndAllocation>,
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
+        state_storage_metrics: Arc<StorageMetrics>,
         utility_core_ids_handle: CpuIdsHandle,
         cancellation_token: CancellationToken,
+        proof_storage_metrics: Arc<StorageMetrics>,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
@@ -179,6 +192,7 @@ impl CCProver {
             state_operating_control_outlet,
             state_storage,
             proof_drainer,
+            proof_storage_metrics.clone(),
         );
 
         let stats_collecting_thread =
@@ -188,6 +202,8 @@ impl CCProver {
             PrometheusEndpoint::new(
                 (endpoint_cfg.host.clone(), endpoint_cfg.port),
                 hashrate_collector,
+                state_storage_metrics,
+                proof_storage_metrics,
             )
         });
 
