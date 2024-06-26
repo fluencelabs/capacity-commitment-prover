@@ -38,11 +38,10 @@ impl StorageMetrics {
 
 impl Default for StorageMetrics {
     fn default() -> Self {
+        let histogram_buckets = [0.1, 0.5, 1.0, 2.0, 4.0];
         Self {
             io_error: metrics::counter::Counter::default(),
-            writing_time: metrics::histogram::Histogram::new(
-                metrics::histogram::exponential_buckets(0.125, 2.0, 8),
-            ),
+            writing_time: metrics::histogram::Histogram::new(histogram_buckets.into_iter()),
         }
     }
 }
