@@ -26,7 +26,7 @@ use prometheus_client::metrics;
 
 // changing buckets boundaries is possible, but discuraged;
 // for that reason, making it a config option is a bad idea
-const HISTOGRAM_BUCKETS: [f64; 5] = [0.1, 0.5, 1.0, 2.0, 4.0];
+const HISTOGRAM_BUCKETS: [f64; 9] = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 4.0];
 
 #[derive(Debug)]
 pub struct StorageMetrics {
