@@ -24,6 +24,10 @@ use std::time::Instant;
 
 use prometheus_client::metrics;
 
+// changing buckets boundaries is possible, but discuraged;
+// for that reason, making it a config option is a bad idea
+const HISTOGRAM_BUCKETS: [f64; 5] = [0.1, 0.5, 1.0, 2.0, 4.0];
+
 #[derive(Debug)]
 pub struct StorageMetrics {
     pub(crate) io_error: metrics::counter::Counter,
@@ -38,10 +42,9 @@ impl StorageMetrics {
 
 impl Default for StorageMetrics {
     fn default() -> Self {
-        let histogram_buckets = [0.1, 0.5, 1.0, 2.0, 4.0];
         Self {
             io_error: metrics::counter::Counter::default(),
-            writing_time: metrics::histogram::Histogram::new(histogram_buckets.into_iter()),
+            writing_time: metrics::histogram::Histogram::new(HISTOGRAM_BUCKETS.into_iter()),
         }
     }
 }
