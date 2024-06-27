@@ -18,6 +18,7 @@ use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
 use crate::defaults::default_control_queue_size;
+use crate::defaults::default_cumulative_hashrate_update_interval_secs;
 use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
@@ -25,7 +26,7 @@ use crate::defaults::default_report_hashrate;
 use crate::defaults::default_utility_queue_size;
 use crate::unresolved_config::UnresolvedWorkers;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CCPConfig {
     pub rpc_endpoint: RpcEndpoint,
     pub prometheus_endpoint: Option<PrometheusEndpoint>,
@@ -58,9 +59,10 @@ pub struct Optimizations {
     pub msr_enabled: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Logs {
     pub report_hashrate: bool,
+    pub cumulative_hashrate_update_interval_secs: f64,
     pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 
@@ -122,6 +124,8 @@ impl Default for Logs {
     fn default() -> Self {
         Self {
             report_hashrate: default_report_hashrate(),
+            cumulative_hashrate_update_interval_secs:
+                default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level().to_tracing_filter(),
         }
     }

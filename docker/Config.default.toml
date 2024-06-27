@@ -21,6 +21,7 @@ port = "9384"
 
 [logs]
 report-hashrate = false
+# cumulative-hashrate-update-interval-secs = 60
 log-level = "info"
 
 [state]

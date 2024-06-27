@@ -22,6 +22,7 @@ use serde::Serialize;
 
 use super::defaults::default_async_to_sync_queue_size;
 use super::defaults::default_control_queue_size;
+use super::defaults::default_cumulative_hashrate_update_interval_secs;
 use super::defaults::default_dataset_chunk_size;
 use super::defaults::default_facade_queue_size;
 use super::defaults::default_hashes_per_round;
@@ -109,6 +110,9 @@ pub struct UnresolvedLogs {
     #[serde(default = "default_report_hashrate")]
     pub report_hashrate: bool,
 
+    #[serde(default = "default_cumulative_hashrate_update_interval_secs")]
+    pub cumulative_hashrate_update_interval_secs: f64,
+
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
 }
@@ -117,6 +121,8 @@ impl Default for UnresolvedLogs {
     fn default() -> Self {
         UnresolvedLogs {
             report_hashrate: default_report_hashrate(),
+            cumulative_hashrate_update_interval_secs:
+                default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level(),
         }
     }
@@ -296,6 +302,7 @@ impl UnresolvedLogs {
     pub fn resolve(self) -> Logs {
         Logs {
             report_hashrate: self.report_hashrate,
+            cumulative_hashrate_update_interval_secs: self.cumulative_hashrate_update_interval_secs,
             log_level: self.log_level.to_tracing_filter(),
         }
     }
