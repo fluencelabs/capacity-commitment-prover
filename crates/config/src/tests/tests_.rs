@@ -29,10 +29,10 @@ use crate::Workers;
 
 #[test]
 fn parse_basic_config() {
-    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_path.push("src/tests/test.toml");
+    let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let config_path = manifest_path.join("src/tests/test.toml");
 
-    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
@@ -59,12 +59,13 @@ fn parse_basic_config() {
         report_hashrate: true,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
+    let state_dir = manifest_path.join("src/tests/../test");
     let expected_config = CCPConfig {
         rpc_endpoint,
         prometheus_endpoint: None,
         optimizations,
         logs,
-        state_dir: "../test".into(),
+        state_dir,
         workers: Workers::default(),
         tokio: Tokio::default(),
     };
@@ -74,10 +75,10 @@ fn parse_basic_config() {
 
 #[test]
 fn parse_config_without_optimiziations() {
-    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_path.push("src/tests/test-no-optimization.toml");
+    let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let config_path = manifest_path.join("src/tests/test-no-optimization.toml");
 
-    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
@@ -96,12 +97,15 @@ fn parse_config_without_optimiziations() {
         report_hashrate: true,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
+
+    let state_dir = manifest_path.join("src/tests/../test");
+
     let expected_config = CCPConfig {
         rpc_endpoint,
         prometheus_endpoint: None,
         optimizations,
         logs,
-        state_dir: "../test".into(),
+        state_dir,
         workers: Workers::default(),
         tokio: crate::Tokio {
             worker_threads: None,
