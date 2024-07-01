@@ -26,8 +26,6 @@ use crate::cu::proving_thread::sync::to_stats_collecting_message::{
 };
 use crate::hashrate::HashrateHandler;
 
-const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
-
 pub(crate) struct StatsCollectingThread {
     to_stats_collecting: ToStatsCollectingInlet,
     cancellation: CancellationToken,
@@ -38,6 +36,7 @@ impl StatsCollectingThread {
     pub(crate) fn spawn(
         hashrate_handler: HashrateHandler,
         stats_collecting_queue_size: usize,
+        cumulative_hashrate_update_interval_secs: f64,
     ) -> Self {
         let (to_stats_collecting, from_stats_collecting) =
             mpsc::channel(stats_collecting_queue_size);
@@ -47,6 +46,7 @@ impl StatsCollectingThread {
             from_stats_collecting,
             cancellation.clone(),
             hashrate_handler,
+            cumulative_hashrate_update_interval_secs,
         );
         let handle = tokio::spawn(sct_impl.stats_collecting_closure());
 
@@ -72,6 +72,7 @@ struct StatsCollectingThreadImpl {
     to_stats_collecting: ToStatsCollectingOutlet,
     cancellation: CancellationToken,
     hashrate_handler: HashrateHandler,
+    cumulative_hashrate_update_interval_secs: f64,
 }
 
 impl StatsCollectingThreadImpl {
@@ -79,11 +80,13 @@ impl StatsCollectingThreadImpl {
         to_stats_collecting: ToStatsCollectingOutlet,
         cancellation: CancellationToken,
         hashrate_handler: HashrateHandler,
+        cumulative_hashrate_update_interval_secs: f64,
     ) -> Self {
         Self {
             to_stats_collecting,
             cancellation,
             hashrate_handler,
+            cumulative_hashrate_update_interval_secs,
         }
     }
 
@@ -91,8 +94,9 @@ impl StatsCollectingThreadImpl {
         use futures::FutureExt;
         use futures::StreamExt;
 
-        let mut cum_hashrate_ticker =
-            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+        let mut cum_hashrate_ticker = time::interval(Duration::from_secs_f64(
+            self.cumulative_hashrate_update_interval_secs,
+        ));
 
         #[cfg(feature = "crossterm")]
         let mut terminal_event_reader = crossterm::event::EventStream::new();

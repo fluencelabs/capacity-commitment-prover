@@ -57,6 +57,7 @@ fn parse_basic_config() {
     };
     let logs = Logs {
         report_hashrate: true,
+        cumulative_hashrate_update_interval_secs: 50.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
     let state_dir = manifest_path.join("src/tests/../test");
@@ -95,6 +96,7 @@ fn parse_config_without_optimiziations() {
     };
     let logs = Logs {
         report_hashrate: true,
+        cumulative_hashrate_update_interval_secs: 60.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
 
