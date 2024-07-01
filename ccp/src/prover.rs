@@ -193,6 +193,10 @@ impl CCProver {
 
         let initial_msr_state = MSRState::new(msr_enforcer.original_preset().clone());
 
+        let target_epoch_params = target_allocation
+            .as_ref()
+            .map(|commitment| &commitment.epoch_params)
+            .cloned();
         let cu_governor = CUGovernor::new(
             config.optimizations,
             config.workers,
@@ -201,10 +205,7 @@ impl CCProver {
             state_operating_control_inlet.clone(),
             msr_enforcer,
             cancellation_token,
-            target_allocation
-                .as_ref()
-                .map(|commitment| &commitment.epoch_params)
-                .cloned(),
+            target_epoch_params,
         );
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 
