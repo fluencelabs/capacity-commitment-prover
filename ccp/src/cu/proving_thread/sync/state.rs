@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,12 +22,13 @@ use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::ResultHash;
 use ccp_shared::types::LocalNonce;
 
+use super::channels_facade::ToStateOperating;
+use super::channels_facade::ToStatsCollecting;
 use super::local_nonce::NonceIterable;
 use super::raw_proof::RawProof;
 use super::STResult;
 use crate::cu::proving_thread::messages::AsyncToSyncMessage;
 use crate::cu::proving_thread::messages::NewCCJob;
-use crate::cu::proving_thread::sync::channels_facade::ToUtility;
 use crate::hashrate::ThreadHashrateRecord;
 
 /// The state machine of the sync part of proving thread, it
@@ -73,7 +74,8 @@ impl RandomXJob {
     pub(crate) fn cc_prove(
         &mut self,
         core_id: LogicalCoreId,
-        to_utility: &ToUtility,
+        to_state_operating: &ToStateOperating,
+        to_stats_collecting: &ToStatsCollecting,
     ) -> STResult<()> {
         use ccp_shared::meet_difficulty::MeetDifficulty;
 
@@ -91,19 +93,16 @@ impl RandomXJob {
                 log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", self.local_nonce);
 
                 let proof = self.create_golden_proof(result_hash);
-                to_utility.send_proof(core_id, proof)?;
+                to_state_operating.send_proof(proof)?;
+                to_stats_collecting.send_proof(core_id)?;
             }
         }
 
         let duration = start.elapsed();
 
-        let message = ThreadHashrateRecord::checked_hashes(
-            self.epoch,
-            core_id,
-            duration,
-            self.hashes_per_round,
-        );
-        to_utility.send_hashrate(message)?;
+        let message =
+            ThreadHashrateRecord::checked_hashes(core_id, duration, self.hashes_per_round);
+        to_stats_collecting.send_hashrate(message)?;
 
         Ok(())
     }

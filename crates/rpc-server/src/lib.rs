@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@
     unreachable_patterns
 )]
 
-mod facade;
-
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -38,10 +36,8 @@ use jsonrpsee::server::ServerHandle;
 use jsonrpsee::tracing::instrument;
 use jsonrpsee::types::ErrorObjectOwned;
 use tokio::net::ToSocketAddrs;
-use tokio::sync::Mutex;
 
 use ccp_rpc_client::CCPRpcServer;
-use ccp_rpc_client::OrHex;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
@@ -50,25 +46,24 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::GlobalNonce;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
+use cpu_utils::pinning::ThreadPinner;
 
-pub use crate::facade::BackgroundFacade;
+use tokio::sync::RwLock;
 
 pub struct CCPRcpHttpServer<P> {
     // n.b. if NoxCCPApi would have internal mutability, we might get used of the Mutex
-    cc_prover: Arc<Mutex<P>>,
+    cc_prover: Arc<RwLock<P>>,
 }
 
 impl<P> CCPRcpHttpServer<P> {
-    pub fn new(cc_prover: P) -> Self {
-        Self {
-            cc_prover: Arc::new(Mutex::new(cc_prover)),
-        }
+    pub fn new(cc_prover: Arc<RwLock<P>>) -> Self {
+        Self { cc_prover }
     }
 }
 
 impl<P> CCPRcpHttpServer<P>
 where
-    P: NoxCCPApi + 'static,
+    P: NoxCCPApi + Send + Sync + 'static,
     <P as NoxCCPApi>::Error: ToString,
 {
     ///  Run the JSON-RPC HTTP server in the background.
@@ -89,39 +84,20 @@ where
 #[async_trait]
 impl<P> CCPRpcServer for CCPRcpHttpServer<P>
 where
-    P: NoxCCPApi + 'static,
+    P: NoxCCPApi + Send + Sync + 'static,
     <P as NoxCCPApi>::Error: ToString,
 {
     #[instrument(skip(self))]
     async fn on_active_commitment(
         &self,
-        global_nonce: OrHex<GlobalNonce>,
-        difficulty: OrHex<Difficulty>,
-        cu_allocation: HashMap<PhysicalCoreId, OrHex<CUID>>,
+        global_nonce: GlobalNonce,
+        difficulty: Difficulty,
+        cu_allocation: HashMap<PhysicalCoreId, CUID>,
     ) -> Result<(), ErrorObjectOwned> {
-        let global_nonce: GlobalNonce = global_nonce
-            .clone()
-            .unhex()
-            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(global_nonce)))?;
-        let difficulty = difficulty
-            .clone()
-            .unhex()
-            .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(difficulty)))?;
-
-        let mut cu_allocation_real = HashMap::<_, CUID>::new();
-        for (id, cuid) in cu_allocation {
-            cu_allocation_real.insert(
-                id,
-                cuid.clone()
-                    .unhex()
-                    .map_err(|e| ErrorObjectOwned::owned(2, e.to_string(), Some(cuid)))?,
-            );
-        }
-
-        let mut guard = self.cc_prover.lock().await;
+        let mut guard = self.cc_prover.write().await;
         let epoch = EpochParameters::new(global_nonce, difficulty);
-        guard
-            .on_active_commitment(epoch, cu_allocation_real)
+        let _init_recv = guard
+            .on_active_commitment(epoch, cu_allocation)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(())
@@ -129,7 +105,7 @@ where
 
     #[instrument(skip(self))]
     async fn on_no_active_commitment(&self) -> Result<(), ErrorObjectOwned> {
-        let mut guard = self.cc_prover.lock().await;
+        let mut guard = self.cc_prover.write().await;
         guard
             .on_no_active_commitment()
             .await
@@ -143,7 +119,7 @@ where
         proof_idx: ProofIdx,
         limit: usize,
     ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
-        let guard = self.cc_prover.lock().await;
+        let guard = self.cc_prover.write().await;
         let mut proofs = guard
             .get_proofs_after(proof_idx)
             .await
@@ -162,11 +138,11 @@ where
         // for it to park-unpark
         let pid = std::thread::current().id();
         tracing::info!("Instantly Repinning tokio thread {pid:?} to cores {utility_core_ids:?}");
-        if !cpu_utils::pinning::pin_current_thread_to_cpuset(utility_core_ids.clone().into_iter()) {
+        if !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&utility_core_ids) {
             tracing::error!("Tokio thread repinning failed");
         }
 
-        let guard = self.cc_prover.lock().await;
+        let guard = self.cc_prover.read().await;
         guard.realloc_utility_cores(utility_core_ids).await;
     }
 }

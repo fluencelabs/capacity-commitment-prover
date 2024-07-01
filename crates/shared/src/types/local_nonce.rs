@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-use hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 pub type LocalNonceInner = [u8; 32];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
 #[repr(transparent)]
 pub struct LocalNonce(LocalNonceInner);
 
@@ -74,8 +77,26 @@ impl ToHex for LocalNonce {
     }
 }
 
+impl FromStr for LocalNonce {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
+    }
+}
+
+use std::fmt;
+
 impl std::fmt::Display for LocalNonce {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for LocalNonce {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("LocalNonce")
+            .field(&self.to_string())
+            .finish()
     }
 }

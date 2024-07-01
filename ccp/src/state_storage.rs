@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error as ThisError;
 
-use crate::utility_thread::save_reliably;
+use crate::state_operating_thread::save_reliably;
 
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
 const STATE_FILE: &str = "state.json";
@@ -31,6 +31,12 @@ const STATE_FILE: &str = "state.json";
 pub(crate) struct StateStorage {
     state_dir: PathBuf,
     // TODO file lock
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub(crate) struct EpochAndAllocation {
+    pub(crate) epoch_params: EpochParameters,
+    pub(crate) cu_allocation: CUAllocation,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]

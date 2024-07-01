@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,24 +19,25 @@ use std::path::PathBuf;
 use ccp_randomx::RandomXFlags;
 
 use crate::config_loader::load_config;
-use crate::unresolved_config::UnresolvedWorkers;
 use crate::CCPConfig;
 use crate::Logs;
 use crate::Optimizations;
 use crate::RpcEndpoint;
 use crate::ThreadsPerCoreAllocationPolicy;
+use crate::Tokio;
+use crate::Workers;
 
 #[test]
 fn parse_basic_config() {
-    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_path.push("src/tests/test.toml");
+    let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let config_path = manifest_path.join("src/tests/test.toml");
 
-    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        ..<_>::default()
     };
 
     let mut randomx_flags = RandomXFlags::default();
@@ -56,15 +57,18 @@ fn parse_basic_config() {
     };
     let logs = Logs {
         report_hashrate: true,
+        cumulative_hashrate_update_interval_secs: 50.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
+    let state_dir = manifest_path.join("src/tests/../test");
     let expected_config = CCPConfig {
         rpc_endpoint,
         prometheus_endpoint: None,
         optimizations,
         logs,
-        state_dir: "../test".into(),
+        state_dir,
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     assert_eq!(actual_config, expected_config);
@@ -72,15 +76,15 @@ fn parse_basic_config() {
 
 #[test]
 fn parse_config_without_optimiziations() {
-    let mut manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    manifest_path.push("src/tests/test-no-optimization.toml");
+    let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let config_path = manifest_path.join("src/tests/test-no-optimization.toml");
 
-    let actual_config = load_config(manifest_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
         port: 9383,
-        utility_cores_ids: vec![1.into(), 2.into()],
+        ..<_>::default()
     };
 
     let randomx_flags = RandomXFlags::recommended_full_mem();
@@ -92,15 +96,24 @@ fn parse_config_without_optimiziations() {
     };
     let logs = Logs {
         report_hashrate: true,
+        cumulative_hashrate_update_interval_secs: 60.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
     };
+
+    let state_dir = manifest_path.join("src/tests/../test");
+
     let expected_config = CCPConfig {
         rpc_endpoint,
         prometheus_endpoint: None,
         optimizations,
         logs,
-        state_dir: "../test".into(),
+        state_dir,
         workers: Workers::default(),
+        tokio: crate::Tokio {
+            worker_threads: None,
+            max_blocking_threads: None,
+            utility_cores_ids: vec![1.into(), 2.into()],
+        },
     };
 
     assert_eq!(actual_config, expected_config);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,12 @@ const DEFAULT_SYNC_TO_ASYNC_QUEUE_SIZE: usize = 1;
 
 const DEFAULT_UTILITY_QUEUE_SIZE: usize = 100;
 const DEFAULT_FACADE_QUEUE_SIZE: usize = 100;
+const DEFAULT_CONTROL_QUEUE_SIZE: usize = 100;
+
+// chunk size for roughly 10s of execution
+const DEFAULT_DATASET_CHUNK_SIZE: u64 = 5_000_000;
+
+const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: f64 = 60.0;
 
 pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
@@ -31,6 +37,10 @@ pub(crate) fn default_log_level() -> LogLevel {
 
 pub(crate) fn default_report_hashrate() -> bool {
     false
+}
+
+pub(crate) fn default_cumulative_hashrate_update_interval_secs() -> f64 {
+    CUMULATIVE_HASHRATE_UPDATE_INTERVAL
 }
 
 pub(crate) fn default_state_path() -> PathBuf {
@@ -59,4 +69,12 @@ pub(crate) fn default_utility_queue_size() -> usize {
 
 pub(crate) fn default_facade_queue_size() -> usize {
     DEFAULT_FACADE_QUEUE_SIZE
+}
+
+pub(crate) fn default_control_queue_size() -> usize {
+    DEFAULT_CONTROL_QUEUE_SIZE
+}
+
+pub(crate) fn default_dataset_chunk_size() -> u64 {
+    DEFAULT_DATASET_CHUNK_SIZE
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ use tokio::task::JoinError;
 use crate::cu::CUProverError;
 use crate::hashrate::HashrateError;
 use crate::state_storage::StateStorageError;
-use crate::utility_thread::UtilityThreadError;
+use crate::state_operating_thread::StateOperatingThreadError;
+use crate::stats_collecting_thread::StatsCollectingThreadError;
 
 #[derive(ThisError, Debug)]
 pub enum CCProverError {
@@ -37,10 +38,18 @@ pub enum CCProverError {
     JoinError(#[from] JoinError),
 
     #[error(transparent)]
-    UtilityThreadError(#[from] UtilityThreadError),
+    StateOperatingThreadError(#[from] StateOperatingThreadError),
+
+    #[error(transparent)]
+    StatsCollectingThreadError(#[from] StatsCollectingThreadError),
 
     #[error(transparent)]
     IOError(#[from] tokio::io::Error),
+
+    #[error("utility task channel is closed")]
+    UtilityClosedError,
+    #[error("utility task channel is full")]
+    UtilityFullError,
 
     #[error(transparent)]
     StorageError(#[from] StateStorageError),

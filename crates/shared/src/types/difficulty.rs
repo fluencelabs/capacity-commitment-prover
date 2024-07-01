@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-use hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 use crate::RANDOMX_RESULT_SIZE;
 
 pub type DifficultyInner = [u8; RANDOMX_RESULT_SIZE];
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(transparent)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default)]
 #[repr(transparent)]
 pub struct Difficulty(DifficultyInner);
 
@@ -68,8 +71,26 @@ impl ToHex for Difficulty {
     }
 }
 
-impl std::fmt::Display for Difficulty {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl FromStr for Difficulty {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
+    }
+}
+
+use std::fmt;
+
+impl fmt::Display for Difficulty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for Difficulty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("Difficulty")
+            .field(&self.to_string())
+            .finish()
     }
 }

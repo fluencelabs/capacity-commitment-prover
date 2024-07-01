@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -56,13 +57,7 @@ impl HashrateHandler {
     pub(crate) fn account_record(&mut self, record: ThreadHashrateRecord) -> HResult<()> {
         let mut guard = self.collector.lock().unwrap();
 
-        if let EpochObservation::EpochChanged {
-            prev_epoch_hashrate,
-        } = guard.account_record(record)
-        {
-            self.saver.save_hashrate_previous(prev_epoch_hashrate)?;
-            self.saver.cleanup_sliding_hashrate()?;
-        }
+        guard.account_record(record);
 
         self.sliding_collector.account_record(record);
         if self.instant_hashrate_enabled {
@@ -86,5 +81,17 @@ impl HashrateHandler {
     #[allow(dead_code)]
     pub(crate) fn sliding_hashrate(&self) -> &SlidingHashrate {
         self.sliding_collector.hashrate()
+    }
+
+    pub(crate) fn handle_epoch(&self, epoch: EpochParameters) -> HResult<()> {
+        let mut guard = self.collector.lock().unwrap();
+        if let EpochObservation::EpochChanged {
+            prev_epoch_hashrate,
+        } = guard.observe_epoch(epoch)
+        {
+            self.saver.save_hashrate_previous(prev_epoch_hashrate)?;
+            self.saver.cleanup_sliding_hashrate()?;
+        }
+        Ok(())
     }
 }

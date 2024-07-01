@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,18 @@
 
 use ccp_randomx::cache::Cache;
 use ccp_randomx::Dataset;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
-use super::to_utility_message::ToUtilityInlet;
-use super::to_utility_message::ToUtilityMessage;
+use super::to_state_operating_message::ProvingThreadSyncError;
+use super::to_state_operating_message::RawProof;
+use super::to_state_operating_message::ToStateOperatingInlet;
+use super::to_state_operating_message::ToStateOperatingMessage;
+use super::to_stats_collecting_message::ToStatsCollectingInlet;
+use super::to_stats_collecting_message::ToStatsCollectingMessage;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
 use crate::hashrate::ThreadHashrateRecord;
-use crate::utility_thread::message::ProvingThreadSyncError;
-use crate::utility_thread::message::RawProof;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ToAsync {
@@ -68,24 +71,19 @@ impl ToAsync {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ToUtility {
-    to_utility: ToUtilityInlet,
+pub(crate) struct ToStateOperating {
+    to_state_operating: ToStateOperatingInlet,
 }
 
-impl ToUtility {
-    pub(crate) fn new(to_utility: ToUtilityInlet) -> Self {
-        Self { to_utility }
+impl ToStateOperating {
+    pub(crate) fn new(to_state_operating: ToStateOperatingInlet) -> Self {
+        Self { to_state_operating }
     }
 
-    pub(crate) fn send_proof(&self, core_id: LogicalCoreId, proof: RawProof) -> STResult<()> {
-        let message = ToUtilityMessage::proof_found(core_id, proof);
-        self.to_utility.blocking_send(message).map_err(Into::into)
-    }
-
-    pub(crate) fn send_hashrate(&self, hashrate_message: ThreadHashrateRecord) -> STResult<()> {
-        let to_utility_message = ToUtilityMessage::hashrate(hashrate_message);
-        self.to_utility
-            .blocking_send(to_utility_message)
+    pub(crate) fn send_proof(&self, proof: RawProof) -> STResult<()> {
+        let to_state_operating_message = ToStateOperatingMessage::proof_found(proof);
+        self.to_state_operating
+            .blocking_send(to_state_operating_message)
             .map_err(Into::into)
     }
 
@@ -94,9 +92,43 @@ impl ToUtility {
         core_id: LogicalCoreId,
         error: ProvingThreadSyncError,
     ) -> STResult<()> {
-        let to_utility_message = ToUtilityMessage::error_happened(core_id, error);
-        self.to_utility
-            .blocking_send(to_utility_message)
+        let to_state_operating_message = ToStateOperatingMessage::error_happened(core_id, error);
+        self.to_state_operating
+            .blocking_send(to_state_operating_message)
+            .map_err(Into::into)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct ToStatsCollecting {
+    to_stats_collecting: ToStatsCollectingInlet,
+}
+
+impl ToStatsCollecting {
+    pub(crate) fn new(to_stats_collecting: ToStatsCollectingInlet) -> Self {
+        Self {
+            to_stats_collecting,
+        }
+    }
+
+    pub(crate) fn send_proof(&self, core_id: LogicalCoreId) -> STResult<()> {
+        let to_stats_collecting_message = ToStatsCollectingMessage::proof_found(core_id);
+        self.to_stats_collecting
+            .blocking_send(to_stats_collecting_message)
+            .map_err(Into::into)
+    }
+
+    pub(crate) fn send_hashrate(&self, hashrate_message: ThreadHashrateRecord) -> STResult<()> {
+        let to_stats_collecting_message = ToStatsCollectingMessage::hashrate(hashrate_message);
+        self.to_stats_collecting
+            .blocking_send(to_stats_collecting_message)
+            .map_err(Into::into)
+    }
+
+    pub(crate) fn send_epoch(&self, epoch: EpochParameters) -> STResult<()> {
+        let to_stats_collecting_message = ToStatsCollectingMessage::epoch(epoch);
+        self.to_stats_collecting
+            .blocking_send(to_stats_collecting_message)
             .map_err(Into::into)
     }
 }

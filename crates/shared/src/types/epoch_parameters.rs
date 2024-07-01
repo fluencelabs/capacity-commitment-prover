@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ use std::fmt;
 
 impl fmt::Display for EpochParameters {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "global nonce: {:?}", self.global_nonce)?;
-        writeln!(f, "difficulty: {:?}", self.difficulty)
+        writeln!(f, "global nonce: {}", self.global_nonce)?;
+        writeln!(f, "difficulty: {}", self.difficulty)
     }
 }

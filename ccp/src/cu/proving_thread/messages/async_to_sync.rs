@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,6 @@ pub(crate) struct AllocateDataset {
 
 #[derive(Debug)]
 pub(crate) struct InitializeDataset {
-    pub(crate) epoch: EpochParameters,
     pub(crate) cache: CacheHandle,
     pub(crate) dataset: DatasetHandle,
     pub(crate) start_item: u64,
@@ -74,14 +73,12 @@ impl AllocateDataset {
 
 impl InitializeDataset {
     pub fn new(
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
     ) -> Self {
         Self {
-            epoch,
             cache,
             dataset,
             start_item,

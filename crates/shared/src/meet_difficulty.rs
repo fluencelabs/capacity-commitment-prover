@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,6 @@ pub trait MeetDifficulty {
 
 impl MeetDifficulty for ResultHash {
     fn meet_difficulty(&self, difficulty: &Difficulty) -> bool {
-        self.as_ref() < difficulty.as_ref()
+        self.as_ref() <= difficulty.as_ref()
     }
 }

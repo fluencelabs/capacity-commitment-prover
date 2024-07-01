@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,17 +22,20 @@ use ccp_msr::MSRModeEnforcer;
 use ccp_randomx::Cache;
 use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
+use cpu_utils::pinning::ThreadPinner;
 use cpu_utils::LogicalCoreId;
 
 use super::channels_facade::ToAsync;
-use super::channels_facade::ToUtility;
 use super::errors::ProvingThreadSyncError;
 use super::state::RandomXJob;
 use super::state::ThreadState;
-use super::to_utility_message::ToUtilityInlet;
+use super::to_state_operating_message::ToStateOperatingInlet;
+use super::to_stats_collecting_message::ToStatsCollectingInlet;
 use super::STFResult;
 use super::STResult;
 use crate::cu::proving_thread::messages::*;
+use crate::cu::proving_thread::sync::channels_facade::ToStateOperating;
+use crate::cu::proving_thread::sync::channels_facade::ToStatsCollecting;
 use crate::cu::proving_thread::sync::errors::ProvingThreadSyncFacadeError;
 use crate::hashrate::ThreadHashrateRecord;
 
@@ -50,10 +53,17 @@ impl ProvingThreadSync {
         msr_enforcer: MSRModeEnforcer,
         from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
-        to_utility: ToUtilityInlet,
+        to_state_operating: ToStateOperatingInlet,
+        to_stats_collecting: ToStatsCollectingInlet,
     ) -> Self {
-        let thread_closure =
-            Self::proving_closure(core_id, msr_enforcer, from_async, to_async, to_utility);
+        let thread_closure = Self::proving_closure(
+            core_id,
+            msr_enforcer,
+            from_async,
+            to_async,
+            to_state_operating,
+            to_stats_collecting,
+        );
         let handle = thread::spawn(thread_closure);
 
         Self { handle }
@@ -70,18 +80,23 @@ impl ProvingThreadSync {
         mut msr_enforcer: MSRModeEnforcer,
         mut from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
-        to_utility: ToUtilityInlet,
+        to_state_operating: ToStateOperatingInlet,
+        to_stats_collecting: ToStatsCollectingInlet,
     ) -> Box<dyn FnMut() -> STFResult<()> + Send + 'static> {
-        let to_utility_outer = to_utility.clone();
+        use super::to_state_operating_message::ToStateOperatingMessage;
+
+        let to_state_operating_outer = to_state_operating.clone();
 
         let to_async = ToAsync::new(to_async);
-        let to_utility = ToUtility::new(to_utility);
+        let to_state_operating = ToStateOperating::new(to_state_operating);
+        let to_stats_collecting = ToStatsCollecting::new(to_stats_collecting);
 
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
-            if !cpu_utils::pinning::pin_current_thread_to(core_id) {
-                to_utility.send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
+            if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(core_id) {
+                to_state_operating
+                    .send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
             } else if let Err(error) = msr_enforcer.enforce(core_id) {
-                to_utility.send_error(core_id, error.into())?;
+                to_state_operating.send_error(core_id, error.into())?;
             }
 
             let mut thread_state = ThreadState::WaitForMessage;
@@ -101,7 +116,7 @@ impl ProvingThreadSync {
                     ThreadState::CCJob { mut job } => {
                         use tokio::sync::mpsc::error::TryRecvError;
 
-                        job.cc_prove(core_id, &to_utility)?;
+                        job.cc_prove(core_id, &to_state_operating, &to_stats_collecting)?;
 
                         match from_async.try_recv() {
                             Ok(message) => ThreadState::NewMessage { message },
@@ -114,7 +129,8 @@ impl ProvingThreadSync {
                         message,
                         &mut msr_enforcer,
                         &to_async,
-                        &to_utility,
+                        &to_state_operating,
+                        &to_stats_collecting,
                     )?,
                     ThreadState::Stop => {
                         return Ok(());
@@ -126,10 +142,10 @@ impl ProvingThreadSync {
         Box::new(move || match inner_closure() {
             Ok(_) => Ok(()),
             Err(error) => {
-                use crate::utility_thread::message::ToUtilityMessage;
-
-                let message = ToUtilityMessage::error_happened(core_id, error);
-                to_utility_outer.blocking_send(message).map_err(Into::into)
+                let message = ToStateOperatingMessage::error_happened(core_id, error);
+                to_state_operating_outer
+                    .blocking_send(message)
+                    .map_err(Into::into)
             }
         })
     }
@@ -139,7 +155,8 @@ impl ProvingThreadSync {
         message: AsyncToSyncMessage,
         msr_enforcer: &mut MSRModeEnforcer,
         to_async: &ToAsync,
-        to_utility: &ToUtility,
+        to_state_operating: &ToStateOperating,
+        to_stats_collecting: &ToStatsCollecting,
     ) -> STResult<ThreadState> {
         log::trace!("proving_thread_sync: handle message from CUProver: {message:?}");
 
@@ -155,9 +172,10 @@ impl ProvingThreadSync {
                 let duration = start.elapsed();
 
                 to_async.send_cache(cache)?;
-                let hashrate =
-                    ThreadHashrateRecord::cache_creation(params.epoch, core_id, duration);
-                to_utility.send_hashrate(hashrate)?;
+
+                to_stats_collecting.send_epoch(params.epoch)?;
+                let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
+                to_stats_collecting.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -179,13 +197,12 @@ impl ProvingThreadSync {
                 to_async.notify_dataset_initialized()?;
 
                 let hashrate = ThreadHashrateRecord::dataset_initialization(
-                    params.epoch,
                     core_id,
                     duration,
                     params.start_item,
                     params.items_count,
                 );
-                to_utility.send_hashrate(hashrate)?;
+                to_stats_collecting.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -200,16 +217,16 @@ impl ProvingThreadSync {
 
             AsyncToSyncMessage::PinThread(params) => {
                 if let Err(error) = msr_enforcer.cease(core_id) {
-                    to_utility.send_error(core_id, error.into())?;
+                    to_state_operating.send_error(core_id, error.into())?;
                 }
 
-                if !cpu_utils::pinning::pin_current_thread_to(params.core_id) {
-                    to_utility.send_error(
+                if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(params.core_id) {
+                    to_state_operating.send_error(
                         core_id,
                         ProvingThreadSyncError::pinning_failed(params.core_id),
                     )?;
                 } else if let Err(error) = msr_enforcer.enforce(params.core_id) {
-                    to_utility.send_error(params.core_id, error.into())?;
+                    to_state_operating.send_error(params.core_id, error.into())?;
                 }
 
                 Ok(ThreadState::WaitForMessage)
@@ -222,7 +239,7 @@ impl ProvingThreadSync {
 
             AsyncToSyncMessage::Stop => {
                 if let Err(error) = msr_enforcer.cease(core_id) {
-                    to_utility.send_error(core_id, error.into())?;
+                    to_state_operating.send_error(core_id, error.into())?;
                 }
 
                 Ok(ThreadState::Stop)

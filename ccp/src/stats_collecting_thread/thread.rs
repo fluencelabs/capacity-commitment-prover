@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,93 +18,85 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
 
-use ccp_shared::proof::CCProof;
-use ccp_shared::proof::CCProofId;
-use ccp_shared::proof::ProofIdx;
-use ccp_shared::types::GlobalNonce;
 use tokio_util::sync::CancellationToken;
 
-use super::message::*;
-use super::UTResult;
+use super::STTResult;
+use crate::cu::proving_thread::sync::to_stats_collecting_message::{
+    ToStatsCollectingInlet, ToStatsCollectingMessage, ToStatsCollectingOutlet,
+};
 use crate::hashrate::HashrateHandler;
-use crate::utility_thread::proof_storage::ProofStorage;
 
-const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: u64 = 60;
-
-pub(crate) struct UtilityThread {
-    to_utility: ToUtilityInlet,
+pub(crate) struct StatsCollectingThread {
+    to_stats_collecting: ToStatsCollectingInlet,
     cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
-impl UtilityThread {
+impl StatsCollectingThread {
     pub(crate) fn spawn(
-        prev_proof_idx: ProofIdx,
-        proof_storage_dir: std::path::PathBuf,
-        prev_global_nonce: Option<GlobalNonce>,
         hashrate_handler: HashrateHandler,
-        utility_queue_size: usize,
+        stats_collecting_queue_size: usize,
+        cumulative_hashrate_update_interval_secs: f64,
     ) -> Self {
-        let (to_utility, from_utility) = mpsc::channel(utility_queue_size);
+        let (to_stats_collecting, from_stats_collecting) =
+            mpsc::channel(stats_collecting_queue_size);
 
         let cancellation = CancellationToken::new();
-
-        let proof_storage = ProofStorage::new(proof_storage_dir);
-        let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
-        let ut_impl = UtilityThreadImpl::new(
-            from_utility,
+        let sct_impl = StatsCollectingThreadImpl::new(
+            from_stats_collecting,
             cancellation.clone(),
-            proofs_handler,
             hashrate_handler,
+            cumulative_hashrate_update_interval_secs,
         );
+        let handle = tokio::spawn(sct_impl.stats_collecting_closure());
 
-        let handle = tokio::spawn(ut_impl.utility_closure());
         Self {
-            to_utility,
+            to_stats_collecting,
             cancellation,
             handle,
         }
     }
 
-    pub(crate) async fn shutdown(&mut self) -> UTResult<()> {
-        log::info!("Shutting down utility thread");
+    pub(crate) async fn shutdown(&mut self) -> STTResult<()> {
+        log::info!("Shutting down stats collecting thread");
         self.cancellation.cancel();
         Ok((&mut self.handle).await?)
     }
 
-    pub(crate) fn get_to_utility_channel(&self) -> ToUtilityInlet {
-        self.to_utility.clone()
+    pub(crate) fn get_to_stats_collecting_channel(&self) -> ToStatsCollectingInlet {
+        self.to_stats_collecting.clone()
     }
 }
 
-struct UtilityThreadImpl {
-    to_utility: ToUtilityOutlet,
+struct StatsCollectingThreadImpl {
+    to_stats_collecting: ToStatsCollectingOutlet,
     cancellation: CancellationToken,
-    proofs_handler: NewProofHandler,
     hashrate_handler: HashrateHandler,
+    cumulative_hashrate_update_interval_secs: f64,
 }
 
-impl UtilityThreadImpl {
+impl StatsCollectingThreadImpl {
     pub(crate) fn new(
-        to_utility: ToUtilityOutlet,
+        to_stats_collecting: ToStatsCollectingOutlet,
         cancellation: CancellationToken,
-        proofs_handler: NewProofHandler,
         hashrate_handler: HashrateHandler,
+        cumulative_hashrate_update_interval_secs: f64,
     ) -> Self {
         Self {
-            to_utility,
+            to_stats_collecting,
             cancellation,
-            proofs_handler,
             hashrate_handler,
+            cumulative_hashrate_update_interval_secs,
         }
     }
 
-    pub(crate) async fn utility_closure(mut self) {
+    pub(crate) async fn stats_collecting_closure(mut self) {
         use futures::FutureExt;
         use futures::StreamExt;
 
-        let mut cum_hashrate_ticker =
-            time::interval(Duration::from_secs(CUMULATIVE_HASHRATE_UPDATE_INTERVAL));
+        let mut cum_hashrate_ticker = time::interval(Duration::from_secs_f64(
+            self.cumulative_hashrate_update_interval_secs,
+        ));
 
         #[cfg(feature = "crossterm")]
         let mut terminal_event_reader = crossterm::event::EventStream::new();
@@ -114,34 +106,34 @@ impl UtilityThreadImpl {
 
         loop {
             tokio::select! {
-                Some(message) = self.to_utility.recv() => self.handle_to_utility_message(message).await,
+                Some(message) = self.to_stats_collecting.recv() => self.handle_to_stats_collecting_message(message).await,
                 _ = cum_hashrate_ticker.tick() => self.handle_cum_hashrate_tick().await,
                 maybe_event = terminal_event_reader.next().fuse() => self.handle_terminal_event(maybe_event).await,
                 _ = self.cancellation.cancelled() => {
-                    log::info!("The utility thread was shutdown");
+                    log::info!("Stats collecting thread is shutdown.");
                     return;
                 }
             }
         }
     }
 
-    async fn handle_to_utility_message(&mut self, message: ToUtilityMessage) {
-        match message {
-            ToUtilityMessage::ProofFound { core_id, proof } => {
-                if let Err(error) = self.proofs_handler.handle_found_proof(&proof).await {
-                    log::error!("failed to save proof: {error}\nfound proof {proof}");
-                }
+    async fn handle_to_stats_collecting_message(&mut self, message: ToStatsCollectingMessage) {
+        use ToStatsCollectingMessage::*;
 
+        match message {
+            ProofFound { core_id } => {
                 self.hashrate_handler.proof_found(core_id);
             }
-            ToUtilityMessage::ErrorHappened { core_id, error } => {
-                log::error!("{core_id}: {error}");
-            }
-            ToUtilityMessage::Hashrate(record) => {
+            Hashrate(record) => {
                 log::info!("{record}");
 
                 if let Err(error) = self.hashrate_handler.account_record(record) {
                     log::error!("hashrate accounting failed: {error}");
+                }
+            }
+            Epoch(epoch) => {
+                if let Err(error) = self.hashrate_handler.handle_epoch(epoch) {
+                    log::error!("epoch processing failed: {error}");
                 }
             }
         }
@@ -193,57 +185,4 @@ impl UtilityThreadImpl {
 
     #[cfg(not(feature = "crossterm"))]
     async fn handle_terminal_event(&mut self, _maybe_event: Option<()>) {}
-}
-
-struct NewProofHandler {
-    proof_idx: ProofIdx,
-    last_seen_global_nonce: GlobalNonce,
-    proof_storage: ProofStorage,
-}
-
-impl NewProofHandler {
-    pub(self) fn new(
-        proof_storage: ProofStorage,
-        prev_proof_idx: ProofIdx,
-        last_seen_global_nonce: Option<GlobalNonce>,
-    ) -> Self {
-        Self {
-            proof_idx: prev_proof_idx,
-            last_seen_global_nonce: last_seen_global_nonce.unwrap_or(GlobalNonce::new([0u8; 32])),
-            proof_storage,
-        }
-    }
-
-    async fn handle_found_proof(&mut self, proof: &RawProof) -> UTResult<()> {
-        log::debug!("utility_thread: new proof_received {proof:?}");
-
-        self.maybe_new_epoch(proof);
-
-        let cc_proof_id = CCProofId::new(
-            proof.epoch.global_nonce,
-            proof.epoch.difficulty,
-            self.proof_idx,
-        );
-        let cc_proof = CCProof::new(
-            cc_proof_id,
-            proof.local_nonce,
-            proof.cu_id,
-            proof.result_hash,
-        );
-        self.proof_storage.store_new_proof(cc_proof).await?;
-        self.proof_idx.increment();
-
-        Ok(())
-    }
-
-    fn maybe_new_epoch(&mut self, proof: &RawProof) {
-        if self.is_new_epoch(proof) {
-            self.last_seen_global_nonce = proof.epoch.global_nonce;
-            self.proof_idx = ProofIdx::zero();
-        }
-    }
-
-    fn is_new_epoch(&self, proof: &RawProof) -> bool {
-        self.last_seen_global_nonce != proof.epoch.global_nonce
-    }
 }

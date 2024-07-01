@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,16 +26,22 @@ use ccp_test_utils::randomx::run_light_randomx;
 use ccp_test_utils::test_values as test;
 use ccp_utils::run_utils::run_unordered;
 
+use super::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use super::ProvingThreadAsync;
+use super::ProvingThreadConfig;
 use super::ProvingThreadFacade;
-use crate::utility_thread::message::RawProof;
-use crate::utility_thread::message::ToUtilityMessage;
-use crate::utility_thread::message::ToUtilityOutlet;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
+use crate::cu::tests::collect_proofs;
+use crate::cu::tests::collect_proofs_with_flag;
+use crate::cu::tests::proof_sink;
+use crate::state_operating_thread::message::RawProof;
+use crate::state_operating_thread::message::ToStateOperatingOutlet;
 
 pub(crate) struct ThreadInitIngredients {
     pub(crate) thread: ProvingThreadAsync,
     pub(crate) dataset: DatasetHandle,
-    pub(crate) to_utility: ToUtilityOutlet,
+    pub(crate) to_state_operating: ToStateOperatingOutlet,
+    pub(crate) to_stats_collecting: ToStatsCollectingOutlet,
 }
 
 impl ThreadInitIngredients {
@@ -43,27 +49,34 @@ impl ThreadInitIngredients {
     pub(self) async fn create(core_id: LogicalCoreId, epoch: EpochParameters, cu_id: CUID) -> Self {
         let flags = RandomXFlags::recommended_full_mem();
 
-        let (inlet, outlet) = mpsc::channel(1);
+        let (state_operating_inlet, to_state_operating_outlet) = mpsc::channel(3);
+        let (stats_collecting_inlet, to_stats_collecting_outlet) = mpsc::channel(3);
 
+        let thread_cfg = ProvingThreadConfig {
+            hashes_per_round: 1024,
+            async_to_sync_queue_size: 3,
+            sync_to_async_queue_size: 3,
+        };
         let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-        let mut thread = ProvingThreadAsync::new(core_id, msr_enforcer, inlet, 1024);
+        let mut thread = ProvingThreadAsync::new(
+            core_id,
+            msr_enforcer,
+            state_operating_inlet,
+            stats_collecting_inlet,
+            thread_cfg,
+        );
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
-            .initialize_dataset(
-                epoch,
-                cache.handle(),
-                dataset.handle(),
-                0,
-                dataset.items_count(),
-            )
+            .initialize_dataset(cache.handle(), dataset.handle(), 0, dataset.items_count())
             .await
             .unwrap();
 
         Self {
             thread,
             dataset: dataset.handle(),
-            to_utility: outlet,
+            to_state_operating: to_state_operating_outlet,
+            to_stats_collecting: to_stats_collecting_outlet,
         }
     }
 }
@@ -76,9 +89,22 @@ async fn cache_creation_works() {
 
     let flags = RandomXFlags::recommended();
 
-    let (inlet, _outlet) = mpsc::channel(1);
+    let (state_operating_inlet, _state_operating_outlet) = mpsc::channel(3);
+    let (stats_collecting_inlet, _stats_collecting_outlet) = mpsc::channel(3);
+
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
+    let thread_cfg = ProvingThreadConfig {
+        hashes_per_round: 1024,
+        async_to_sync_queue_size: 1,
+        sync_to_async_queue_size: 1,
+    };
+    let mut thread = ProvingThreadAsync::new(
+        2.into(),
+        msr_enforcer,
+        state_operating_inlet,
+        stats_collecting_inlet,
+        thread_cfg,
+    );
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
     thread.stop_join().await.unwrap();
 
@@ -100,14 +126,31 @@ async fn dataset_creation_works() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, mut outlet) = mpsc::channel(3);
+    let (state_operating_inlet, to_state_operating_outlet) = mpsc::channel(3);
+    let (stats_collecting_inlet, stats_collecting_outlet) = mpsc::channel(3);
+
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
-    let mut thread = ProvingThreadAsync::new(2.into(), msr_enforcer, inlet, 1024);
+    let thread_cfg = ProvingThreadConfig {
+        hashes_per_round: 1024,
+        async_to_sync_queue_size: 1,
+        sync_to_async_queue_size: 1,
+    };
+    let mut thread = ProvingThreadAsync::new(
+        2.into(),
+        msr_enforcer,
+        state_operating_inlet,
+        stats_collecting_inlet,
+        thread_cfg,
+    );
     let actual_dataset = thread.allocate_dataset(flags).await.unwrap();
     let actual_cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
+    let handle = tokio::spawn(proof_sink(
+        to_state_operating_outlet,
+        stats_collecting_outlet,
+    ));
+
     thread
         .initialize_dataset(
-            epoch,
             actual_cache.handle(),
             actual_dataset.handle(),
             0,
@@ -115,8 +158,6 @@ async fn dataset_creation_works() {
         )
         .await
         .unwrap();
-
-    let handle = tokio::spawn(async move { while let Some(_) = outlet.recv().await {} });
 
     thread.stop_join().await.unwrap();
     handle.await.unwrap();
@@ -145,17 +186,24 @@ async fn dataset_creation_works_with_three_threads() {
 
     let flags = RandomXFlags::recommended_full_mem();
 
-    let (inlet, _outlet) = mpsc::channel(100);
+    let (state_operating_inlet, _state_operating_outlet) = mpsc::channel(100);
+    let (stats_collecting_inlet, _stats_collecting_outlet) = mpsc::channel(100);
     let threads_count = 3u32;
 
     let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
     let mut threads = (0..threads_count)
         .map(|thread_id| {
+            let thread_cfg = ProvingThreadConfig {
+                hashes_per_round: 1024,
+                async_to_sync_queue_size: 1,
+                sync_to_async_queue_size: 1,
+            };
             ProvingThreadAsync::new(
                 (2 + thread_id).into(),
                 msr_enforcer.clone(),
-                inlet.clone(),
-                1024,
+                state_operating_inlet.clone(),
+                stats_collecting_inlet.clone(),
+                thread_cfg,
             )
         })
         .collect::<Vec<_>>();
@@ -179,7 +227,7 @@ async fn dataset_creation_works_with_three_threads() {
 
         async move {
             thread
-                .initialize_dataset(epoch, cache, dataset, start_item, items_count)
+                .initialize_dataset(cache, dataset, start_item, items_count)
                 .await
                 .unwrap();
 
@@ -221,17 +269,23 @@ async fn cc_job_stopable() {
         let flags = RandomXFlags::recommended();
         let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(&epoch.global_nonce, &cu_id);
 
-        while let Some(message) = ingredients.to_utility.recv().await {
-            match message {
-                ToUtilityMessage::ProofFound { proof, .. } => {
-                    let expected_result_hash = run_light_randomx(
-                        global_nonce_cu.as_slice(),
-                        proof.local_nonce.as_ref(),
-                        flags,
-                    );
-                    assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
+        loop {
+            tokio::select! {
+                message = ingredients.to_state_operating.recv() => {
+                    match message {
+                        Some(ToStateOperatingMessage::ProofFound { proof, .. }) => {
+                            let expected_result_hash = run_light_randomx(
+                                global_nonce_cu.as_slice(),
+                                proof.local_nonce.as_ref(),
+                                flags,
+                            );
+                            assert!(expected_result_hash.meet_difficulty(&epoch.difficulty));
+                        }
+                        Some(_) => {}
+                        None => break,
+                    }
                 }
-                _ => {}
+                _ = ingredients.to_stats_collecting.recv() => {}
             }
         }
     });
@@ -255,36 +309,20 @@ async fn cc_job_pausable() {
         .await
         .unwrap();
 
-    let is_thread_paused = sync::Arc::new(sync::Mutex::new(std::cell::RefCell::new(false)));
+    let is_thread_paused = sync::Arc::new(sync::Mutex::new(false));
 
-    let is_thread_paused_cloned = is_thread_paused.clone();
-    let handle = tokio::spawn(async move {
-        let mut proofs_before_pause = Vec::new();
-        let mut proofs_after_pause = Vec::new();
-
-        while let Some(message) = ingredients.to_utility.recv().await {
-            match message {
-                ToUtilityMessage::ProofFound { proof, .. } => {
-                    let is_thread_paused_locked = is_thread_paused_cloned.lock().unwrap();
-                    if !*is_thread_paused_locked.borrow() {
-                        proofs_before_pause.push(proof);
-                    } else {
-                        proofs_after_pause.push(proof);
-                    }
-                }
-                _ => {}
-            }
-        }
-
-        (proofs_before_pause, proofs_after_pause)
-    });
+    let handle = tokio::spawn(collect_proofs_with_flag(
+        ingredients.to_state_operating,
+        ingredients.to_stats_collecting,
+        is_thread_paused.clone(),
+    ));
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
     ingredients.thread.pause().await.unwrap();
 
     {
-        let is_thread_paused_locked = is_thread_paused.lock().unwrap();
-        *is_thread_paused_locked.borrow_mut() = true;
+        let mut is_thread_paused_locked = is_thread_paused.lock().unwrap();
+        *is_thread_paused_locked = true;
     }
 
     tokio::time::sleep(std::time::Duration::from_secs(10)).await;
@@ -301,7 +339,7 @@ async fn proving_thread_works() {
 
     let epoch = test::generate_epoch_params(6, 0xFF);
     let cu_id = test::generate_cu_id(6);
-    let mut ingredients = ThreadInitIngredients::create(4.into(), epoch, cu_id).await;
+    let ingredients = ThreadInitIngredients::create(4.into(), epoch, cu_id).await;
 
     let flags = RandomXFlags::recommended_full_mem();
     ingredients
@@ -310,17 +348,10 @@ async fn proving_thread_works() {
         .await
         .unwrap();
 
-    let handle = tokio::spawn(async move {
-        let mut proofs = Vec::new();
-        while let Some(message) = ingredients.to_utility.recv().await {
-            match message {
-                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
-                _ => {}
-            }
-        }
-
-        proofs
-    });
+    let handle = tokio::spawn(collect_proofs(
+        ingredients.to_state_operating,
+        ingredients.to_stats_collecting,
+    ));
 
     ingredients.thread.stop_join().await.unwrap();
     let proofs = handle.await.unwrap();
@@ -358,19 +389,12 @@ fn batch_proof_verification(proofs: impl Iterator<Item = RawProof>, difficulty: 
 async fn proving_therad_produces_repeatable_hashes() {
     let epoch = test::generate_epoch_params(7, 0xFF);
     let cu_id = test::generate_cu_id(7);
-    let mut ingredients = ThreadInitIngredients::create(5.into(), epoch, cu_id).await;
+    let ingredients = ThreadInitIngredients::create(5.into(), epoch, cu_id).await;
 
-    let handle = tokio::spawn(async move {
-        let mut proofs = Vec::new();
-        while let Some(message) = ingredients.to_utility.recv().await {
-            match message {
-                ToUtilityMessage::ProofFound { proof, .. } => proofs.push(proof),
-                _ => {}
-            }
-        }
-
-        proofs
-    });
+    let handle = tokio::spawn(collect_proofs(
+        ingredients.to_state_operating,
+        ingredients.to_stats_collecting,
+    ));
 
     let flags = RandomXFlags::recommended_full_mem();
     ingredients

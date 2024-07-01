@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ impl ProofStorageDrainer {
 
     pub async fn validate_proofs(
         &mut self,
-        epoch: &Option<EpochParameters>,
+        epoch: Option<&EpochParameters>,
     ) -> tokio::io::Result<ProofIdx> {
         let mut max_proof_idx = None;
         ensure_dir(&self.proof_directory).await?;
@@ -97,7 +97,7 @@ impl ProofStorageDrainer {
                         log::debug!("loaded proof {entry_proof_id}: {proof:?}");
 
                         let found_epoch: EpochParameters = proof.id.into();
-                        if &Some(found_epoch) == epoch {
+                        if Some(&found_epoch) == epoch {
                             max_proof_idx = Some(std::cmp::max(
                                 max_proof_idx.unwrap_or_default(),
                                 entry_proof_id,

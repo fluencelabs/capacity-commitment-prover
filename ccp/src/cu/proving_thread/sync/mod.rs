@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ mod local_nonce;
 mod raw_proof;
 mod state;
 mod thread;
-pub(crate) mod to_utility_message;
+pub(crate) mod to_state_operating_message;
+pub(crate) mod to_stats_collecting_message;
 
 pub(crate) use errors::ProvingThreadSyncFacadeError;
 pub(crate) use thread::ProvingThreadSync;

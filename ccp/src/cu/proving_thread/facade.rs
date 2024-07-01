@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ pub trait ProvingThreadFacade {
 
     async fn initialize_dataset(
         &mut self,
-        epoch: EpochParameters,
         cache: CacheHandle,
         dataset: DatasetHandle,
         start_item: u64,

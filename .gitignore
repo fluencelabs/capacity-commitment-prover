@@ -1,6 +1,8 @@
 .idea/
 **/target
 .DS_Store
+.env
+default.nix
 
 # by default, CCP creates state dir in the same dir where it's config is stored
 .docker/state

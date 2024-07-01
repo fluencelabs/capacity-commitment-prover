@@ -20,21 +20,22 @@ members = [
 ]
 
 [workspace.dependencies]
-ccp = { path = "./ccp", version = "0.7.0" }
-ccp-config = { path = "./crates/config", version = "0.7.0" }
-ccp-randomx = { path = "./crates/randomx", version = "0.7.0"}
-ccp-msr = { path = "./crates/msr", version = "0.7.0" }
-ccp-rpc-client = { version = "0.7.0", path = "./crates/rpc-client" }
-ccp-rpc-server = { version = "0.7.0", path = "./crates/rpc-server" }
-ccp-shared = { path = "./crates/shared", version = "0.7.0" }
-ccp-test-utils = { path = "./crates/test-utils", version = "0.7.0" }
-ccp-utils = { path = "./crates/utils", version = "0.7.0" }
-cpu-utils = { path = "./crates/cpu-utils", version = "0.7.0" }
+ccp = { path = "./ccp", version = "0.11.0" }
+ccp-config = { path = "./crates/config", version = "0.11.0" }
+ccp-randomx = { path = "./crates/randomx", version = "0.11.0" }
+ccp-msr = { path = "./crates/msr", version = "0.11.0" }
+ccp-rpc-client = { version = "0.11.0", path = "./crates/rpc-client" }
+ccp-rpc-server = { version = "0.11.0", path = "./crates/rpc-server" }
+ccp-shared = { path = "./crates/shared", version = "0.11.0" }
+ccp-test-utils = { path = "./crates/test-utils", version = "0.11.0" }
+ccp-utils = { path = "./crates/utils", version = "0.11.0" }
+cpu-utils = { path = "./crates/cpu-utils", version = "0.11.0" }
 
 async-trait = "0.1.77"
-tokio = { version = "1.36", features = ["sync", "rt", "rt-multi-thread", "macros", "fs", "signal"] }
-tokio-stream = {version = "0.1", features = ["fs"]}
 futures = "0.3"
+tokio = { version = "1.36", features = ["sync", "rt", "rt-multi-thread", "macros", "fs", "signal"] }
+tokio-stream = { version = "0.1", features = ["fs"] }
+tokio-util = "0.7.10"
 
 hwlocality = "1.0.0-alpha.1"
 ccp_core_affinity = "0.8.1"
@@ -51,7 +52,7 @@ chrono = "0.4"
 env_logger = "0.10"
 eyre = "0.6.12"
 itertools = "0.12"
-jsonrpsee = { version = "0.21.0", features = ["client", "macros", "tokio", "server"] }
+jsonrpsee = { version = "0.23.0", features = ["client", "macros", "tokio", "server"] }
 rand = "0.8"
 raw-cpuid = "11.0.1"
 log = "0.4"
@@ -60,12 +61,14 @@ once_cell = "1.19.0"
 ordered-map = "0.4.2"
 parking_lot = "0.12.1"
 maplit = "1.0.2"
+mockall = "0.12.1"
 newtype_derive = "0.1"
 nonempty = "0.9"
-nix = { version = "0.27.1" , features = ["uio"] }
+nix = { version = "0.27.1", features = ["uio"] }
 hex = "0.4.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_with = "3.8.1"
 sha3 = "0.10"
 tempdir = "0.3.7"
 tempfile = "3.10.1"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,38 +14,32 @@
  * limitations under the License.
  */
 
+use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
-pub(crate) use super::errors::ProvingThreadSyncError;
-pub(crate) use super::raw_proof::RawProof;
 pub(crate) use crate::hashrate::ThreadHashrateRecord;
 
-pub(crate) type ToUtilityInlet = mpsc::Sender<ToUtilityMessage>;
-pub(crate) type ToUtilityOutlet = mpsc::Receiver<ToUtilityMessage>;
+pub(crate) type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
+pub(crate) type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;
 
-pub(crate) enum ToUtilityMessage {
-    ProofFound {
-        core_id: LogicalCoreId,
-        proof: RawProof,
-    },
-    ErrorHappened {
-        core_id: LogicalCoreId,
-        error: ProvingThreadSyncError,
-    },
+#[derive(Debug)]
+pub(crate) enum ToStatsCollectingMessage {
+    ProofFound { core_id: LogicalCoreId },
     Hashrate(ThreadHashrateRecord),
+    Epoch(EpochParameters),
 }
 
-impl ToUtilityMessage {
-    pub(crate) fn proof_found(core_id: LogicalCoreId, proof: RawProof) -> Self {
-        Self::ProofFound { core_id, proof }
-    }
-
-    pub(crate) fn error_happened(core_id: LogicalCoreId, error: ProvingThreadSyncError) -> Self {
-        Self::ErrorHappened { core_id, error }
+impl ToStatsCollectingMessage {
+    pub(crate) fn proof_found(core_id: LogicalCoreId) -> Self {
+        Self::ProofFound { core_id }
     }
 
     pub(crate) fn hashrate(entry: ThreadHashrateRecord) -> Self {
         Self::Hashrate(entry)
+    }
+
+    pub(crate) fn epoch(epoch: EpochParameters) -> Self {
+        Self::Epoch(epoch)
     }
 }

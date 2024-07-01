@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,9 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use super::defaults::default_async_to_sync_queue_size;
+use super::defaults::default_control_queue_size;
+use super::defaults::default_cumulative_hashrate_update_interval_secs;
+use super::defaults::default_dataset_chunk_size;
 use super::defaults::default_facade_queue_size;
 use super::defaults::default_hashes_per_round;
 use super::defaults::default_log_level;
@@ -58,6 +61,8 @@ pub struct UnresolvedRpcEndpoint {
     pub utility_queue_size: usize,
     #[serde(default = "default_facade_queue_size")]
     pub facade_queue_size: usize,
+    #[serde(default = "default_control_queue_size")]
+    pub control_queue_size: usize,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -105,6 +110,9 @@ pub struct UnresolvedLogs {
     #[serde(default = "default_report_hashrate")]
     pub report_hashrate: bool,
 
+    #[serde(default = "default_cumulative_hashrate_update_interval_secs")]
+    pub cumulative_hashrate_update_interval_secs: f64,
+
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
 }
@@ -113,6 +121,8 @@ impl Default for UnresolvedLogs {
     fn default() -> Self {
         UnresolvedLogs {
             report_hashrate: default_report_hashrate(),
+            cumulative_hashrate_update_interval_secs:
+                default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level(),
         }
     }
@@ -141,9 +151,12 @@ pub struct UnresolvedWorkers {
     pub async_to_sync_queue_size: usize,
     #[serde(default = "default_sync_to_async_queue_size")]
     pub sync_to_async_queue_size: usize,
+    #[serde(default = "default_dataset_chunk_size")]
+    pub dataset_chunk_size: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
 pub struct UnresolvedTokio {
     pub worker_threads: Option<usize>,
     pub max_blocking_threads: Option<usize>,
@@ -206,6 +219,7 @@ impl UnresolvedRpcEndpoint {
             port: self.port,
             utility_queue_size: self.utility_queue_size,
             facade_queue_size: self.facade_queue_size,
+            control_queue_size: self.control_queue_size,
         }
     }
 }
@@ -289,6 +303,7 @@ impl UnresolvedLogs {
     pub fn resolve(self) -> Logs {
         Logs {
             report_hashrate: self.report_hashrate,
+            cumulative_hashrate_update_interval_secs: self.cumulative_hashrate_update_interval_secs,
             log_level: self.log_level.to_tracing_filter(),
         }
     }
@@ -300,6 +315,7 @@ impl UnresolvedWorkers {
             hashes_per_round: self.hashes_per_round,
             async_to_sync_queue_size: self.async_to_sync_queue_size,
             sync_to_async_queue_size: self.sync_to_async_queue_size,
+            dataset_chunk_size: self.dataset_chunk_size,
         }
     }
 }
@@ -310,6 +326,7 @@ impl Default for UnresolvedWorkers {
             hashes_per_round: default_hashes_per_round(),
             async_to_sync_queue_size: default_async_to_sync_queue_size(),
             sync_to_async_queue_size: default_sync_to_async_queue_size(),
+            dataset_chunk_size: default_dataset_chunk_size(),
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
+use ccp_config::Tokio;
 use ccp_config::Workers;
 use ccp_randomx::ResultHash;
 use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
@@ -30,12 +31,14 @@ use ccp_shared::{
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
+use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::state_storage::CCPState;
 use crate::CCProver;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
+const PROOFS_RETRY_DURATION: Duration = Duration::from_secs(60);
 
 async fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
     let state_dir = state_dir.into();
@@ -46,6 +49,10 @@ async fn get_prover(state_dir: impl Into<PathBuf>) -> CCProver {
         logs: <_>::default(),
         state_dir,
         workers: Workers::default(),
+        tokio: Tokio {
+            utility_cores_ids: vec![1.into()],
+            ..Tokio::default()
+        },
     };
 
     CCProver::new(config).await.unwrap()
@@ -60,10 +67,11 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         logs: <_>::default(),
         state_dir,
         workers: Workers::default(),
+        tokio: Tokio::default(),
     };
 
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle)
+    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
         .await
         .unwrap()
 }
@@ -90,6 +98,22 @@ fn load_state(state_dir: &Path) -> Option<CCPState> {
     serde_json::from_slice(&state_data).unwrap()
 }
 
+async fn wait_for_proofs(
+    prover: &CCProver,
+    length: usize,
+    retries: usize,
+    retry_delay: Duration,
+) -> eyre::Result<Vec<CCProof>> {
+    for _retry in 0..retries {
+        tokio::time::sleep(retry_delay).await;
+        let proofs = prover.get_proofs_after("0".parse().unwrap()).await?;
+        if proofs.len() > length {
+            return Ok(proofs);
+        }
+    }
+    prover.get_proofs_after("0".parse().unwrap()).await
+}
+
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_commitment() {
     let state_dir = tempdir::TempDir::new("state").unwrap();
@@ -97,10 +121,11 @@ async fn prover_on_active_commitment() {
     let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     let state = load_state(state_dir.path());
 
@@ -173,10 +198,11 @@ async fn prover_on_active_no_active_commitment() {
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
 
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -210,18 +236,20 @@ async fn prover_on_active_reduce_allocation_on_active_commitment() {
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
     let epoch_params = get_epoch_params();
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     cu_allocation.remove(&2.into()).unwrap();
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(epoch_params, cu_allocation)
         .await
         .unwrap();
+    commitment_init_recv2.await.unwrap();
 
     prover.stop().await.unwrap();
 }
@@ -232,10 +260,11 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
 
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -247,10 +276,11 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
 
     cu_allocation.clear();
 
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(generate_epoch_params(2, 25), cu_allocation)
         .await
         .unwrap();
+    commitment_init_recv2.await.unwrap();
 
     let proofs_after = prover
         .get_proofs_after("0".parse().unwrap())
@@ -268,10 +298,11 @@ async fn prover_on_active_extend_allocation_on_active_commitment() {
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
 
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     cu_allocation.insert(
         4.into(),
@@ -281,10 +312,11 @@ async fn prover_on_active_extend_allocation_on_active_commitment() {
         ]),
     );
 
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(get_epoch_params(), cu_allocation)
         .await
         .unwrap();
+    commitment_init_recv2.await.unwrap();
 
     prover.stop().await.unwrap();
 }
@@ -296,10 +328,11 @@ async fn prover_on_active_reschedule_on_active_commitment() {
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
 
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     cu_allocation.remove(&2.into()).unwrap();
     cu_allocation.insert(
@@ -309,10 +342,11 @@ async fn prover_on_active_reschedule_on_active_commitment() {
             102, 152, 191, 178, 178, 131, 62, 176, 58, 49, 124, 217, 244,
         ]),
     );
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(get_epoch_params(), cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv2.await.unwrap();
 
     prover.stop().await.unwrap();
 }
@@ -327,10 +361,11 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
         1.into() => cu_allocation_large.get(&1.into()).cloned().unwrap(),
     };
 
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(get_epoch_params(), cu_allocation_small)
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -340,10 +375,11 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
         .expect("reading proofs");
     assert!(!proofs_before.is_empty());
 
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(get_epoch_params(), cu_allocation_large)
         .await
         .unwrap();
+    commitment_init_recv2.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -370,10 +406,11 @@ async fn prover_on_active_change_epoch() {
 
     let epoch_params_first = get_epoch_params();
 
-    prover
+    let commitment_init_recv = prover
         .on_active_commitment(epoch_params_first, cu_allocation.clone())
         .await
         .unwrap();
+    commitment_init_recv.await.unwrap();
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
@@ -385,7 +422,7 @@ async fn prover_on_active_change_epoch() {
 
     let epoch_params_second = generate_epoch_params(2, 50);
 
-    prover
+    let commitment_init_recv2 = prover
         .on_active_commitment(epoch_params_second, cu_allocation.clone())
         .await
         .unwrap();
@@ -398,6 +435,7 @@ async fn prover_on_active_change_epoch() {
         utility_cores: vec![1.into()],
     });
 
+    commitment_init_recv2.await.unwrap();
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
@@ -451,12 +489,9 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     let prover = get_prover_from_saved_state(state_dir.path()).await;
 
-    tokio::time::sleep(GEN_PROOFS_DURATION).await;
-
     let state = load_state(state_dir.path());
 
-    let proofs = prover
-        .get_proofs_after("0".parse().unwrap())
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
         .await
         .expect("reading proofs");
 
@@ -569,12 +604,9 @@ async fn prover_restore_from_state_with_proofs() {
 
     let prover = get_prover_from_saved_state(state_dir.path()).await;
 
-    tokio::time::sleep(GEN_PROOFS_DURATION).await;
-
     let state = load_state(state_dir.path());
 
-    let proofs = prover
-        .get_proofs_after("0".parse().unwrap())
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
         .await
         .expect("reading proofs");
 

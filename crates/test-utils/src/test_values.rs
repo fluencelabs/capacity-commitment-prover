@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ pub fn generate_random_allocation(
     use rand::Rng;
     let distr = rand::distributions::Uniform::from(range);
     rng.sample_iter(distr)
-        .take(size as usize)
+        .take(size)
         .map(|core_id| {
             (
                 PhysicalCoreId::from(core_id as u32),

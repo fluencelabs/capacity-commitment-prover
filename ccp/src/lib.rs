@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,10 @@ mod errors;
 mod hashrate;
 mod proof_storage;
 pub mod prover;
+pub(crate) mod state_operating_thread;
 mod state_storage;
+pub(crate) mod stats_collecting_thread;
 pub mod status;
-pub(crate) mod utility_thread;
 
 pub use errors::CCProverError;
 pub use prover::CCProver;

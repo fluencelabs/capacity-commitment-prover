@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ use rand::rngs::SmallRng;
 use rand::Rng;
 
 use ccp_shared::types::CUAllocation;
-use ccp_shared::types::CUID;
 use ccp_shared::types::PhysicalCoreId;
+use ccp_shared::types::CUID;
 use ccp_test_utils::test_values as test;
 
 use super::CCProverAlignmentRoadmap;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
 
+use crate::defaults::default_control_queue_size;
+use crate::defaults::default_cumulative_hashrate_update_interval_secs;
 use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
 use crate::defaults::default_msr_enabled;
@@ -24,7 +26,7 @@ use crate::defaults::default_report_hashrate;
 use crate::defaults::default_utility_queue_size;
 use crate::unresolved_config::UnresolvedWorkers;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CCPConfig {
     pub rpc_endpoint: RpcEndpoint,
     pub prometheus_endpoint: Option<PrometheusEndpoint>,
@@ -41,6 +43,7 @@ pub struct RpcEndpoint {
     pub port: u16,
     pub utility_queue_size: usize,
     pub facade_queue_size: usize,
+    pub control_queue_size: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -56,9 +59,10 @@ pub struct Optimizations {
     pub msr_enabled: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Logs {
     pub report_hashrate: bool,
+    pub cumulative_hashrate_update_interval_secs: f64,
     pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 
@@ -84,6 +88,7 @@ pub struct Workers {
     pub hashes_per_round: usize,
     pub async_to_sync_queue_size: usize,
     pub sync_to_async_queue_size: usize,
+    pub dataset_chunk_size: u64,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -100,6 +105,7 @@ impl Default for RpcEndpoint {
             port: 9383,
             utility_queue_size: default_utility_queue_size(),
             facade_queue_size: default_facade_queue_size(),
+            control_queue_size: default_control_queue_size(),
         }
     }
 }
@@ -118,6 +124,8 @@ impl Default for Logs {
     fn default() -> Self {
         Self {
             report_hashrate: default_report_hashrate(),
+            cumulative_hashrate_update_interval_secs:
+                default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level().to_tracing_filter(),
         }
     }

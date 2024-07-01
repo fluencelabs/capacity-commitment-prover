@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-use hex::{FromHex, ToHex};
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+
+use hex::FromHex;
+use hex::ToHex;
+use serde_with::DeserializeFromStr;
+use serde_with::SerializeDisplay;
 
 pub type CUIDInner = [u8; 32];
 
 #[derive(
-    Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize, Default, PartialOrd, Ord,
+    Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default, PartialOrd, Ord,
 )]
-#[serde(transparent)]
 #[repr(transparent)]
 pub struct CUID(CUIDInner);
 
@@ -56,8 +59,24 @@ impl ToHex for CUID {
     }
 }
 
-impl std::fmt::Display for CUID {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl FromStr for CUID {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        FromHex::from_hex(s)
+    }
+}
+
+use std::fmt;
+
+impl fmt::Display for CUID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.encode_hex::<String>())
+    }
+}
+
+impl fmt::Debug for CUID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("CUID").field(&self.to_string()).finish()
     }
 }

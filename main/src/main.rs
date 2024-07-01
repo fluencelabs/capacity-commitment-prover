@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,14 +34,15 @@ use ccp::cpuids_handle::CpuIdsHandle;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
 use ccp::CCProver;
 use ccp_config::load_config;
 use ccp_config::CCPConfig;
-use ccp_rpc_server::BackgroundFacade;
 use ccp_rpc_server::CCPRcpHttpServer;
+use cpu_utils::pinning::ThreadPinner;
 
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
 
@@ -103,10 +104,10 @@ fn build_tokio_runtime(
             let tokio_cores = tokio_core_ids_state_start.get_cores();
             tracing::info!("Pinning tokio thread {pid:?} to cores {tokio_cores:?}");
             // initial core set may be empty, it is OK
-            if !tokio_cores.is_empty() {
-                if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
-                    tracing::error!("Tokio thread pinning failed");
-                }
+            if !tokio_cores.is_empty()
+                && !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&tokio_cores)
+            {
+                tracing::error!("Tokio thread pinning failed");
             }
         })
         .on_thread_unpark(move || {
@@ -124,10 +125,9 @@ fn build_tokio_runtime(
                 let tokio_cores = tokio_core_ids_state_unpark.get_cores();
                 tracing::info!("Repinning tokio thread {pid:?} to cores {tokio_cores:?}");
 
-                // n.b.: pinning on an empty set just fails
-                //
-                // it is useless to set empty set with RPC
-                if !cpu_utils::pinning::pin_current_thread_to_cpuset(tokio_cores.into_iter()) {
+                if !tokio_cores.is_empty()
+                    && !cpu_utils::pinning::DEFAULT.pin_current_thread_to_cpuset(&tokio_cores)
+                {
                     tracing::error!("Tokio thread repinning failed");
                 }
                 LAST_SEEN_REPIN_VERSION.set(version);
@@ -144,12 +144,16 @@ fn build_tokio_runtime(
 
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
-    let facade_queue_size = config.rpc_endpoint.facade_queue_size;
+    let global_cancellation_token = CancellationToken::new();
 
     tracing::info!("Creating prover from a saved state");
-    let prover = CCProver::from_saved_state(config, tokio_core_ids_state)
-        .await
-        .map_err(|e| eyre::eyre!(e.to_string()))?;
+    let prover = CCProver::from_saved_state(
+        config,
+        tokio_core_ids_state.clone(),
+        global_cancellation_token.clone(),
+    )
+    .await
+    .map_err(|e| eyre::eyre!(e.to_string()))?;
 
     tracing::info!(
         "starting RPC endpoint on {}:{}",
@@ -157,8 +161,7 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
         rpc_bind_address.1
     );
     let prover = Arc::new(RwLock::new(prover));
-    let rpc_endpoint =
-        CCPRcpHttpServer::new(BackgroundFacade::new(prover.clone(), facade_queue_size));
+    let rpc_endpoint = CCPRcpHttpServer::new(prover.clone());
     let server_handle = rpc_endpoint
         .run_server(rpc_bind_address)
         .await
@@ -180,6 +183,8 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
     }
 
     // and then shutdown
+    global_cancellation_token.cancel();
+
     tracing::info!("Shuttting down RPC server");
     match server_handle.stop() {
         Ok(()) => {
@@ -189,6 +194,7 @@ async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> ey
             tracing::warn!("failed to stop RPC server: {e}; ignoring");
         }
     };
+
     prover.write().await.shutdown().await.map_err(|e| {
         tracing::error!("error during prover shutdown: {e}");
         eyre::eyre!(e.to_string())

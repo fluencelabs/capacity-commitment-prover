@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 Fluence Labs Limited
+ * Copyright 2024 Fluence DAO
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,13 +21,15 @@ use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::LogicalCoreId;
 use ccp_shared::types::PhysicalCoreId;
 use cpu_utils::CPUTopology;
+use cpu_utils::HwlocCPUTopology;
 
 use super::RoundRobinDistributor;
+use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
 use crate::cu::proving_thread::ProvingThreadAsync;
 use crate::cu::proving_thread::ProvingThreadConfig;
 use crate::cu::CUResult;
 use crate::cu::ThreadAllocationError;
-use crate::utility_thread::message::ToUtilityInlet;
 
 type ThreadAllocationStrategy = NonEmpty<LogicalCoreId>;
 
@@ -39,7 +41,7 @@ impl ThreadAllocator {
     pub(crate) fn new(
         policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
-        topology: &CPUTopology,
+        topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocator> {
         let allocation_strategy = Self::create_allocate_strategy(policy, core_id, topology)?;
 
@@ -51,7 +53,8 @@ impl ThreadAllocator {
     pub(crate) fn allocate(
         &self,
         msr_enforcer: MSRModeEnforcer,
-        to_utility: ToUtilityInlet,
+        to_state_operating: ToStateOperatingInlet,
+        to_stats_collecting: ToStatsCollectingInlet,
         proving_config: ProvingThreadConfig,
     ) -> CUResult<NonEmpty<ProvingThreadAsync>> {
         let threads = self
@@ -61,7 +64,8 @@ impl ThreadAllocator {
                 ProvingThreadAsync::new(
                     *logical_core,
                     msr_enforcer.clone(),
-                    to_utility.clone(),
+                    to_state_operating.clone(),
+                    to_stats_collecting.clone(),
                     proving_config.clone(),
                 )
             })
@@ -74,7 +78,7 @@ impl ThreadAllocator {
     pub(crate) fn create_allocate_strategy(
         policy: ThreadsPerCoreAllocationPolicy,
         core_id: PhysicalCoreId,
-        topology: &CPUTopology,
+        topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
         use super::ThreadDistributionPolicy;
 
