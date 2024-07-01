@@ -181,8 +181,11 @@ impl CCProver {
             proof_drainer,
         );
 
-        let stats_collecting_thread =
-            StatsCollectingThread::spawn(hashrate_handler, config.rpc_endpoint.utility_queue_size);
+        let stats_collecting_thread = StatsCollectingThread::spawn(
+            hashrate_handler,
+            config.rpc_endpoint.utility_queue_size,
+            config.logs.cumulative_hashrate_update_interval_secs,
+        );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {
             PrometheusEndpoint::new(
