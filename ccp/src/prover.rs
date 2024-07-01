@@ -145,7 +145,7 @@ impl CCProver {
 
     async fn create_prover(
         config: CCPConfig,
-        target_commitment: Option<EpochAndAllocation>,
+        target_allocation: Option<EpochAndAllocation>,
         msr_enforcer: MSRModeEnforcer,
         state_storage: StateStorage,
         utility_core_ids_handle: CpuIdsHandle,
@@ -154,7 +154,7 @@ impl CCProver {
         let proof_dir = config.state_dir.join(PROOF_DIR);
         let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
         let start_proof_idx = proof_drainer
-            .validate_proofs(target_commitment.as_ref().map(|comm| &comm.epoch_params))
+            .validate_proofs(target_allocation.as_ref().map(|comm| &comm.epoch_params))
             .await?;
         log::info!("continuing from proof index {start_proof_idx}");
 
@@ -165,7 +165,7 @@ impl CCProver {
             config.logs.report_hashrate,
         )?;
 
-        let prev_global_nonce = target_commitment
+        let prev_global_nonce = target_allocation
             .as_ref()
             .map(|comm| comm.epoch_params.global_nonce);
         let (state_operating_control_inlet, state_operating_control_outlet) =
@@ -196,6 +196,10 @@ impl CCProver {
 
         let initial_msr_state = MSRState::new(msr_enforcer.original_preset().clone());
 
+        let target_epoch_params = target_allocation
+            .as_ref()
+            .map(|commitment| &commitment.epoch_params)
+            .cloned();
         let cu_governor = CUGovernor::new(
             config.optimizations,
             config.workers,
@@ -204,6 +208,7 @@ impl CCProver {
             state_operating_control_inlet.clone(),
             msr_enforcer,
             cancellation_token,
+            target_epoch_params,
         );
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 
@@ -223,7 +228,7 @@ impl CCProver {
             utility_core_ids_handle,
 
             initial_msr_state,
-            target_allocation: target_commitment,
+            target_allocation,
         };
 
         if let Some(commitment) = &prover.target_allocation {
