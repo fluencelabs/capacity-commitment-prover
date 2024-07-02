@@ -29,10 +29,13 @@ use tokio::task::JoinHandle;
 use tokio_util::sync::CancellationToken;
 
 use super::HashrateCollector;
+use crate::StorageMetrics;
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct PrometheusMetrics {
     pub(crate) hashrate_collector: Arc<Mutex<HashrateCollector>>,
+    pub(crate) state_storage_metrics: Arc<StorageMetrics>,
+    pub(crate) proof_storage_metrics: Arc<StorageMetrics>,
 }
 
 async fn handler_404() -> impl response::IntoResponse {
@@ -42,6 +45,8 @@ async fn handler_404() -> impl response::IntoResponse {
 async fn handle_metrics(
     State(state): State<PrometheusMetrics>,
 ) -> response::Result<http::Response<body::Body>> {
+    use prometheus_client::registry::Unit;
+
     let mut buf = String::new();
 
     {
@@ -55,6 +60,38 @@ async fn handle_metrics(
             })?;
 
             guard.apply_to_registry(&mut registry);
+        }
+
+        {
+            let state_sub_registry =
+                registry.sub_registry_with_label(("storage".into(), "state".into()));
+            state_sub_registry.register(
+                "io_error",
+                "I/O errors for saving data",
+                state.state_storage_metrics.io_error.clone(),
+            );
+            state_sub_registry.register_with_unit(
+                "writing_time",
+                "I/O errors for saving data",
+                Unit::Seconds,
+                state.state_storage_metrics.writing_time.clone(),
+            );
+        }
+
+        {
+            let proof_sub_registry =
+                registry.sub_registry_with_label(("storage".into(), "proof".into()));
+            proof_sub_registry.register(
+                "io_error",
+                "I/O errors for saving data",
+                state.proof_storage_metrics.io_error.clone(),
+            );
+            proof_sub_registry.register_with_unit(
+                "writing_time",
+                "I/O errors for saving data",
+                Unit::Seconds,
+                state.proof_storage_metrics.writing_time.clone(),
+            );
         }
 
         prometheus_client::encoding::text::encode(&mut buf, &registry).map_err(|e| {
@@ -80,8 +117,14 @@ async fn run_prometheus_endpoint(
     prometheus_listen_address: impl ToSocketAddrs + std::fmt::Debug,
     hashrate_collector: Arc<Mutex<HashrateCollector>>,
     cancellation: CancellationToken,
+    state_storage_metrics: Arc<StorageMetrics>,
+    proof_storage_metrics: Arc<StorageMetrics>,
 ) -> tokio::io::Result<()> {
-    let state = PrometheusMetrics { hashrate_collector };
+    let state = PrometheusMetrics {
+        hashrate_collector,
+        state_storage_metrics,
+        proof_storage_metrics,
+    };
     let app = axum::Router::new()
         .route("/metrics", get(handle_metrics))
         .fallback(handler_404)
@@ -111,6 +154,8 @@ impl PrometheusEndpoint {
     pub(crate) fn new(
         prometheus_listen_address: impl ToSocketAddrs + std::fmt::Debug + Send + Sync + 'static,
         hashrate_collector: Arc<Mutex<HashrateCollector>>,
+        state_storage_metrics: Arc<StorageMetrics>,
+        proof_storage_metrics: Arc<StorageMetrics>,
     ) -> Self {
         let cancellation = CancellationToken::new();
 
@@ -118,6 +163,8 @@ impl PrometheusEndpoint {
             prometheus_listen_address,
             hashrate_collector,
             cancellation.clone(),
+            state_storage_metrics,
+            proof_storage_metrics,
         ));
 
         Self {
