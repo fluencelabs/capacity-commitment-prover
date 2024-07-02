@@ -27,6 +27,7 @@ use tokio_util::sync::CancellationToken;
 
 use super::message::*;
 use super::SOTResult;
+use crate::persistence::StorageMetrics;
 use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
@@ -48,12 +49,17 @@ impl StateOperatingThread {
         state_storage: StateStorage,
         proof_multi_queue: Arc<PLMutex<ProofMultiQueue>>,
         proof_drainer: ProofStorageDrainer,
+        proof_storage_metrics: Arc<StorageMetrics>,
     ) -> Self {
         let (to_state_operating, from_state_operating) = mpsc::channel(state_operating_queue_size);
 
         let cancellation = CancellationToken::new();
 
-        let proof_storage = ProofStorage::new(proof_storage_dir, proof_multi_queue.clone());
+        let proof_storage = ProofStorage::new(
+            proof_storage_dir,
+            proof_storage_metrics,
+            proof_multi_queue.clone(),
+        );
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
         let sot_impl = StateOperatingThreadImpl::new(
             from_state_operating,

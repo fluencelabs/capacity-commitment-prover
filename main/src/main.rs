@@ -31,6 +31,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use ccp::cpuids_handle::CpuIdsHandle;
+use ccp::StorageMetrics;
 use clap::Parser;
 use eyre::WrapErr as _;
 use tokio::sync::RwLock;
@@ -143,12 +144,16 @@ fn build_tokio_runtime(
 async fn async_main(config: CCPConfig, tokio_core_ids_state: CpuIdsHandle) -> eyre::Result<()> {
     let rpc_bind_address = (config.rpc_endpoint.host.clone(), config.rpc_endpoint.port);
     let global_cancellation_token = CancellationToken::new();
+    let state_storage_metrics = Arc::<StorageMetrics>::default();
+    let proof_storage_metrics = Arc::<StorageMetrics>::default();
 
     tracing::info!("Creating prover from a saved state");
     let prover = CCProver::from_saved_state(
         config,
         tokio_core_ids_state.clone(),
         global_cancellation_token.clone(),
+        state_storage_metrics,
+        proof_storage_metrics,
     )
     .await
     .map_err(|e| eyre::eyre!(e.to_string()))?;

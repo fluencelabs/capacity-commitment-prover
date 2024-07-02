@@ -31,6 +31,7 @@ pub mod cpuids_handle;
 mod cu;
 mod errors;
 mod hashrate;
+mod persistence;
 mod proof_queue;
 mod proof_storage;
 pub mod prover;
@@ -40,6 +41,7 @@ pub(crate) mod stats_collecting_thread;
 pub mod status;
 
 pub use errors::CCProverError;
+pub use persistence::StorageMetrics;
 pub use prover::CCProver;
 pub use prover::CCResult;
 

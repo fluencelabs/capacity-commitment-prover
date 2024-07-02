@@ -15,8 +15,10 @@
  */
 
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 use ccp_config::CCPConfig;
@@ -39,6 +41,7 @@ use test_log::test;
 use tokio_util::sync::CancellationToken;
 
 use crate::cpuids_handle::CpuIdsHandle;
+use crate::persistence::StorageMetrics;
 use crate::state_storage::CCPState;
 use crate::CCProver;
 
@@ -75,10 +78,19 @@ async fn get_prover_from_saved_state(state_dir: impl Into<PathBuf>) -> CCProver 
         tokio: Tokio::default(),
     };
 
+    let state_storage_metrics = Arc::<StorageMetrics>::default();
+    let proof_storage_metrics = Arc::<StorageMetrics>::default();
+
     let utility_core_ids_handle = CpuIdsHandle::new(vec![2.into()]);
-    CCProver::from_saved_state(config, utility_core_ids_handle, CancellationToken::new())
-        .await
-        .unwrap()
+    CCProver::from_saved_state(
+        config,
+        utility_core_ids_handle,
+        CancellationToken::new(),
+        state_storage_metrics,
+        proof_storage_metrics,
+    )
+    .await
+    .unwrap()
 }
 
 fn get_epoch_params() -> EpochParameters {
@@ -785,4 +797,84 @@ async fn prover_restore_from_state_with_proofs() {
 
     assert_eq!(state, initial_state);
     assert!(!state_dir.path().join("state.json.draft").exists());
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_restart_keeps_proofs_vm_623() {
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let proofs_dir = state_dir.path().join("cc_proofs");
+    tokio::fs::create_dir(&proofs_dir).await.unwrap();
+
+    let epoch_params = generate_epoch_params(1, 50);
+    let cu_allocation = get_cu_allocation();
+
+    let state_path = state_dir.path().join("state.json");
+    let initial_state = Some(CCPState {
+        epoch_params,
+        cu_allocation: cu_allocation.clone(),
+        msr_state: <_>::default(),
+        utility_cores: vec![1.into()],
+    });
+    tokio::fs::write(state_path, &serde_json::to_vec(&initial_state).unwrap())
+        .await
+        .unwrap();
+
+    let proof_idxes = ["100", "101"];
+
+    for idx_str in proof_idxes {
+        let idx: ProofIdx = idx_str.parse().unwrap();
+
+        let proof_id = CCProofId::new(
+            epoch_params.global_nonce.clone(),
+            epoch_params.difficulty,
+            idx,
+        );
+        let proof = CCProof::new(
+            proof_id,
+            LocalNonce::random(),
+            cu_allocation.values().next().unwrap().clone(),
+            ResultHash::from_slice([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0,
+            ]),
+        );
+        tokio::fs::write(
+            proofs_dir.join(idx_str),
+            serde_json::to_vec(&proof).unwrap(),
+        )
+        .await
+        .unwrap();
+    }
+
+    let prover = get_prover_from_saved_state(state_dir.path()).await;
+
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+        .await
+        .expect("reading proofs")
+        .into_iter()
+        .collect::<Vec<CCProof>>();
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        proofs.len() > 3,
+        "not enough proofs: {:?}",
+        proofs,
+    );
+
+    let mut proofs_on_disk = vec![];
+    let mut r = tokio::fs::read_dir(&proofs_dir).await.unwrap();
+    while let Some(ent) = r.next_entry().await.unwrap() {
+        proofs_on_disk.push(ent.file_name());
+    }
+
+    prover.stop().await.unwrap();
+
+    for idx_str in proof_idxes {
+        assert!(
+            proofs_on_disk.contains(&OsString::from(idx_str)),
+            "not found: {:?}",
+            idx_str
+        );
+    }
 }

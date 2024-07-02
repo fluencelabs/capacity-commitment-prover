@@ -15,6 +15,7 @@
  */
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
@@ -22,13 +23,15 @@ use ccp_shared::types::LogicalCoreId;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::state_operating_thread::save_reliably;
+use crate::persistence::save_reliably;
+use crate::persistence::StorageMetrics;
 
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
 const STATE_FILE: &str = "state.json";
 
 pub(crate) struct StateStorage {
     state_dir: PathBuf,
+    state_storage_metrics: Arc<StorageMetrics>,
     // TODO file lock
 }
 
@@ -47,17 +50,22 @@ pub(crate) struct CCPState {
 }
 
 impl StateStorage {
-    pub(crate) fn new(state_dir: PathBuf) -> Self {
-        Self { state_dir }
+    pub(crate) fn new(state_dir: PathBuf, state_storage_metrics: Arc<StorageMetrics>) -> Self {
+        Self {
+            state_dir,
+            state_storage_metrics,
+        }
     }
 
     pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
         let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
+        let state_storage_metrics = self.state_storage_metrics.clone();
 
         log::info!("Saving state to {:?}", path);
 
-        tokio::task::spawn_blocking(move || save_reliably(&path, &data)).await??;
+        tokio::task::spawn_blocking(move || save_reliably(&path, &data, &state_storage_metrics))
+            .await??;
         Ok(())
     }
 
