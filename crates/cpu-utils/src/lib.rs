@@ -38,4 +38,5 @@ pub use cpu_topology::CPUTopology;
 pub use cpu_topology::HwlocCPUTopology;
 #[cfg(feature = "mockall")]
 pub use cpu_topology::MockCPUTopology;
+pub use cpu_topology::NonEmpty;
 pub use errors::CPUTopologyError;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use nonempty::NonEmpty;
+pub(crate) use nonempty::NonEmpty;
 
 use crate::errors::CPUTopologyError;
 use crate::CTResult;
