@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.12.0...ccp-v0.12.1) (2024-07-02)
+
+
+### Features
+
+* **ccp:** Prometheus metrics for I/O ([#150](https://github.com/fluencelabs/capacity-commitment-prover/issues/150)) ([5d611c8](https://github.com/fluencelabs/capacity-commitment-prover/commit/5d611c8af018fbbb32f552b37da341eebc3eabbd))
+
 ## [0.12.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.11.0...ccp-v0.12.0) (2024-07-02)
 
 
