@@ -14,6 +14,7 @@ threads-per-core = 2
 
 [logs]
 report-hashrate = true
+cumulative-hashrate-update-interval-secs = 50
 log-level = "warn"
 
 [state]

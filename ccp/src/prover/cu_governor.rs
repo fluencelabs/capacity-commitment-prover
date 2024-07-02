@@ -62,13 +62,19 @@ impl CUGovernor {
         state_operating_control_inlet: StateOperatingControlInlet,
         msr_enforcer: MSRModeEnforcer,
         cancellation_token: CancellationToken,
+        target_epoch_params: Option<EpochParameters>,
     ) -> Self {
         let cu_prover_config = CUProverConfig::new(optimizations_config, workers_config);
+
+        let status = match target_epoch_params {
+            Some(epoch) => CCStatus::Running { epoch },
+            None => CCStatus::Idle,
+        };
 
         Self {
             cu_provers: HashMap::new(),
             cu_prover_config,
-            status: CCStatus::Idle,
+            status,
             stats_collecting_inlet: stats_collecting_inlnet,
             state_operating_inlnet,
             state_operating_control_inlet,

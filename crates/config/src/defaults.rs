@@ -29,12 +29,18 @@ const DEFAULT_CONTROL_QUEUE_SIZE: usize = 100;
 // chunk size for roughly 10s of execution
 const DEFAULT_DATASET_CHUNK_SIZE: u64 = 5_000_000;
 
+const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: f64 = 60.0;
+
 pub(crate) fn default_log_level() -> LogLevel {
     LogLevel::Error
 }
 
 pub(crate) fn default_report_hashrate() -> bool {
     false
+}
+
+pub(crate) fn default_cumulative_hashrate_update_interval_secs() -> f64 {
+    CUMULATIVE_HASHRATE_UPDATE_INTERVAL
 }
 
 pub(crate) fn default_state_path() -> PathBuf {
