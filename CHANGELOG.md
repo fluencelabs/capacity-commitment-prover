@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.12.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.11.0...ccp-v0.12.0) (2024-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **rpc:** get rid of unnesessary OrHex
+* **shared:** serialize and deserialize hash-like types as strings ([#146](https://github.com/fluencelabs/capacity-commitment-prover/issues/146))
+
+### Features
+
+* **config:** add logs.cumulative_hashrate_update_interval_secs ([#151](https://github.com/fluencelabs/capacity-commitment-prover/issues/151)) ([7f2926a](https://github.com/fluencelabs/capacity-commitment-prover/commit/7f2926afedac4155dafebd94f0a73a57643d2b7b))
+* **shared:** serialize and deserialize hash-like types as strings ([#146](https://github.com/fluencelabs/capacity-commitment-prover/issues/146)) ([8b4135c](https://github.com/fluencelabs/capacity-commitment-prover/commit/8b4135c4887013ae5b9bcb8ae0c75d169e46f873))
+
+
+### Bug Fixes
+
+* **ccp:** keep proofs on restart ([#148](https://github.com/fluencelabs/capacity-commitment-prover/issues/148)) ([2c2e767](https://github.com/fluencelabs/capacity-commitment-prover/commit/2c2e767208cbc55c3a8dd4cf55a0b68f56c71b94))
+* **config:** fix tokio config keys case ([#149](https://github.com/fluencelabs/capacity-commitment-prover/issues/149)) ([e8a10e5](https://github.com/fluencelabs/capacity-commitment-prover/commit/e8a10e5eeeb87b58a45d19c2e95a7e257aec1e3f))
+* **cpu-utils:** re-export `nonempty::NonEmpty` ([#154](https://github.com/fluencelabs/capacity-commitment-prover/issues/154)) ([1e8a860](https://github.com/fluencelabs/capacity-commitment-prover/commit/1e8a8600604bcc9ab2f43139be0c72371c5327ff))
+* **rpc:** get rid of unnesessary OrHex ([8b4135c](https://github.com/fluencelabs/capacity-commitment-prover/commit/8b4135c4887013ae5b9bcb8ae0c75d169e46f873))
+
 ## [0.11.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.10.2...ccp-v0.11.0) (2024-06-12)
 
 
