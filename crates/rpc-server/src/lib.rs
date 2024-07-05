@@ -29,6 +29,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use ccp_shared::proof::BatchRequest;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::types::LogicalCoreId;
 use jsonrpsee::core::async_trait;
 use jsonrpsee::server::Server;
@@ -39,7 +41,6 @@ use tokio::net::ToSocketAddrs;
 
 use ccp_rpc_client::CCPRpcServer;
 use ccp_shared::nox_ccp_api::NoxCCPApi;
-use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::EpochParameters;
@@ -116,19 +117,29 @@ where
     #[instrument(skip(self))]
     async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<Vec<CCProof>, ErrorObjectOwned> {
-        let guard = self.cc_prover.write().await;
-        let mut proofs = guard
-            .get_proofs_after(proof_idx)
+    ) -> Result<Vec<BatchResponse>, ErrorObjectOwned> {
+        let guard = self.cc_prover.read().await;
+        let proofs = guard
+            .get_proofs_after(last_known_proofs, limit)
             .await
             .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
-        if proofs.len() > limit {
-            proofs.select_nth_unstable_by_key(limit, |p| p.id.idx);
-            proofs = proofs.drain(0..limit).collect();
-        }
-        proofs.sort_unstable_by_key(|p| p.id.idx);
+        Ok(proofs)
+    }
+
+    #[instrument(skip(self))]
+    async fn get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> Result<Vec<BatchResponse>, ErrorObjectOwned> {
+        let guard = self.cc_prover.read().await;
+        let proofs = guard
+            .get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
+            .await
+            .map_err(|e| ErrorObjectOwned::owned::<()>(1, e.to_string(), None))?;
         Ok(proofs)
     }
 

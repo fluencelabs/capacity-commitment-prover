@@ -153,7 +153,7 @@ impl BuilderSecondStage {
 
         state.unprepared_removal_actions = current_allocation
             .keys()
-            .filter(|current_core_id| remaining_cu_providers.get(current_core_id).is_none())
+            .filter(|current_core_id| !remaining_cu_providers.contains(current_core_id))
             .cloned()
             .collect::<Vec<_>>();
 

@@ -16,6 +16,7 @@
 
 use std::sync::Arc;
 
+use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 
 use ccp_shared::proof::CCProof;
@@ -27,6 +28,7 @@ use tokio_util::sync::CancellationToken;
 use super::message::*;
 use super::SOTResult;
 use crate::persistence::StorageMetrics;
+use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
@@ -45,6 +47,7 @@ impl StateOperatingThread {
         state_operating_queue_size: usize,
         state_operating_control_outlet: StateOperatingControlOutlet,
         state_storage: StateStorage,
+        proof_multi_queue: Arc<PLMutex<ProofMultiQueue>>,
         proof_drainer: ProofStorageDrainer,
         proof_storage_metrics: Arc<StorageMetrics>,
     ) -> Self {
@@ -52,7 +55,11 @@ impl StateOperatingThread {
 
         let cancellation = CancellationToken::new();
 
-        let proof_storage = ProofStorage::new(proof_storage_dir, proof_storage_metrics);
+        let proof_storage = ProofStorage::new(
+            proof_storage_dir,
+            proof_storage_metrics,
+            proof_multi_queue.clone(),
+        );
         let proofs_handler = NewProofHandler::new(proof_storage, prev_proof_idx, prev_global_nonce);
         let sot_impl = StateOperatingThreadImpl::new(
             from_state_operating,
@@ -148,15 +155,32 @@ impl StateOperatingThreadImpl {
                 let _ = notifier.send(ret);
             }
             CleanProofCache { notifier } => {
-                let ret = self.proof_drainer.remove_proofs().await;
+                let ret = self.proof_drainer.clear_proofs().await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
-            GetProofs {
-                proof_idx,
+            GetBatchProofs {
+                reqs,
+                min_batch_count,
+                max_batch_count,
                 notifier,
             } => {
-                let ret = self.proof_drainer.get_proofs_after(proof_idx).await;
+                let ret = self
+                    .proof_drainer
+                    .get_batch_proofs_after(&reqs, min_batch_count, max_batch_count)
+                    .await;
+                // if receiver is dead, there is nothing we can do
+                let _ = notifier.send(ret);
+            }
+            GetAllProofs {
+                last_known_proofs,
+                limit,
+                notifier,
+            } => {
+                let ret = self
+                    .proof_drainer
+                    .get_all_proofs_after(&last_known_proofs, limit)
+                    .await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }
@@ -188,6 +212,10 @@ impl NewProofHandler {
 
         self.maybe_new_epoch(proof);
 
+        // increment early to not use zero idx (as it is used as "no previous idx" in the API)
+        // and do not use previous idx
+        self.proof_idx.increment();
+
         let cc_proof_id = CCProofId::new(
             proof.epoch.global_nonce,
             proof.epoch.difficulty,
@@ -200,7 +228,6 @@ impl NewProofHandler {
             proof.result_hash,
         );
         self.proof_storage.store_new_proof(cc_proof).await?;
-        self.proof_idx.increment();
 
         Ok(())
     }

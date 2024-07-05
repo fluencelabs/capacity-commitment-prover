@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
+use std::collections::HashMap;
 use std::future::IntoFuture;
 
-use super::proof::CCProof;
 use super::types::*;
+use crate::proof::BatchRequest;
+use crate::proof::BatchResponse;
 use crate::proof::ProofIdx;
 
 pub trait NoxCCPApi: Send {
@@ -53,11 +55,20 @@ pub trait NoxCCPApi: Send {
         &mut self,
     ) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send;
 
-    /// Returns proofs after the provided proof idx for current epoch.
+    /// Returns proofs after the provided last known proof indexes for current epoch.
     fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
-    ) -> impl std::future::Future<Output = Result<Vec<CCProof>, Self::Error>> + Send;
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
+    ) -> impl std::future::Future<Output = Result<Vec<BatchResponse>, Self::Error>> + Send;
+
+    /// Returns proof batch after the last provided proof idx for current epoch.
+    fn get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> impl std::future::Future<Output = Result<Vec<BatchResponse>, Self::Error>> + Send;
 
     /// Set utility
     fn realloc_utility_cores(

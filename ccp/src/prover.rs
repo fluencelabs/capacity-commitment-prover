@@ -18,13 +18,16 @@ mod cu_governor;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
 use ccp_config::CCPConfig;
 use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
+use ccp_shared::proof::BatchRequest;
 use eyre::Context;
+use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::oneshot;
@@ -34,10 +37,11 @@ use tokio::try_join;
 use tokio_util::sync::CancellationToken;
 
 use ccp_shared::nox_ccp_api::NoxCCPApi;
-use ccp_shared::proof::CCProof;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
+use ccp_shared::types::CUID;
 
 use self::cu_governor::CUGovernor;
 use crate::cpuids_handle::CpuIdsHandle;
@@ -50,6 +54,7 @@ use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
 use crate::hashrate::HashrateHandler;
 use crate::persistence::StorageMetrics;
+use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::StateOperatingThread;
 use crate::state_storage::CCPState;
@@ -165,7 +170,10 @@ impl CCProver {
         proof_storage_metrics: Arc<StorageMetrics>,
     ) -> CCResult<Self> {
         let proof_dir = config.state_dir.join(PROOF_DIR);
-        let mut proof_drainer = ProofStorageDrainer::new(proof_dir.clone());
+        let proof_multi_queue = Arc::new(PLMutex::new(ProofMultiQueue::new()));
+
+        let mut proof_drainer =
+            ProofStorageDrainer::new(proof_dir.clone(), proof_multi_queue.clone());
         let start_proof_idx = proof_drainer
             .validate_proofs(target_allocation.as_ref().map(|comm| &comm.epoch_params))
             .await?;
@@ -191,6 +199,7 @@ impl CCProver {
             config.rpc_endpoint.utility_queue_size,
             state_operating_control_outlet,
             state_storage,
+            proof_multi_queue,
             proof_drainer,
             proof_storage_metrics.clone(),
         );
@@ -302,11 +311,31 @@ impl CCProver {
         self.execute_utility_call(message, wait_for).await
     }
 
-    // TODO rename
-    async fn call_utility_get_proofs_after(&self, proof_idx: ProofIdx) -> CCResult<Vec<CCProof>> {
+    async fn call_utility_get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> CCResult<Vec<BatchResponse>> {
         let (notifier, wait_for) = oneshot::channel();
-        let message = StateOperatingControlMessage::GetProofs {
-            proof_idx,
+        let message = StateOperatingControlMessage::GetBatchProofs {
+            reqs,
+            min_batch_count,
+            max_batch_count,
+            notifier,
+        };
+        self.execute_utility_call(message, wait_for).await
+    }
+
+    async fn call_utility_get_all_proofs_after(
+        &self,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
+    ) -> CCResult<Vec<BatchResponse>> {
+        let (notifier, wait_for) = oneshot::channel();
+        let message = StateOperatingControlMessage::GetAllProofs {
+            last_known_proofs,
+            limit,
             notifier,
         };
         self.execute_utility_call(message, wait_for).await
@@ -412,8 +441,25 @@ impl NoxCCPApi for CCProver {
     }
 
     #[inline]
-    async fn get_proofs_after(&self, proof_idx: ProofIdx) -> Result<Vec<CCProof>, Self::Error> {
-        self.call_utility_get_proofs_after(proof_idx)
+    async fn get_proofs_after(
+        &self,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
+    ) -> Result<Vec<BatchResponse>, Self::Error> {
+        self.call_utility_get_all_proofs_after(last_known_proofs, limit)
+            .await
+            // CCProverError is not Sync, so we convert it to a string in situ
+            .map_err(|e| eyre::eyre!(e.to_string()))
+    }
+
+    #[inline]
+    async fn get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> Result<Vec<BatchResponse>, Self::Error> {
+        self.call_utility_get_batch_proofs_after(reqs, min_batch_count, max_batch_count)
             .await
             // CCProverError is not Sync, so we convert it to a string in situ
             .map_err(|e| eyre::eyre!(e.to_string()))
