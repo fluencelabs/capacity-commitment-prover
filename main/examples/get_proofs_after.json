@@ -1,9 +1,13 @@
 {
     "jsonrpc":"2.0",
     "method":"ccp_get_proofs_after",
-    "id":"48",
+    "id":"49",
     "params": {
-	    "proof_idx": 8,
+        "last_known_proofs": {
+            "21f7ce63f24fd9be3a2d57dd97a2d90b2b97a04dc7adb78c8247de71bd75ae3f": 0,
+            "c0346469ba79aacb455564cd904252556c794444e318651d9a54541aea864136": 0,
+            "a2be80966424d177386d2378ca512cd835ca9ae791b8210ce4f9116f7db91904": 0
+        },
         "limit": 1024
     }
 }

@@ -14,79 +14,83 @@
  * limitations under the License.
  */
 
+use ccp_shared::proof::BatchRequest;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::types::EpochParameters;
+use ccp_shared::types::CUID;
+use parking_lot::Mutex as PLMutex;
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::fs::DirEntry;
 
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::ProofIdx;
 
+use crate::proof_queue::ProofMultiQueue;
+
 #[derive(Debug)]
 pub(crate) struct ProofStorageDrainer {
     /// Path to a directory containing found proofs.
     proof_directory: PathBuf,
+    proof_queue: Arc<PLMutex<ProofMultiQueue>>,
 }
 
 impl ProofStorageDrainer {
-    pub fn new(proof_directory: PathBuf) -> Self {
-        Self { proof_directory }
+    pub fn new(proof_directory: PathBuf, proof_queue: Arc<PLMutex<ProofMultiQueue>>) -> Self {
+        Self {
+            proof_directory,
+            proof_queue,
+        }
     }
 
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
-    pub async fn remove_proofs(&self) -> tokio::io::Result<()> {
+    pub async fn clear_proofs(&mut self) -> tokio::io::Result<()> {
+        self.proof_queue.lock().clear();
+
         if tokio::fs::try_exists(&self.proof_directory).await? {
             tokio::fs::remove_dir_all(&self.proof_directory).await?;
         }
         tokio::fs::create_dir(&self.proof_directory).await
     }
 
+    /// Get batches proofs from the queue.
+    pub async fn get_batch_proofs_after(
+        &mut self,
+        reqs: &HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> tokio::io::Result<Vec<BatchResponse>> {
+        Ok(self
+            .proof_queue
+            .lock()
+            .get_batched_proofs_after(reqs, min_batch_count, max_batch_count))
+    }
+
     /// Gets proofs from the proof directory, which proof_id is strictly bigger than
     /// the provided proof id.
-    pub async fn get_proofs_after(&self, proof_idx: ProofIdx) -> tokio::io::Result<Vec<CCProof>> {
-        let mut proofs = Vec::new();
-
-        ensure_dir(&self.proof_directory).await?;
-
-        let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
-        loop {
-            match directory.next_entry().await {
-                Ok(Some(entry)) => {
-                    if !Self::is_file_suitable(&entry, proof_idx).await? {
-                        continue;
-                    }
-
-                    let file_content = tokio::fs::read(entry.path()).await?;
-                    let proof: CCProof = match serde_json::from_slice(&file_content) {
-                        Ok(proof) => proof,
-                        Err(e) => {
-                            log::warn!(
-                                "failed to parse proof file {:?}: {}, ignoring",
-                                entry.path(),
-                                e
-                            );
-                            continue;
-                        }
-                    };
-
-                    proofs.push(proof);
-                }
-                Ok(None) => {
-                    return Ok(proofs);
-                }
-                Err(e) => return Err(e),
-            }
-        }
+    pub async fn get_all_proofs_after(
+        &mut self,
+        last_known_proofs: &HashMap<CUID, ProofIdx>,
+        limit: usize,
+    ) -> tokio::io::Result<Vec<BatchResponse>> {
+        Ok(self
+            .proof_queue
+            .lock()
+            .get_all_proofs_after(last_known_proofs, limit))
     }
 
     pub async fn validate_proofs(
         &mut self,
         epoch: Option<&EpochParameters>,
     ) -> tokio::io::Result<ProofIdx> {
-        let mut max_proof_idx = None;
         ensure_dir(&self.proof_directory).await?;
 
+        log::info!("validate proofs from disk for epoch {epoch:?}");
+
         let mut directory = tokio::fs::read_dir(&self.proof_directory).await?;
+        let mut proofs = vec![];
         loop {
             match directory.next_entry().await {
                 Ok(Some(entry)) => {
@@ -98,29 +102,35 @@ impl ProofStorageDrainer {
 
                         let found_epoch: EpochParameters = proof.id.into();
                         if Some(&found_epoch) == epoch {
-                            max_proof_idx = Some(std::cmp::max(
-                                max_proof_idx.unwrap_or_default(),
-                                entry_proof_id,
-                            ));
+                            proofs.push(proof);
                         } else {
                             let path = entry.path();
                             log::warn!("removing a proof file with wrong epoch: {path:?}");
-                            // We treat it as a hard error because an unremoved incorrect file may
-                            // be returned from get_proofs_after call.
-                            tokio::fs::remove_file(path).await?;
+                            let _ = tokio::fs::remove_file(path).await;
                         }
                     }
                 }
                 Ok(None) => {
-                    // We should return an idx that utility thread can use, i.e. new one.
-                    if let Some(idx) = max_proof_idx.as_mut() {
-                        idx.increment()
-                    }
-                    return Ok(max_proof_idx.unwrap_or_default());
+                    break;
                 }
                 Err(e) => return Err(e),
             }
         }
+
+        proofs.sort_unstable_by_key(|proof| proof.id.idx);
+        let mut max_proof_idx = proofs.last().map(|proof| proof.id.idx);
+        {
+            let mut proof_queue_guard = self.proof_queue.lock();
+
+            for proof in proofs {
+                proof_queue_guard.insert(proof);
+            }
+        }
+        // We should return an idx that utility thread can use, i.e. new one.
+        if let Some(idx) = max_proof_idx.as_mut() {
+            idx.increment()
+        }
+        Ok(max_proof_idx.unwrap_or_default())
     }
 
     async fn proof_idx_from_filename(entry: &DirEntry) -> tokio::io::Result<Option<ProofIdx>> {
@@ -149,13 +159,6 @@ impl ProofStorageDrainer {
                 Ok(None)
             }
         }
-    }
-
-    async fn is_file_suitable(entry: &DirEntry, proof_idx: ProofIdx) -> tokio::io::Result<bool> {
-        let entry_proof_idx = Self::proof_idx_from_filename(entry).await?;
-        Ok(entry_proof_idx
-            .map(|current_proof_idx| proof_idx < current_proof_idx)
-            .unwrap_or(false))
     }
 }
 

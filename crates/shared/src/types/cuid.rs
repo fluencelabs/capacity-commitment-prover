@@ -30,7 +30,7 @@ pub type CUIDInner = [u8; 32];
 pub struct CUID(CUIDInner);
 
 impl CUID {
-    pub fn new(inner: CUIDInner) -> Self {
+    pub const fn new(inner: CUIDInner) -> Self {
         Self(inner)
     }
 }

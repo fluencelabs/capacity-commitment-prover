@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use std::collections::HashMap;
 use std::ffi::OsString;
 use std::path::Path;
 use std::path::PathBuf;
@@ -24,12 +25,16 @@ use ccp_config::CCPConfig;
 use ccp_config::Tokio;
 use ccp_config::Workers;
 use ccp_randomx::ResultHash;
-use ccp_shared::proof::{CCProof, CCProofId, ProofIdx};
+use ccp_shared::nox_ccp_api::NoxCCPApi;
+use ccp_shared::proof::BatchRequest;
+use ccp_shared::proof::BatchResponse;
+use ccp_shared::proof::CCProof;
+use ccp_shared::proof::CCProofId;
+use ccp_shared::proof::ProofIdx;
+use ccp_shared::types::CUAllocation;
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LocalNonce;
-use ccp_shared::{
-    nox_ccp_api::NoxCCPApi,
-    types::{CUAllocation, EpochParameters, CUID},
-};
+use ccp_shared::types::CUID;
 use ccp_test_utils::test_values::generate_epoch_params;
 use maplit::hashmap;
 use test_log::test;
@@ -115,15 +120,79 @@ async fn wait_for_proofs(
     length: usize,
     retries: usize,
     retry_delay: Duration,
-) -> eyre::Result<Vec<CCProof>> {
+    cuids: &[CUID],
+) -> eyre::Result<Vec<BatchResponse>> {
+    let after: HashMap<CUID, ProofIdx> = cuids
+        .iter()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
     for _retry in 0..retries {
         tokio::time::sleep(retry_delay).await;
-        let proofs = prover.get_proofs_after("0".parse().unwrap()).await?;
-        if proofs.len() > length {
+        let proofs = prover.get_proofs_after(after.clone(), 1000).await?;
+
+        let proof_count = proofs
+            .iter()
+            .map(|batch| batch.proof_batches.len())
+            .sum::<usize>();
+        if proof_count > length {
             return Ok(proofs);
         }
     }
-    prover.get_proofs_after("0".parse().unwrap()).await
+    prover.get_proofs_after(after, 1000).await
+}
+
+#[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
+async fn prover_get_batch_proofs_after() {
+    let state_dir = tempdir::TempDir::new("state").unwrap();
+
+    let mut prover = get_prover(state_dir.path()).await;
+    let epoch_params = get_epoch_params();
+    let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().copied().collect();
+    let commitment_init_recv = prover
+        .on_active_commitment(epoch_params.clone(), cu_allocation.clone())
+        .await
+        .unwrap();
+    commitment_init_recv.await.unwrap();
+
+    tokio::time::sleep(GEN_PROOFS_DURATION).await;
+
+    dbg!(
+        wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
+            .await
+            .expect("reading proofs")
+    );
+
+    let reqs: HashMap<CUID, BatchRequest> = cu_allocation
+        .values()
+        .map(|cuid| {
+            (
+                *cuid,
+                BatchRequest {
+                    last_seen_proof_idx: "0".parse().unwrap(),
+                    proof_batch_size: 2,
+                },
+            )
+        })
+        .collect();
+
+    let batched_proofs = prover
+        .get_batch_proofs_after(reqs.clone(), 2, 5)
+        .await
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
+
+    assert!(
+        // it really depends on your hardware; you may need to increase second value
+        // in the generate_epoch_params call above.
+        batched_proofs.len() > 0,
+        "{:?}",
+        batched_proofs,
+    );
+
+    prover.stop().await.unwrap();
 }
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
@@ -150,10 +219,18 @@ async fn prover_on_active_commitment() {
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
+    let last_known_proofs: HashMap<CUID, ProofIdx> = cu_allocation
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
+
     let proofs = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value
@@ -194,7 +271,7 @@ async fn prover_on_no_active_commitment() {
     prover.on_no_active_commitment().await.unwrap();
 
     let proofs = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(<_>::default(), 1000)
         .await
         .expect("reading proofs");
     assert!(proofs.is_empty());
@@ -218,10 +295,18 @@ async fn prover_on_active_no_active_commitment() {
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
+    let last_known_proofs: HashMap<CUID, ProofIdx> = cu_allocation
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
+
     let proofs_before = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
-        .expect("reading proofs");
+        .unwrap()
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
     prover.on_no_active_commitment().await.unwrap();
@@ -231,9 +316,12 @@ async fn prover_on_active_no_active_commitment() {
     let expected_state = None;
 
     let proofs_after = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
 
     prover.stop().await.unwrap();
 
@@ -280,10 +368,18 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
+    let last_known_proofs: HashMap<CUID, ProofIdx> = cu_allocation
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
+
     let proofs_before = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
     cu_allocation.clear();
@@ -295,9 +391,12 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
     commitment_init_recv2.await.unwrap();
 
     let proofs_after = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
     assert!(proofs_after.is_empty(), "{:?}", proofs_after);
 
     prover.stop().await.unwrap();
@@ -373,6 +472,11 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
         1.into() => cu_allocation_large.get(&1.into()).cloned().unwrap(),
     };
 
+    let last_known_proofs_small: HashMap<CUID, ProofIdx> = cu_allocation_small
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
+
     let commitment_init_recv = prover
         .on_active_commitment(get_epoch_params(), cu_allocation_small)
         .await
@@ -382,10 +486,18 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs_small, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
+
+    let last_known_proofs_large: HashMap<CUID, ProofIdx> = cu_allocation_large
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
 
     let commitment_init_recv2 = prover
         .on_active_commitment(get_epoch_params(), cu_allocation_large)
@@ -396,9 +508,13 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs_large, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
+
     assert!(
         3 * proofs_before.len() < 2 * proofs_after.len(),
         "should be 1.5*{} < {}",
@@ -416,6 +532,11 @@ async fn prover_on_active_change_epoch() {
     let mut prover = get_prover(state_dir.path()).await;
     let cu_allocation = get_cu_allocation();
 
+    let last_known_proofs: HashMap<CUID, ProofIdx> = cu_allocation
+        .values()
+        .map(|cuid| (*cuid, "0".parse().unwrap()))
+        .collect();
+
     let epoch_params_first = get_epoch_params();
 
     let commitment_init_recv = prover
@@ -427,9 +548,12 @@ async fn prover_on_active_change_epoch() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_before = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs.clone(), 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
     assert!(!proofs_before.is_empty());
 
     let epoch_params_second = generate_epoch_params(2, 50);
@@ -451,9 +575,12 @@ async fn prover_on_active_change_epoch() {
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
     let proofs_after = prover
-        .get_proofs_after("0".parse().unwrap())
+        .get_proofs_after(last_known_proofs, 1000)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
 
     prover.stop().await.unwrap();
 
@@ -487,6 +614,7 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().copied().collect();
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
@@ -503,9 +631,12 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     let state = load_state(state_dir.path());
 
-    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION, &cuids)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value
@@ -546,8 +677,10 @@ async fn prover_restore_from_state_with_proofs() {
 
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().copied().collect();
 
     let epoch_params_old = generate_epoch_params(2, 50);
+    // TODO unused. why?
     let mut cu_allocation_old = get_cu_allocation();
     cu_allocation_old.remove(&2.into()).expect("Invalid test");
 
@@ -618,9 +751,12 @@ async fn prover_restore_from_state_with_proofs() {
 
     let state = load_state(state_dir.path());
 
-    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION, &cuids)
         .await
-        .expect("reading proofs");
+        .expect("reading proofs")
+        .into_iter()
+        .flat_map(|res| res.proof_batches)
+        .collect::<Vec<CCProof>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value

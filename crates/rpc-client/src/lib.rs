@@ -33,7 +33,8 @@ pub use jsonrpsee::core::ClientError;
 use jsonrpsee::proc_macros::rpc;
 pub use jsonrpsee::types::ErrorObjectOwned;
 
-use ccp_shared::proof::CCProof;
+use ccp_shared::proof::BatchRequest;
+use ccp_shared::proof::BatchResponse;
 use ccp_shared::proof::ProofIdx;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::GlobalNonce;
@@ -58,9 +59,17 @@ pub trait CCPRpc {
     #[method(name = "get_proofs_after")]
     async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<Vec<CCProof>, ErrorObjectOwned>;
+    ) -> Result<Vec<BatchResponse>, ErrorObjectOwned>;
+
+    #[method(name = "get_batch_proofs_after")]
+    async fn get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> Result<Vec<BatchResponse>, ErrorObjectOwned>;
 
     #[method(name = "realloc_utility_cores", param_kind = map)]
     async fn realloc_utility_cores(&self, utility_core_ids: Vec<LogicalCoreId>);
@@ -111,10 +120,21 @@ impl CCPRpcHttpClient {
     #[inline]
     pub async fn get_proofs_after(
         &self,
-        proof_idx: ProofIdx,
+        last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> Result<Vec<CCProof>, ClientError> {
-        CCPRpcClient::get_proofs_after(&self.inner, proof_idx, limit).await
+    ) -> Result<Vec<BatchResponse>, ClientError> {
+        CCPRpcClient::get_proofs_after(&self.inner, last_known_proofs, limit).await
+    }
+
+    #[inline]
+    pub async fn get_batch_proofs_after(
+        &self,
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+    ) -> Result<Vec<BatchResponse>, ClientError> {
+        CCPRpcClient::get_batch_proofs_after(&self.inner, reqs, min_batch_count, max_batch_count)
+            .await
     }
 
     #[inline]

@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.13.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.12.1...ccp-v0.13.0) (2024-07-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* **rpc:** batching API ([#136](https://github.com/fluencelabs/capacity-commitment-prover/issues/136))
+
+### Features
+
+* **rpc:** batching API ([#136](https://github.com/fluencelabs/capacity-commitment-prover/issues/136)) ([08519a7](https://github.com/fluencelabs/capacity-commitment-prover/commit/08519a7b997adb01e133902b4432f8418bcb35d1))
+
+## [0.12.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.12.0...ccp-v0.12.1) (2024-07-02)
+
+
+### Features
+
+* **ccp:** Prometheus metrics for I/O ([#150](https://github.com/fluencelabs/capacity-commitment-prover/issues/150)) ([5d611c8](https://github.com/fluencelabs/capacity-commitment-prover/commit/5d611c8af018fbbb32f552b37da341eebc3eabbd))
+
 ## [0.12.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.11.0...ccp-v0.12.0) (2024-07-02)
 
 

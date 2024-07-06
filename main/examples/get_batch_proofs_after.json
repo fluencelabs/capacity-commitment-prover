@@ -1,0 +1,23 @@
+{
+    "jsonrpc":"2.0",
+    "method":"ccp_get_batch_proofs_after",
+    "id":"48",
+    "params": {
+        "reqs": {
+            "21f7ce63f24fd9be3a2d57dd97a2d90b2b97a04dc7adb78c8247de71bd75ae3f": {
+                "last_seen_proof_idx": 0,
+                "proof_batch_size": 4
+            },
+            "c0346469ba79aacb455564cd904252556c794444e318651d9a54541aea864136": {
+                "last_seen_proof_idx": 0,
+                "proof_batch_size": 4
+            },
+            "a2be80966424d177386d2378ca512cd835ca9ae791b8210ce4f9116f7db91904": {
+                "last_seen_proof_idx": 0,
+                "proof_batch_size": 4
+            }
+        },
+        "min_batch_count": 4,
+        "max_batch_count": 8
+    }
+}
