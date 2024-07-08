@@ -150,7 +150,7 @@ impl StateOperatingThreadImpl {
 
         match message {
             SaveConfig { notifier, state } => {
-                let ret = self.state_storage.save_state(state.as_ref()).await;
+                let ret = self.state_storage.save_state(&state).await;
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }

@@ -43,6 +43,7 @@ use tokio_util::sync::CancellationToken;
 use crate::cpuids_handle::CpuIdsHandle;
 use crate::persistence::StorageMetrics;
 use crate::state_storage::CCPState;
+use crate::state_storage::EpochAndAllocation;
 use crate::CCProver;
 
 const GEN_PROOFS_DURATION: Duration = Duration::from_secs(10);
@@ -211,8 +212,10 @@ async fn prover_on_active_commitment() {
     let state = load_state(state_dir.path());
 
     let expected_state: Option<CCPState> = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(EpochAndAllocation {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -565,8 +568,10 @@ async fn prover_on_active_change_epoch() {
 
     let state = load_state(state_dir.path());
     let expected_state = Some(CCPState {
-        epoch_params: epoch_params_second,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(EpochAndAllocation {
+            epoch_params: epoch_params_second,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -618,8 +623,10 @@ async fn prover_restore_from_state_with_no_proofs() {
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(EpochAndAllocation {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -686,8 +693,10 @@ async fn prover_restore_from_state_with_proofs() {
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(EpochAndAllocation {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -807,11 +816,14 @@ async fn prover_restart_keeps_proofs_vm_623() {
 
     let epoch_params = generate_epoch_params(1, 50);
     let cu_allocation = get_cu_allocation();
+    let cu_ids = cu_allocation.values().copied().collect::<Vec<_>>();
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
-        epoch_params,
-        cu_allocation: cu_allocation.clone(),
+        commitment: Some(EpochAndAllocation {
+            epoch_params,
+            cu_allocation: cu_allocation.clone(),
+        }),
         msr_state: <_>::default(),
         utility_cores: vec![1.into()],
     });
@@ -848,11 +860,11 @@ async fn prover_restart_keeps_proofs_vm_623() {
 
     let prover = get_prover_from_saved_state(state_dir.path()).await;
 
-    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION, &cu_ids)
         .await
         .expect("reading proofs")
         .into_iter()
-        .collect::<Vec<CCProof>>();
+        .collect::<Vec<_>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value
