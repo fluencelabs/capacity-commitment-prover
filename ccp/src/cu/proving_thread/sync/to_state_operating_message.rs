@@ -61,7 +61,7 @@ impl ToStateOperatingMessage {
 pub(crate) enum StateOperatingControlMessage {
     SaveConfig {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
-        state: Option<CCPState>,
+        state: CCPState,
     },
     CleanProofCache {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
