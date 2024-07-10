@@ -19,8 +19,8 @@ use tokio::task::JoinError;
 
 use crate::cu::CUProverError;
 use crate::hashrate::HashrateError;
-use crate::state_storage::StateStorageError;
 use crate::state_operating_thread::StateOperatingThreadError;
+use crate::state_storage::StateStorageError;
 use crate::stats_collecting_thread::StatsCollectingThreadError;
 
 #[derive(ThisError, Debug)]

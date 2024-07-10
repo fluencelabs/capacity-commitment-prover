@@ -25,6 +25,7 @@ use serde::Serialize;
 use thiserror::Error as ThisError;
 
 use crate::persistence::save_reliably;
+use crate::persistence::SaveReliablyError;
 use crate::persistence::StorageMetrics;
 
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
@@ -71,11 +72,12 @@ impl StateStorage {
         let path_clone = path.clone();
 
         tokio::task::spawn_blocking(move || {
-            save_reliably(&path, &data, &state_storage_metrics)
-                .map_err(|nested| StateStorageError::new(nested, path, "Saving CCP state to"))
+            save_reliably(&path, &data, &state_storage_metrics).map_err(|nested| {
+                StateStorageError::from_save_reliably(nested, "Saving CCP state to")
+            })
         })
         .await
-        .map_err(|nested| StateStorageError::new(nested, path_clone, "Saving CCP state to"))??;
+        .map_err(|nested| StateStorageError::new(path_clone, nested, "Saving CCP state to"))??;
         Ok(())
     }
 
@@ -89,7 +91,7 @@ impl StateStorage {
         }
 
         let state_data = tokio::fs::read(&path).await.map_err(|nested| {
-            StateStorageError::new(nested, &path, "Failed to load state data from")
+            StateStorageError::new(&path, nested, "Failed to load state data from")
         })?;
 
         match serde_json::from_slice(&state_data) {
@@ -111,14 +113,24 @@ pub struct StateStorageError {
 }
 
 impl StateStorageError {
+    #[inline]
     pub fn new(
-        nested: impl Into<tokio::io::Error>,
         path: impl Into<PathBuf>,
+        nested: impl Into<tokio::io::Error>,
         operation: impl Into<String>,
     ) -> Self {
         Self {
             nested: nested.into(),
             path: path.into(),
+            operation: operation.into(),
+        }
+    }
+
+    #[inline]
+    pub fn from_save_reliably(nested: SaveReliablyError, operation: impl Into<String>) -> Self {
+        Self {
+            nested: nested.nested,
+            path: nested.path,
             operation: operation.into(),
         }
     }
