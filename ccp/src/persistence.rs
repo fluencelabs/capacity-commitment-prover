@@ -103,11 +103,14 @@ pub(crate) fn save_reliably_inner(path: &Path, contents: &[u8]) -> Result<(), Sa
     draft_file
         .sync_all()
         .map_err(|e| SaveReliablyError::new(&draft_path, e))?;
+
+    // avoid automatical deletion of the temporary file
     std::mem::drop(draft_file);
 
     // now we have the contents saved reliably on disk as a draft file.
     // if we rename, destination file will be changed atomically
     std::fs::rename(draft_path, path).map_err(|e| SaveReliablyError::new(path, e))?;
+
     // make sure rename is saved
     base_dir_file
         .sync_all()
