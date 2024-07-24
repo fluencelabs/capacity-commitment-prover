@@ -187,13 +187,10 @@ jobs:
             ./docker/ccp_SHA256_SUMS
           tag_name: ${{ needs.release-please.outputs.tag-name }}
 
-      - name: Upload ccp binary to s3
-        uses: osiegmar/s3-publisher-action@v1
-        with:
-          bucket: fluence-artifacts
-          dir: ./docker
-          prefix: ccp/${{ env.VERSION }}
-          include: ccp-*
+      - name: Upload ccp binaries to s3
+        env:
+          AWS_REGION: eu-west-1
+        run: aws s3 sync docker/ s3://fluence-artifacts/ccp/${{ env.VERSION }}/ --acl public-read --exact-timestamps --delete --include "ccp*"
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
