@@ -91,7 +91,7 @@ jobs:
 
       - name: Rename ccp binary
         run: |
-          mkdir s3
+          mkdir -p s3
           cp target/${{ matrix.target }}/release/ccp s3/ccp-${{ matrix.arch }}
 
       - name: Upload ccp snapshot to s3
