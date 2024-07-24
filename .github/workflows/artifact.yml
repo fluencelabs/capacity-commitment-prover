@@ -22,6 +22,7 @@ jobs:
       RUSTFLAGS: "-D warnings -C link-arg=-B/usr/local/bin/mold"
       RUSTC_WRAPPER: "sccache"
 
+    # required for vault-action
     permissions:
       contents: read
       id-token: write
