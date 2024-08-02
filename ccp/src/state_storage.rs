@@ -81,7 +81,6 @@ impl StateStorage {
         Ok(())
     }
 
-    // TODO should it return error on IO problems?
     pub(crate) async fn try_to_load_data(&self) -> Result<Option<CCPState>, StateStorageError> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);

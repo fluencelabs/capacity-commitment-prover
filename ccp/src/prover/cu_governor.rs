@@ -121,7 +121,7 @@ impl CUGovernor {
     async fn execute_utility_call<T>(
         &self,
         message: StateOperatingControlMessage,
-        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
+        wait_for: oneshot::Receiver<eyre::Result<T>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 

@@ -293,9 +293,10 @@ impl CCProver {
                 // if the queue is closed, the problem is even more serios
                 TrySendError::Closed(_) => CCProverError::UtilityClosedError,
             })?;
-        Ok(wait_for
+        let value = wait_for
             .await
-            .map_err(|_| CCProverError::UtilityClosedError)??)
+            .map_err(|_| CCProverError::UtilityClosedError)??;
+        Ok(value)
     }
 
     #[inline]
@@ -386,7 +387,8 @@ impl CCProver {
                 .await
                 .inspect_err(|shutdown_err| {
                     log::error!("prometheus_endpoint shutdown: {shutdown_err}")
-                })?;
+                })
+                .context("failed to start a Prometheus endpoint")?;
         }
 
         state_op_shutdown_res?;
