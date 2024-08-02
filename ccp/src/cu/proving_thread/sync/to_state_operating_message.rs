@@ -60,21 +60,21 @@ impl ToStateOperatingMessage {
 #[derive(Debug)]
 pub(crate) enum StateOperatingControlMessage {
     SaveConfig {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        notifier: oneshot::Sender<eyre::Result<()>>,
         state: Option<CCPState>,
     },
     CleanProofCache {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        notifier: oneshot::Sender<eyre::Result<()>>,
     },
     GetAllProofs {
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+        notifier: oneshot::Sender<eyre::Result<Vec<BatchResponse>>>,
     },
     GetBatchProofs {
         reqs: HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+        notifier: oneshot::Sender<eyre::Result<Vec<BatchResponse>>>,
     },
 }

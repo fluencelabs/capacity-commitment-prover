@@ -121,7 +121,7 @@ impl CUGovernor {
     async fn execute_utility_call<T>(
         &self,
         message: StateOperatingControlMessage,
-        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
+        wait_for: oneshot::Receiver<eyre::Result<T>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 
@@ -133,9 +133,10 @@ impl CUGovernor {
                 // if the queue is closed, the problem is even more serios
                 TrySendError::Closed(_) => CCProverError::UtilityClosedError,
             })?;
-        Ok(wait_for
+        wait_for
             .await
-            .map_err(|_| CCProverError::UtilityClosedError)??)
+            .map_err(|_| CCProverError::UtilityClosedError)?
+            .map_err(CCProverError::IOError)
     }
 
     pub(crate) async fn on_active_commitment(

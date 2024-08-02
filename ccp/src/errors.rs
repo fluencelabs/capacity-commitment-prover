@@ -43,7 +43,7 @@ pub enum CCProverError {
     StatsCollectingThreadError(#[from] StatsCollectingThreadError),
 
     #[error(transparent)]
-    IOError(#[from] tokio::io::Error),
+    IOError(eyre::Error),
 
     #[error("utility task channel is closed")]
     UtilityClosedError,

@@ -27,6 +27,7 @@ use ccp_msr::state::MSRState;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::proof::BatchRequest;
 use eyre::Context;
+use futures::TryFutureExt;
 use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -113,7 +114,11 @@ impl CCProver {
     ) -> CCResult<Self> {
         let state_storage =
             StateStorage::new(config.state_dir.clone(), state_storage_metrics.clone());
-        let prev_state = state_storage.try_to_load_data().await?;
+        let prev_state = state_storage
+            .try_to_load_state()
+            .await
+            .with_context(|| format!("failed to load state from {:?}", config.state_dir))
+            .map_err(CCProverError::IOError)?;
 
         let commitment;
         let msr_enforcer;
@@ -176,6 +181,7 @@ impl CCProver {
             ProofStorageDrainer::new(proof_dir.clone(), proof_multi_queue.clone());
         let start_proof_idx = proof_drainer
             .validate_proofs(target_allocation.as_ref().map(|comm| &comm.epoch_params))
+            .map_err(CCProverError::IOError)
             .await?;
         log::info!("continuing from proof index {start_proof_idx}");
 
@@ -275,7 +281,7 @@ impl CCProver {
     async fn execute_utility_call<T>(
         &self,
         message: StateOperatingControlMessage,
-        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
+        wait_for: oneshot::Receiver<eyre::Result<T>>,
     ) -> Result<T, CCProverError> {
         use tokio::sync::mpsc::error::TrySendError;
 
@@ -287,9 +293,10 @@ impl CCProver {
                 // if the queue is closed, the problem is even more serios
                 TrySendError::Closed(_) => CCProverError::UtilityClosedError,
             })?;
-        Ok(wait_for
+        wait_for
             .await
-            .map_err(|_| CCProverError::UtilityClosedError)??)
+            .map_err(|_| CCProverError::UtilityClosedError)?
+            .map_err(CCProverError::IOError)
     }
 
     #[inline]
@@ -380,7 +387,9 @@ impl CCProver {
                 .await
                 .inspect_err(|shutdown_err| {
                     log::error!("prometheus_endpoint shutdown: {shutdown_err}")
-                })?;
+                })
+                .context("failed to start a Prometheus endpoint")
+                .map_err(CCProverError::IOError)?;
         }
 
         state_op_shutdown_res?;

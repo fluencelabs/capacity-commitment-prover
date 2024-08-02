@@ -20,6 +20,7 @@ use std::sync::Arc;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
+use eyre::Context as _;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -57,20 +58,22 @@ impl StateStorage {
         }
     }
 
-    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
+    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> eyre::Result<()> {
         let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
         let state_storage_metrics = self.state_storage_metrics.clone();
 
         log::info!("Saving state to {:?}", path);
 
+        let path_for_context = path.clone();
+
         tokio::task::spawn_blocking(move || save_reliably(&path, &data, &state_storage_metrics))
-            .await??;
+            .await?
+            .with_context(|| format!("failed to save config to {path_for_context:?}"))?;
         Ok(())
     }
 
-    // TODO should it return error on IO problems?
-    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<Option<CCPState>> {
+    pub(crate) async fn try_to_load_state(&self) -> tokio::io::Result<Option<CCPState>> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);
 
