@@ -49,12 +49,29 @@ impl Default for StorageMetrics {
     }
 }
 
+#[derive(thiserror::Error, Debug)]
+#[error("failed to save {path}: {nested}")]
+pub struct SaveReliablyError {
+    pub path: PathBuf,
+    #[source]
+    pub nested: std::io::Error,
+}
+
+impl SaveReliablyError {
+    pub(crate) fn new(path: impl Into<PathBuf>, nested: std::io::Error) -> Self {
+        Self {
+            path: path.into(),
+            nested,
+        }
+    }
+}
+
 // this is a sync function to avoid possible tokio peculiarities
 pub(crate) fn save_reliably(
     path: &Path,
     contents: impl AsRef<[u8]>,
     metrics: &StorageMetrics,
-) -> std::io::Result<()> {
+) -> Result<(), SaveReliablyError> {
     let started = Instant::now();
     let res = save_reliably_inner(path, contents.as_ref());
     let duration = started.elapsed();
@@ -68,31 +85,47 @@ pub(crate) fn save_reliably(
     res
 }
 
-pub(crate) fn save_reliably_inner(path: &Path, contents: &[u8]) -> std::io::Result<()> {
+pub(crate) fn save_reliably_inner(path: &Path, contents: &[u8]) -> Result<(), SaveReliablyError> {
     // we might use random name here.  but if the dir will lock'd, it is not necessary.
     let base_dir = path.parent().map(Cow::Borrowed).unwrap_or_default();
-    let base_dir_file = File::open(&base_dir)?;
+    let base_dir_file =
+        File::open(&base_dir).map_err(|e| SaveReliablyError::new(base_dir.as_ref(), e))?;
 
     let (mut draft_file, draft_path) =
         gen_draft_file(&base_dir, path.file_name().unwrap_or_default())?;
 
-    draft_file.write_all(contents.as_ref())?;
-    draft_file.flush()?;
-    draft_file.sync_all()?;
+    draft_file
+        .write_all(contents.as_ref())
+        .map_err(|e| SaveReliablyError::new(&draft_path, e))?;
+    draft_file
+        .flush()
+        .map_err(|e| SaveReliablyError::new(&draft_path, e))?;
+    draft_file
+        .sync_all()
+        .map_err(|e| SaveReliablyError::new(&draft_path, e))?;
+
+    // avoid automatical deletion of the temporary file
     std::mem::drop(draft_file);
 
     // now we have the contents saved reliably on disk as a draft file.
     // if we rename, destination file will be changed atomically
-    std::fs::rename(draft_path, path)?;
+    std::fs::rename(draft_path, path).map_err(|e| SaveReliablyError::new(path, e))?;
+
     // make sure rename is saved
-    base_dir_file.sync_all()?;
+    base_dir_file
+        .sync_all()
+        .map_err(|e| SaveReliablyError::new(base_dir.as_ref(), e))?;
 
     Ok(())
 }
 
-fn gen_draft_file(base_dir: &Path, prefix: &OsStr) -> std::io::Result<(File, PathBuf)> {
+fn gen_draft_file(base_dir: &Path, prefix: &OsStr) -> Result<(File, PathBuf), SaveReliablyError> {
     let named_tmp_file = tempfile::Builder::new()
         .prefix(prefix)
-        .tempfile_in(base_dir)?;
-    Ok(named_tmp_file.keep()?)
+        .tempfile_in(base_dir)
+        .map_err(|e| SaveReliablyError::new(base_dir, e))?;
+    let named_tmp_file_path = named_tmp_file.path().to_owned();
+    named_tmp_file
+        .keep()
+        .map_err(|e| SaveReliablyError::new(named_tmp_file_path, e.into()))
 }

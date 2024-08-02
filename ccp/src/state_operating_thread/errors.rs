@@ -18,11 +18,13 @@ use tokio::task::JoinError;
 
 use thiserror::Error as ThisError;
 
+use crate::persistence::SaveReliablyError;
+
 #[derive(ThisError, Debug)]
 pub enum StateOperatingThreadError {
     #[error(transparent)]
     JoinFailed(#[from] JoinError),
 
     #[error(transparent)]
-    IOError(#[from] tokio::io::Error),
+    IOError(#[from] SaveReliablyError),
 }

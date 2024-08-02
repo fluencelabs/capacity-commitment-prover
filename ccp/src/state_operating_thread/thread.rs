@@ -32,6 +32,7 @@ use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
+use crate::CCProverError;
 
 pub(crate) struct StateOperatingThread {
     to_state_operating: ToStateOperatingInlet,
@@ -150,7 +151,11 @@ impl StateOperatingThreadImpl {
 
         match message {
             SaveConfig { notifier, state } => {
-                let ret = self.state_storage.save_state(state.as_ref()).await;
+                let ret = self
+                    .state_storage
+                    .save_state(state.as_ref())
+                    .await
+                    .map_err(CCProverError::StorageError);
                 // if receiver is dead, there is nothing we can do
                 let _ = notifier.send(ret);
             }

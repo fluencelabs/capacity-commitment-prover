@@ -20,6 +20,7 @@ use tokio::task::JoinError;
 use crate::cu::CUProverError;
 use crate::hashrate::HashrateError;
 use crate::state_operating_thread::StateOperatingThreadError;
+use crate::state_storage::StateStorageError;
 use crate::stats_collecting_thread::StatsCollectingThreadError;
 
 #[derive(ThisError, Debug)]
@@ -43,12 +44,15 @@ pub enum CCProverError {
     StatsCollectingThreadError(#[from] StatsCollectingThreadError),
 
     #[error(transparent)]
-    IOError(#[from] tokio::io::Error),
+    Eyre(#[from] eyre::Error),
 
     #[error("utility task channel is closed")]
     UtilityClosedError,
     #[error("utility task channel is full")]
     UtilityFullError,
+
+    #[error(transparent)]
+    StorageError(#[from] StateStorageError),
 }
 
 impl From<Vec<CUProverError>> for CCProverError {

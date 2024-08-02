@@ -22,8 +22,10 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 use serde::Deserialize;
 use serde::Serialize;
+use thiserror::Error as ThisError;
 
 use crate::persistence::save_reliably;
+use crate::persistence::SaveReliablyError;
 use crate::persistence::StorageMetrics;
 
 const EXPECT_DEFAULT_DESERIALIZER: &str = "the default serde (de)serializer shouldn't fail";
@@ -57,20 +59,29 @@ impl StateStorage {
         }
     }
 
-    pub(crate) async fn save_state(&self, state: Option<&CCPState>) -> tokio::io::Result<()> {
+    pub(crate) async fn save_state(
+        &self,
+        state: Option<&CCPState>,
+    ) -> Result<(), StateStorageError> {
         let data = serde_json::to_vec(&state).expect(EXPECT_DEFAULT_DESERIALIZER);
         let path = self.state_dir.join(STATE_FILE);
         let state_storage_metrics = self.state_storage_metrics.clone();
 
         log::info!("Saving state to {:?}", path);
 
-        tokio::task::spawn_blocking(move || save_reliably(&path, &data, &state_storage_metrics))
-            .await??;
+        let path_clone = path.clone();
+
+        tokio::task::spawn_blocking(move || {
+            save_reliably(&path, &data, &state_storage_metrics).map_err(|nested| {
+                StateStorageError::from_save_reliably(nested, "Saving CCP state to")
+            })
+        })
+        .await
+        .map_err(|nested| StateStorageError::new(path_clone, nested, "Saving CCP state to"))??;
         Ok(())
     }
 
-    // TODO should it return error on IO problems?
-    pub(crate) async fn try_to_load_data(&self) -> tokio::io::Result<Option<CCPState>> {
+    pub(crate) async fn try_to_load_data(&self) -> Result<Option<CCPState>, StateStorageError> {
         log::info!("Try to restore previous state from {:?}", self.state_dir);
         let path = self.state_dir.join(STATE_FILE);
 
@@ -78,7 +89,9 @@ impl StateStorage {
             return Ok(None);
         }
 
-        let state_data = tokio::fs::read(&path).await?;
+        let state_data = tokio::fs::read(&path).await.map_err(|nested| {
+            StateStorageError::new(&path, nested, "Failed to load state data from")
+        })?;
 
         match serde_json::from_slice(&state_data) {
             Ok(data) => Ok(data),
@@ -86,6 +99,38 @@ impl StateStorage {
                 log::warn!("failed to parse state data from {path:?}, ignoring: {e}");
                 Ok(None)
             }
+        }
+    }
+}
+
+#[derive(ThisError, Debug)]
+#[error("{operation} {path} failed: {nested}")]
+pub struct StateStorageError {
+    pub nested: tokio::io::Error,
+    pub path: PathBuf,
+    pub operation: String,
+}
+
+impl StateStorageError {
+    #[inline]
+    pub fn new(
+        path: impl Into<PathBuf>,
+        nested: impl Into<tokio::io::Error>,
+        operation: impl Into<String>,
+    ) -> Self {
+        Self {
+            nested: nested.into(),
+            path: path.into(),
+            operation: operation.into(),
+        }
+    }
+
+    #[inline]
+    pub fn from_save_reliably(nested: SaveReliablyError, operation: impl Into<String>) -> Self {
+        Self {
+            nested: nested.nested,
+            path: nested.path,
+            operation: operation.into(),
         }
     }
 }

@@ -15,8 +15,10 @@
  */
 
 use config::Config;
+use config::Environment;
 use config::File;
 use config::FileFormat;
+use eyre::Context;
 
 use crate::unresolved_config::UnresolvedCCPConfig;
 use crate::CCPConfig;
@@ -25,8 +27,15 @@ pub fn load_config(path: &str) -> eyre::Result<CCPConfig> {
     let config_source = File::with_name(path)
         .required(true)
         .format(FileFormat::Toml);
-    let config = Config::builder().add_source(config_source).build()?;
+    let environment_source = Environment::with_prefix("CCP").separator("_");
+    let config = Config::builder()
+        .add_source(environment_source)
+        .add_source(config_source)
+        .build()
+        .with_context(|| format!("Failed to load config from {path}"))?;
 
-    let config: UnresolvedCCPConfig = config.try_deserialize()?;
+    let config: UnresolvedCCPConfig = config
+        .try_deserialize()
+        .with_context(|| format!("Failed to parse config at {path}"))?;
     config.resolve(path)
 }

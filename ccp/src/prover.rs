@@ -113,7 +113,10 @@ impl CCProver {
     ) -> CCResult<Self> {
         let state_storage =
             StateStorage::new(config.state_dir.clone(), state_storage_metrics.clone());
-        let prev_state = state_storage.try_to_load_data().await?;
+        let prev_state = state_storage
+            .try_to_load_data()
+            .await
+            .map_err(CCProverError::StorageError)?;
 
         let commitment;
         let msr_enforcer;
@@ -272,11 +275,14 @@ impl CCProver {
     }
 
     // TODO rename
-    async fn execute_utility_call<T>(
+    async fn execute_utility_call<T, E>(
         &self,
         message: StateOperatingControlMessage,
-        wait_for: oneshot::Receiver<Result<T, std::io::Error>>,
-    ) -> Result<T, CCProverError> {
+        wait_for: oneshot::Receiver<Result<T, E>>,
+    ) -> Result<T, CCProverError>
+    where
+        CCProverError: From<E>,
+    {
         use tokio::sync::mpsc::error::TrySendError;
 
         self.state_operating_control_inlet
@@ -287,9 +293,10 @@ impl CCProver {
                 // if the queue is closed, the problem is even more serios
                 TrySendError::Closed(_) => CCProverError::UtilityClosedError,
             })?;
-        Ok(wait_for
+        let value = wait_for
             .await
-            .map_err(|_| CCProverError::UtilityClosedError)??)
+            .map_err(|_| CCProverError::UtilityClosedError)??;
+        Ok(value)
     }
 
     #[inline]
@@ -380,7 +387,8 @@ impl CCProver {
                 .await
                 .inspect_err(|shutdown_err| {
                     log::error!("prometheus_endpoint shutdown: {shutdown_err}")
-                })?;
+                })
+                .context("failed to start a Prometheus endpoint")?;
         }
 
         state_op_shutdown_res?;

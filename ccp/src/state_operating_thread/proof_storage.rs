@@ -21,6 +21,7 @@ use ccp_shared::proof::CCProof;
 use parking_lot::Mutex as PLMutex;
 
 use crate::persistence::save_reliably;
+use crate::persistence::SaveReliablyError;
 use crate::persistence::StorageMetrics;
 use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ensure_dir;
@@ -49,17 +50,21 @@ impl ProofStorage {
         }
     }
 
-    pub async fn store_new_proof(&self, proof: CCProof) -> tokio::io::Result<()> {
-        ensure_dir(&self.proof_directory).await?;
+    pub async fn store_new_proof(&self, proof: CCProof) -> Result<(), SaveReliablyError> {
+        ensure_dir(&self.proof_directory)
+            .await
+            .map_err(|e| SaveReliablyError::new(&self.proof_directory, e))?;
         let proof_as_string = serde_json::to_string(&proof).expect(EXPECT_DEFAULT_SERIALIZER);
         let proof_path = self.proof_directory.join(proof.id.idx.to_string());
+        let proof_path_clone = proof_path.clone();
 
         let proof_storage_metrics = self.proof_storage_metrics.clone();
 
         tokio::task::spawn_blocking(move || {
             save_reliably(&proof_path, proof_as_string, &proof_storage_metrics)
         })
-        .await??;
+        .await
+        .map_err(|e| SaveReliablyError::new(proof_path_clone, e.into()))??;
 
         self.proof_queue.lock().insert(proof);
 

@@ -18,6 +18,7 @@ use ccp_shared::proof::BatchRequest;
 use ccp_shared::proof::BatchResponse;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
+use eyre::Context;
 use parking_lot::Mutex as PLMutex;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -46,13 +47,13 @@ impl ProofStorageDrainer {
 
     /// Removes all proofs in the proof directory, it's intended for cleanup storage
     /// when a new epoch happened.
-    pub async fn clear_proofs(&mut self) -> tokio::io::Result<()> {
+    pub async fn clear_proofs(&mut self) -> eyre::Result<()> {
         self.proof_queue.lock().clear();
 
         if tokio::fs::try_exists(&self.proof_directory).await? {
             tokio::fs::remove_dir_all(&self.proof_directory).await?;
         }
-        tokio::fs::create_dir(&self.proof_directory).await
+        Ok(tokio::fs::create_dir(&self.proof_directory).await?)
     }
 
     /// Get batches proofs from the queue.
@@ -61,7 +62,7 @@ impl ProofStorageDrainer {
         reqs: &HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-    ) -> tokio::io::Result<Vec<BatchResponse>> {
+    ) -> eyre::Result<Vec<BatchResponse>> {
         Ok(self
             .proof_queue
             .lock()
@@ -74,7 +75,7 @@ impl ProofStorageDrainer {
         &mut self,
         last_known_proofs: &HashMap<CUID, ProofIdx>,
         limit: usize,
-    ) -> tokio::io::Result<Vec<BatchResponse>> {
+    ) -> eyre::Result<Vec<BatchResponse>> {
         Ok(self
             .proof_queue
             .lock()
@@ -84,7 +85,7 @@ impl ProofStorageDrainer {
     pub async fn validate_proofs(
         &mut self,
         epoch: Option<&EpochParameters>,
-    ) -> tokio::io::Result<ProofIdx> {
+    ) -> eyre::Result<ProofIdx> {
         ensure_dir(&self.proof_directory).await?;
 
         log::info!("validate proofs from disk for epoch {epoch:?}");
@@ -95,8 +96,13 @@ impl ProofStorageDrainer {
             match directory.next_entry().await {
                 Ok(Some(entry)) => {
                     if let Some(entry_proof_id) = Self::proof_idx_from_filename(&entry).await? {
-                        let file_content = tokio::fs::read(entry.path()).await?;
-                        let proof: CCProof = serde_json::from_slice(&file_content)?;
+                        let file_content = tokio::fs::read(entry.path())
+                            .await
+                            .with_context(|| format!("failed to read {:?}", entry.path()))?;
+                        let proof: CCProof =
+                            serde_json::from_slice(&file_content).with_context(|| {
+                                format!("failed to parse proof at {:?}", entry.path())
+                            })?;
 
                         log::debug!("loaded proof {entry_proof_id}: {proof:?}");
 
@@ -113,7 +119,11 @@ impl ProofStorageDrainer {
                 Ok(None) => {
                     break;
                 }
-                Err(e) => return Err(e),
+                Err(e) => {
+                    return Err(e).with_context(|| {
+                        format!("failed to read directory: {:?}", self.proof_directory)
+                    })
+                }
             }
         }
 

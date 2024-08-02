@@ -28,6 +28,7 @@ pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
 pub(crate) use crate::prover::GovernorMessage;
 use crate::state_storage::CCPState;
+use crate::CCProverError;
 
 pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
 pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
@@ -60,21 +61,21 @@ impl ToStateOperatingMessage {
 #[derive(Debug)]
 pub(crate) enum StateOperatingControlMessage {
     SaveConfig {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        notifier: oneshot::Sender<Result<(), CCProverError>>,
         state: Option<CCPState>,
     },
     CleanProofCache {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        notifier: oneshot::Sender<eyre::Result<()>>,
     },
     GetAllProofs {
         last_known_proofs: HashMap<CUID, ProofIdx>,
         limit: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+        notifier: oneshot::Sender<eyre::Result<Vec<BatchResponse>>>,
     },
     GetBatchProofs {
         reqs: HashMap<CUID, BatchRequest>,
         min_batch_count: usize,
         max_batch_count: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+        notifier: oneshot::Sender<eyre::Result<Vec<BatchResponse>>>,
     },
 }
