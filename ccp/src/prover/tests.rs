@@ -143,7 +143,7 @@ async fn wait_for_proofs(
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_get_batch_proofs_after() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
@@ -157,11 +157,9 @@ async fn prover_get_batch_proofs_after() {
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
-    dbg!(
-        wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
-            .await
-            .expect("reading proofs")
-    );
+    wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
+        .await
+        .expect("reading proofs");
 
     let reqs: HashMap<CUID, BatchRequest> = cu_allocation
         .values()
@@ -197,7 +195,7 @@ async fn prover_get_batch_proofs_after() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
@@ -265,7 +263,7 @@ async fn prover_on_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_no_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     prover.on_no_active_commitment().await.unwrap();
@@ -282,7 +280,7 @@ async fn prover_on_no_active_commitment() {
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 #[ignore = "until on_no_active_commitment cleans proofs_dir"]
 async fn prover_on_active_no_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
     let mut prover = get_prover(state_dir.path()).await;
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
@@ -331,7 +329,7 @@ async fn prover_on_active_no_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_reduce_allocation_on_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
@@ -356,7 +354,7 @@ async fn prover_on_active_reduce_allocation_on_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_reduce_empty_allocation_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
@@ -404,7 +402,7 @@ async fn prover_on_active_reduce_empty_allocation_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
 async fn prover_on_active_extend_allocation_on_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
@@ -434,7 +432,7 @@ async fn prover_on_active_extend_allocation_on_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_reschedule_on_active_commitment() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let mut cu_allocation = get_cu_allocation();
@@ -464,7 +462,7 @@ async fn prover_on_active_reschedule_on_active_commitment() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 4))]
 async fn prover_on_active_extend_on_active_commitment_performance() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let cu_allocation_large = get_cu_allocation();
@@ -527,7 +525,7 @@ async fn prover_on_active_extend_on_active_commitment_performance() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_on_active_change_epoch() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let mut prover = get_prover(state_dir.path()).await;
     let cu_allocation = get_cu_allocation();
@@ -610,7 +608,7 @@ async fn prover_on_active_change_epoch() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_restore_from_state_with_no_proofs() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
 
     let epoch_params = get_epoch_params();
     let cu_allocation = get_cu_allocation();
@@ -671,7 +669,7 @@ async fn prover_restore_from_state_with_no_proofs() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_restore_from_state_with_proofs() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
     let proofs_dir = state_dir.path().join("cc_proofs");
     tokio::fs::create_dir(&proofs_dir).await.unwrap();
 
@@ -801,12 +799,13 @@ async fn prover_restore_from_state_with_proofs() {
 
 #[test(tokio::test(flavor = "multi_thread", worker_threads = 3))]
 async fn prover_restart_keeps_proofs_vm_623() {
-    let state_dir = tempdir::TempDir::new("state").unwrap();
+    let state_dir = tempfile::TempDir::with_prefix("state").unwrap();
     let proofs_dir = state_dir.path().join("cc_proofs");
     tokio::fs::create_dir(&proofs_dir).await.unwrap();
 
     let epoch_params = generate_epoch_params(1, 50);
     let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().copied().collect();
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
@@ -848,11 +847,11 @@ async fn prover_restart_keeps_proofs_vm_623() {
 
     let prover = get_prover_from_saved_state(state_dir.path()).await;
 
-    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION, &cuids)
         .await
         .expect("reading proofs")
         .into_iter()
-        .collect::<Vec<CCProof>>();
+        .collect::<Vec<_>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value

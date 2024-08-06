@@ -50,7 +50,6 @@ eyre.workspace = true
 ccp-test-utils.workspace = true
 env_logger.workspace = true
 maplit.workspace = true
-tempdir.workspace = true
 tokio.workspace = true
 test-log.workspace = true
 rand.workspace = true
