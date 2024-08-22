@@ -25,8 +25,10 @@ pub(crate) mod status;
 mod tests;
 
 pub use config::CUProverConfig;
-pub(crate) use cu_prover::CUProver;
-pub(crate) use errors::CUProverError;
-pub(crate) use errors::ThreadAllocationError;
+pub use cu_prover::CUProver;
+pub use errors::CUProverError;
+pub use errors::ThreadAllocationError;
 
-pub(crate) type CUResult<T> = Result<T, errors::CUProverError>;
+pub type CUResult<T> = Result<T, errors::CUProverError>;
+
+pub(crate) use ccp_shared::types::*;

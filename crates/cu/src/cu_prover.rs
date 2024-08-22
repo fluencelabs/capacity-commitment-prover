@@ -35,8 +35,9 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
-use crate::cu::chunk::ChunkGenerator;
-use crate::state_operating_thread::message::ToStateOperatingInlet;
+use super::chunk::ChunkGenerator;
+// thats's from CCP
+use ccp::state_operating_thread::message::ToStateOperatingInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.

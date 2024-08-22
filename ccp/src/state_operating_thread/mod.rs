@@ -22,7 +22,7 @@ pub use errors::StateOperatingThreadError;
 pub(crate) use thread::*;
 
 pub(crate) mod message {
-    pub(crate) use crate::cu::proving_thread::sync::to_state_operating_message::*;
+    pub(crate) use ccp_cu::proving_thread::sync::to_state_operating_message::*;
 }
 
 pub(crate) type SOTResult<T> = Result<T, errors::StateOperatingThreadError>;

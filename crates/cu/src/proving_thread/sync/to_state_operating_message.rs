@@ -26,8 +26,8 @@ use tokio::sync::oneshot;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
-pub(crate) use crate::prover::GovernorMessage;
-use crate::state_storage::CCPState;
+pub(crate) use ccp::prover::GovernorMessage;
+use ccp::state_storage::CCPState;
 
 pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
 pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
@@ -59,6 +59,7 @@ impl ToStateOperatingMessage {
 
 #[derive(Debug)]
 pub(crate) enum StateOperatingControlMessage {
+    // Why saving config is in the CU???
     SaveConfig {
         notifier: oneshot::Sender<tokio::io::Result<()>>,
         state: Option<CCPState>,

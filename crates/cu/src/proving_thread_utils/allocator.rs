@@ -24,12 +24,12 @@ use cpu_utils::CPUTopology;
 use cpu_utils::HwlocCPUTopology;
 
 use super::RoundRobinDistributor;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
-use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
-use crate::cu::proving_thread::ProvingThreadAsync;
-use crate::cu::proving_thread::ProvingThreadConfig;
-use crate::cu::CUResult;
-use crate::cu::ThreadAllocationError;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
+use crate::proving_thread::ProvingThreadAsync;
+use crate::proving_thread::ProvingThreadConfig;
+use crate::CUResult;
+use crate::ThreadAllocationError;
 
 type ThreadAllocationStrategy = NonEmpty<LogicalCoreId>;
 

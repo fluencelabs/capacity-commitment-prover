@@ -18,7 +18,7 @@ use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
-pub(crate) use crate::hashrate::ThreadHashrateRecord;
+pub(crate) use ccp::hashrate::ThreadHashrateRecord;
 
 pub(crate) type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
 pub(crate) type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;

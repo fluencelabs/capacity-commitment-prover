@@ -1,0 +1,55 @@
+[package]
+name = "ccp-cu"
+description = "Compute Unit of the capacity commitment prover for the Fluence protocol"
+version = "0.13.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+ccp-config.workspace = true
+ccp-randomx.workspace = true
+ccp-msr.workspace = true
+ccp-shared.workspace = true
+ccp-utils.workspace = true
+cpu-utils.workspace = true
+
+tokio.workspace = true
+tokio-stream.workspace = true
+futures.workspace = true
+
+crossterm.workspace = true
+crossterm.features = ["event-stream"]
+crossterm.optional = true
+
+anyhow.workspace = true
+byteorder.workspace = true
+chrono.workspace = true
+csv.workspace = true
+itertools.workspace = true
+log.workspace = true
+nonempty.workspace = true
+parking_lot.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+
+tokio-util.workspace = true
+eyre.workspace = true
+
+[dev-dependencies]
+ccp-test-utils.workspace = true
+env_logger.workspace = true
+maplit.workspace = true
+tempdir.workspace = true
+tokio.workspace = true
+test-log.workspace = true
+rand.workspace = true
+rand.features = ["small_rng"]

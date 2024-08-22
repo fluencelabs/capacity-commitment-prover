@@ -18,7 +18,7 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use crate::cu::proving_thread::sync::ProvingThreadSyncFacadeError;
+use crate::proving_thread::sync::ProvingThreadSyncFacadeError;
 use ccp_msr::MSRError;
 
 #[derive(ThisError, Debug)]

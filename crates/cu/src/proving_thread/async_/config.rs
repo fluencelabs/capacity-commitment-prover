@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use crate::cu::CUProverConfig;
+use crate::CUProverConfig;
 
 #[derive(Debug, Clone)]
 pub struct ProvingThreadConfig {
