@@ -29,7 +29,7 @@ use super::raw_proof::RawProof;
 use super::STResult;
 use crate::proving_thread::messages::AsyncToSyncMessage;
 use crate::proving_thread::messages::NewCCJob;
-use ccp::hashrate::ThreadHashrateRecord;
+use crate::ThreadHashrateRecord;
 
 /// The state machine of the sync part of proving thread, it
 #[derive(Debug)]

@@ -17,11 +17,11 @@
 mod channels_facade;
 mod errors;
 mod local_nonce;
-mod raw_proof;
+pub(crate) mod raw_proof;
 mod state;
 mod thread;
-pub(crate) mod to_state_operating_message;
-pub(crate) mod to_stats_collecting_message;
+pub mod to_state_operating_message;
+pub mod to_stats_collecting_message;
 
 pub(crate) use errors::ProvingThreadSyncFacadeError;
 pub(crate) use thread::ProvingThreadSync;

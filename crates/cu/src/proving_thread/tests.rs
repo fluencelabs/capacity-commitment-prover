@@ -30,12 +30,12 @@ use super::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use super::ProvingThreadAsync;
 use super::ProvingThreadConfig;
 use super::ProvingThreadFacade;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
-use crate::cu::tests::collect_proofs;
-use crate::cu::tests::collect_proofs_with_flag;
-use crate::cu::tests::proof_sink;
-use crate::state_operating_thread::message::RawProof;
-use crate::state_operating_thread::message::ToStateOperatingOutlet;
+use crate::proving_thread::sync::raw_proof::RawProof;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
+use crate::tests::collect_proofs;
+use crate::tests::collect_proofs_with_flag;
+use crate::tests::proof_sink;
 
 pub(crate) struct ThreadInitIngredients {
     pub(crate) thread: ProvingThreadAsync,

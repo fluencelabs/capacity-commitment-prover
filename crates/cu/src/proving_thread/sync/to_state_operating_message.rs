@@ -14,30 +14,17 @@
  * limitations under the License.
  */
 
-use std::collections::HashMap;
-
-use ccp_shared::proof::BatchRequest;
-use ccp_shared::proof::BatchResponse;
-use ccp_shared::proof::ProofIdx;
-use ccp_shared::types::CUID;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
-use tokio::sync::oneshot;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
 pub(crate) use super::raw_proof::RawProof;
-pub(crate) use ccp::prover::GovernorMessage;
-use ccp::state_storage::CCPState;
 
-pub(crate) type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
-pub(crate) type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
-pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
-pub(crate) type StateOperatingControlOutlet = mpsc::Receiver<StateOperatingControlMessage>;
-pub(crate) type GovernorOperatingInlet = mpsc::Sender<GovernorMessage>;
-pub(crate) type GovernorOperatingOutlet = mpsc::Receiver<GovernorMessage>;
+pub type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
+pub type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;
 
 #[derive(Debug)]
-pub(crate) enum ToStateOperatingMessage {
+pub enum ToStateOperatingMessage {
     ProofFound {
         proof: RawProof,
     },
@@ -57,25 +44,3 @@ impl ToStateOperatingMessage {
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum StateOperatingControlMessage {
-    // Why saving config is in the CU???
-    SaveConfig {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
-        state: Option<CCPState>,
-    },
-    CleanProofCache {
-        notifier: oneshot::Sender<tokio::io::Result<()>>,
-    },
-    GetAllProofs {
-        last_known_proofs: HashMap<CUID, ProofIdx>,
-        limit: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
-    },
-    GetBatchProofs {
-        reqs: HashMap<CUID, BatchRequest>,
-        min_batch_count: usize,
-        max_batch_count: usize,
-        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
-    },
-}

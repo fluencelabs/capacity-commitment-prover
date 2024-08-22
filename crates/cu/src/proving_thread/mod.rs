@@ -17,7 +17,7 @@
 mod async_;
 mod facade;
 mod messages;
-pub(crate) mod sync;
+pub mod sync;
 #[cfg(test)]
 mod tests;
 

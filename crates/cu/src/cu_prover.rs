@@ -36,8 +36,7 @@ use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
 use super::chunk::ChunkGenerator;
-// thats's from CCP
-use ccp::state_operating_thread::message::ToStateOperatingInlet;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
@@ -53,7 +52,7 @@ pub struct CUProver {
 }
 
 impl CUProver {
-    pub(crate) async fn create(
+    pub async fn create(
         config: CUProverConfig,
         to_state_operating: ToStateOperatingInlet,
         to_stats_collecting: ToStatsCollectingInlet,
@@ -84,7 +83,7 @@ impl CUProver {
         Ok(prover)
     }
 
-    pub(crate) async fn new_epoch(
+    pub async fn new_epoch(
         &mut self,
         epoch: EpochParameters,
         cu_id: CUID,
@@ -108,7 +107,7 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn pin<'threads>(
+    pub async fn pin<'threads>(
         &'threads mut self,
         new_core_id: PhysicalCoreId,
     ) -> CUResult<()> {
@@ -131,7 +130,7 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn pause<'threads>(&'threads mut self) -> CUResult<()> {
+    pub async fn pause<'threads>(&'threads mut self) -> CUResult<()> {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| thread.pause().boxed();
@@ -143,7 +142,7 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub(crate) async fn stop_nonblocking<'threads>(&'threads self) -> CUResult<()> {
+    pub async fn stop_nonblocking<'threads>(&'threads self) -> CUResult<()> {
         use futures::FutureExt;
 
         let closure =
@@ -152,7 +151,7 @@ impl CUProver {
         Ok(())
     }
 
-    pub(crate) async fn join(self) -> CUResult<()> {
+    pub async fn join(self) -> CUResult<()> {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: ProvingThreadAsync| thread.join().boxed();
@@ -160,7 +159,7 @@ impl CUProver {
         Ok(())
     }
 
-    pub(crate) async fn stop_join(self) -> CUResult<()> {
+    pub async fn stop_join(self) -> CUResult<()> {
         use futures::FutureExt;
 
         let closure = |_: usize, thread: ProvingThreadAsync| thread.stop_join().boxed();
@@ -168,7 +167,7 @@ impl CUProver {
         Ok(())
     }
 
-    pub(crate) fn pinned_core_id(&self) -> PhysicalCoreId {
+    pub fn pinned_core_id(&self) -> PhysicalCoreId {
         self.pinned_core_id
     }
 

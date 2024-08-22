@@ -37,7 +37,7 @@ use crate::proving_thread::messages::*;
 use crate::proving_thread::sync::channels_facade::ToStateOperating;
 use crate::proving_thread::sync::channels_facade::ToStatsCollecting;
 use crate::proving_thread::sync::errors::ProvingThreadSyncFacadeError;
-use cpp::hashrate::ThreadHashrateRecord;
+use crate::ThreadHashrateRecord;
 
 const CHANNEL_DROPPED_MESSAGE: &str =
     "ThreadState::WaitForMessage async part of the ptt channel is dropped";

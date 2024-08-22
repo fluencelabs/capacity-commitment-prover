@@ -17,15 +17,15 @@
 use ccp_shared::types::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct RawProof {
-    pub(crate) epoch: EpochParameters,
-    pub(crate) local_nonce: LocalNonce,
-    pub(crate) cu_id: CUID,
-    pub(crate) result_hash: ResultHash,
+pub struct RawProof {
+    pub epoch: EpochParameters,
+    pub local_nonce: LocalNonce,
+    pub cu_id: CUID,
+    pub result_hash: ResultHash,
 }
 
 impl RawProof {
-    pub(crate) fn new(
+    pub fn new(
         epoch: EpochParameters,
         local_nonce: LocalNonce,
         cu_id: CUID,
