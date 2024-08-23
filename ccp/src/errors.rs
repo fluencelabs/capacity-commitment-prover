@@ -17,7 +17,8 @@
 use thiserror::Error as ThisError;
 use tokio::task::JoinError;
 
-use crate::cu::CUProverError;
+use ccp_cu::CUProverError;
+
 use crate::hashrate::HashrateError;
 use crate::state_operating_thread::StateOperatingThreadError;
 use crate::stats_collecting_thread::StatsCollectingThreadError;

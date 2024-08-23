@@ -19,6 +19,7 @@ use std::sync::Arc;
 use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 
+use ccp_cu::proving_thread::sync::RawProof;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
@@ -30,6 +31,8 @@ use super::SOTResult;
 use crate::persistence::StorageMetrics;
 use crate::proof_queue::ProofMultiQueue;
 use crate::proof_storage::ProofStorageDrainer;
+use crate::prover::StateOperatingControlMessage;
+use crate::prover::StateOperatingControlOutlet;
 use crate::state_operating_thread::proof_storage::ProofStorage;
 use crate::state_storage::StateStorage;
 

@@ -17,12 +17,12 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+use ccp_cu::status::ToCUStatus;
 use ccp_shared::types::*;
 
 use super::roadmap::CCProverAlignmentRoadmap;
 use super::roadmap::CUProverAction;
 use super::roadmap::CUProverPreAction;
-use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
 
 #[derive(Debug)]
@@ -115,7 +115,7 @@ impl BuilderFirstStage {
     }
 
     fn should_update_job<Status: ToCUStatus>(&self, new_cu_id: &CUID, status: &Status) -> bool {
-        use crate::cu::status::CUStatus;
+        use ccp_cu::status::CUStatus;
 
         let current_cu_id = match status.status() {
             CUStatus::Running { cu_id } => cu_id,

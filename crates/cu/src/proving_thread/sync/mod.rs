@@ -23,8 +23,9 @@ mod thread;
 pub mod to_state_operating_message;
 pub mod to_stats_collecting_message;
 
-pub(crate) use errors::ProvingThreadSyncFacadeError;
-pub(crate) use thread::ProvingThreadSync;
+pub(crate) use self::errors::ProvingThreadSyncFacadeError;
+pub use self::raw_proof::RawProof;
+pub(crate) use self::thread::ProvingThreadSync;
 
 type STResult<T> = Result<T, errors::ProvingThreadSyncError>;
 pub(crate) type STFResult<T> = Result<T, errors::ProvingThreadSyncFacadeError>;

@@ -19,10 +19,10 @@ use std::collections::VecDeque;
 use std::time::Duration;
 use std::time::Instant;
 
+use ccp_cu::HashrateRecordType;
 use ccp_shared::types::LogicalCoreId;
 
 use super::record::ThreadHashrateRecord;
-use crate::hashrate::record::HashrateRecordType;
 
 pub(crate) type SlidingHashrate = HashMap<LogicalCoreId, SlidingThreadHashrate>;
 

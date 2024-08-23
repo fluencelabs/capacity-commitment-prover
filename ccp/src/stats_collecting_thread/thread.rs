@@ -18,12 +18,12 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time;
 
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::{
+    ToStatsCollectingInlet, ToStatsCollectingMessage, ToStatsCollectingOutlet,
+};
 use tokio_util::sync::CancellationToken;
 
 use super::STTResult;
-use crate::cu::proving_thread::sync::to_stats_collecting_message::{
-    ToStatsCollectingInlet, ToStatsCollectingMessage, ToStatsCollectingOutlet,
-};
 use crate::hashrate::HashrateHandler;
 
 pub(crate) struct StatsCollectingThread {

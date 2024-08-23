@@ -17,6 +17,8 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
+use ccp_cu::HashrateRecordType;
+use ccp_cu::ThreadHashrateRecord;
 use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 use prometheus_client::collector::Collector;
@@ -28,9 +30,6 @@ use prometheus_client::registry::Unit;
 use serde::Deserialize;
 use serde::Serialize;
 use tokio::time::Instant;
-
-use super::record::HashrateRecordType;
-use super::record::ThreadHashrateRecord;
 
 /// Collects and analyzes hashrate comes from sync threads.
 #[derive(Clone, Debug, Default)]
