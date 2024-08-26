@@ -22,6 +22,7 @@ use cpu_utils::CPUTopologyError;
 use cpu_utils::PhysicalCoreId;
 
 use super::proving_thread::ProvingThreadError;
+use crate::AnyhowError;
 
 #[derive(ThisError, Debug)]
 pub enum CUProverError {
@@ -35,7 +36,7 @@ pub enum CUProverError {
     RandomXError(#[from] RandomXError),
 
     #[error("")]
-    ChannelError(#[source] anyhow::Error),
+    ChannelError(#[source] AnyhowError),
 
     #[error(transparent)]
     ThreadAllocation(#[from] ThreadAllocationError),

@@ -23,6 +23,8 @@ use ccp_msr::MSRError;
 use ccp_randomx::errors::RandomXError;
 use cpu_utils::LogicalCoreId;
 
+use crate::AnyhowError;
+
 /// Errors arisen inside sync thread,
 /// they are intended to be passed into the utility thread.
 #[derive(ThisError, Debug)]
@@ -34,7 +36,7 @@ pub enum ProvingThreadSyncError {
     MSRError(#[from] MSRError),
 
     #[error(transparent)]
-    ChannelError(#[from] anyhow::Error),
+    ChannelError(#[from] AnyhowError),
 
     #[error("pinning thread to a core {core_id} failed")]
     ThreadPinFailed { core_id: LogicalCoreId },
@@ -47,7 +49,7 @@ pub enum ProvingThreadSyncFacadeError {
     JoinError(Box<dyn Any + Send>),
 
     #[error(transparent)]
-    ChannelError(#[from] anyhow::Error),
+    ChannelError(#[from] AnyhowError),
 }
 
 impl ProvingThreadSyncError {

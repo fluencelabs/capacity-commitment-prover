@@ -35,3 +35,5 @@ pub use hashrate_record::HashrateRecordType;
 pub type CUResult<T> = Result<T, errors::CUProverError>;
 
 pub(crate) use ccp_shared::types::*;
+
+pub use anyhow::Error as AnyhowError;
