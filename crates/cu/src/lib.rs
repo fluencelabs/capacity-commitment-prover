@@ -18,8 +18,8 @@ mod chunk;
 mod config;
 pub mod cu_prover;
 mod errors;
-pub mod proving_thread;
 pub mod hashrate_record;
+pub mod proving_thread;
 mod proving_thread_utils;
 pub mod status;
 #[cfg(test)]
@@ -29,8 +29,8 @@ pub use config::CUProverConfig;
 pub use cu_prover::CUProver;
 pub use errors::CUProverError;
 pub use errors::ThreadAllocationError;
-pub use hashrate_record::ThreadHashrateRecord;
 pub use hashrate_record::HashrateRecordType;
+pub use hashrate_record::ThreadHashrateRecord;
 
 pub type CUResult<T> = Result<T, errors::CUProverError>;
 

@@ -43,4 +43,3 @@ impl ToStateOperatingMessage {
         Self::ErrorHappened { core_id, error }
     }
 }
-

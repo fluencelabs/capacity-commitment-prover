@@ -26,6 +26,7 @@ use ccp_utils::run_utils::run_unordered;
 use cpu_utils::CPUTopology;
 use cpu_utils::HwlocCPUTopology;
 
+use super::chunk::ChunkGenerator;
 use super::config::CUProverConfig;
 use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
 use super::proving_thread::ProvingThreadAsync;
@@ -35,7 +36,6 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
-use super::chunk::ChunkGenerator;
 use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
@@ -107,10 +107,7 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
-    pub async fn pin<'threads>(
-        &'threads mut self,
-        new_core_id: PhysicalCoreId,
-    ) -> CUResult<()> {
+    pub async fn pin<'threads>(&'threads mut self, new_core_id: PhysicalCoreId) -> CUResult<()> {
         use super::proving_thread_utils::RoundRobinDistributor;
         use super::proving_thread_utils::ThreadDistributionPolicy;
 

@@ -59,11 +59,7 @@ impl ThreadHashrateRecord {
         }
     }
 
-    pub fn checked_hashes(
-        core_id: LogicalCoreId,
-        duration: Duration,
-        hashes_count: usize,
-    ) -> Self {
+    pub fn checked_hashes(core_id: LogicalCoreId, duration: Duration, hashes_count: usize) -> Self {
         Self {
             core_id,
             duration,
