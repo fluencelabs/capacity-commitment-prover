@@ -21,28 +21,15 @@ ccp-utils.workspace = true
 cpu-utils.workspace = true
 
 tokio.workspace = true
-tokio-stream.workspace = true
+tokio.features = ["time"]
 futures.workspace = true
 
-crossterm.workspace = true
-crossterm.features = ["event-stream"]
-crossterm.optional = true
-
 anyhow.workspace = true
-byteorder.workspace = true
-chrono.workspace = true
-csv.workspace = true
-itertools.workspace = true
 log.workspace = true
 nonempty.workspace = true
-parking_lot.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
 
 tokio-util.workspace = true
-eyre.workspace = true
 
 [dev-dependencies]
 ccp-test-utils.workspace = true
