@@ -1,0 +1,31 @@
+[package]
+name = "ccp-cu-main"
+description = "CCP server launcher"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[[bin]]
+name = "ccp_cu"
+path = "src/main.rs"
+
+[dependencies]
+ccp-config.workspace = true
+ccp-cu.workspace = true
+ccp-msr.workspace = true
+ccp-randomx.workspace = true
+ccp-shared.workspace = true
+cpu-utils.workspace = true
+
+clap.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+eyre.workspace = true
+tracing-log.workspace = true
+tokio-util.workspace = true
+
+envconfig.workspace = true

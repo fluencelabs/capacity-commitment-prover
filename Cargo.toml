@@ -18,6 +18,7 @@ members = [
     "crates/test-utils",
     "crates/utils",
     "main",
+    "cu_main",
 ]
 
 [workspace.dependencies]
@@ -52,6 +53,7 @@ crossterm = "0.27"
 csv = "0.15"
 chrono = "0.4"
 env_logger = "0.10"
+envconfig = "0.10.0"
 eyre = "0.6.12"
 itertools = "0.12"
 jsonrpsee = { version = "0.23.0", features = ["client", "macros", "tokio", "server"] }
