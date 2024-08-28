@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::*;
-use crate::unresolved_config::*;
 use crate::defaults::default_utility_queue_size;
+use crate::unresolved_config::*;
+use crate::*;
 
 /// Subset of main config for ccp-cu-main worker.
 
