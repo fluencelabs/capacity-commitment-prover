@@ -251,6 +251,22 @@ impl UnresolvedOptimizations {
         };
         Ok(opt)
     }
+
+    pub fn resolve_for_cu_worker(self) -> eyre::Result<Optimizations> {
+        let randomx_flags = self.randomx.resolve();
+        let msr_config = self.msr_enabled;
+        let threads_count = self.threads_per_core.unwrap_or(1);
+        let threads_per_core_policy = ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: threads_count.try_into()?,
+        };
+
+        let opt = Optimizations {
+            randomx_flags,
+            msr_enabled: msr_config,
+            threads_per_core_policy,
+        };
+        Ok(opt)
+    }
 }
 
 impl UnresolvedRandomX {

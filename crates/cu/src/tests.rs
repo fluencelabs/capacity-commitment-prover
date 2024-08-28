@@ -176,7 +176,7 @@ async fn idle_cu_prover_can_be_stopped() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();
@@ -204,7 +204,7 @@ async fn cu_prover_can_be_stopped() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();
@@ -241,7 +241,7 @@ async fn cu_prover_can_be_paused() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();
@@ -294,7 +294,7 @@ async fn cu_prover_produces_correct_proofs() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();
@@ -348,7 +348,7 @@ async fn cu_prover_works_with_odd_threads_number() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();
@@ -401,7 +401,7 @@ async fn cu_prover_changes_epoch_correctly() {
         to_state_operating_inlet,
         to_stats_collecting_inlet,
         msr_enforcer,
-        3.into(),
+        Some(3.into()),
     )
     .await
     .unwrap();

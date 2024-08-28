@@ -4,8 +4,14 @@ use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
 
 use clap::Parser;
 use envconfig::Envconfig;
+use eyre::WrapErr as _;
 use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
+use tracing_subscriber::filter::Directive;
+use tracing_subscriber::EnvFilter;
+
+// same as ccp_main crate
+const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
 
 #[derive(Envconfig)]
 struct TaskParameters {
@@ -27,6 +33,19 @@ async fn main() -> eyre::Result<()> {
     let args = Args::parse();
     let config = load_cu_config(args.config.as_deref())?;
 
+    let filter = EnvFilter::builder()
+        .with_env_var(CCP_LOG_ENV_VAR)
+        .with_default_directive(Directive::from(config.logs.log_level))
+        .from_env_lossy();
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_writer(std::io::stderr)
+        .with_thread_ids(true)
+        .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .wrap_err("setting global tracing subscriber failed")?;
+
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
 
@@ -36,8 +55,7 @@ async fn main() -> eyre::Result<()> {
 
     // dummy disabled instance
     let msr_enforcer = MSRModeEnforcer::from_os(false);
-    // TODO make it Option<T> in the cu prover
-    let core_id = 0.into();
+    let core_id = None;
 
     let mut cu_prover = CUProver::create(
         prover_config,
@@ -65,9 +83,9 @@ async fn main() -> eyre::Result<()> {
                     use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
                     match msg.expect("worker thread failed") {
                         ProofFound { proof } => {
-                            todo!("send proof upstream")
+                            tracing::error!("TODO ignoring received proof: {proof:?}");
                         },
-                        ErrorHappened { core_id, error } => {
+                        ErrorHappened { core_id: _core_id, error } => {
                             todo!("send error upstream: {error:?}")
                         },
                     }

@@ -42,7 +42,7 @@ pub(crate) struct ProvingThreadAsync {
 
 impl ProvingThreadAsync {
     pub(crate) fn new(
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         msr_enforcer: MSRModeEnforcer,
         to_state_operating: ToStateOperatingInlet,
         to_stats_collecting: ToStatsCollectingInlet,

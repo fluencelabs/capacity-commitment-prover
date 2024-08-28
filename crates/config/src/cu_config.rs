@@ -35,7 +35,7 @@ pub struct UnresolvedCUWorkerConfig {
 
 impl UnresolvedCUWorkerConfig {
     pub fn resolve(self) -> eyre::Result<CUWorkerConfig> {
-        let optimizations = self.optimizations.resolve()?;
+        let optimizations = self.optimizations.resolve_for_cu_worker()?;
         let logs = self.logs.resolve();
         let workers = self.workers.resolve();
         let tokio = self.tokio.resolve();
