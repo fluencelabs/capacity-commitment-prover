@@ -22,6 +22,7 @@ ccp-utils.workspace = true
 cpu-utils.workspace = true
 
 tokio.workspace = true
+tokio.features = ["sync", "macros", "fs", "signal"]
 futures.workspace = true
 
 crossterm.workspace = true

@@ -31,8 +31,7 @@ struct Args {
     config: Option<String>,
 }
 
-// TODO configure tokio?
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> eyre::Result<()> {
     use ccp_config::cu_config::load_cu_config;
 

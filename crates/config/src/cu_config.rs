@@ -13,8 +13,6 @@ pub struct CUWorkerConfig {
     // TODO remove
     pub logs: Logs,
     pub workers: Workers,
-    // TODO remove
-    pub tokio: Tokio,
     pub utility_queue_size: usize,
 }
 
@@ -27,8 +25,6 @@ pub struct UnresolvedCUWorkerConfig {
     pub logs: UnresolvedLogs,
     #[serde(default)]
     pub workers: UnresolvedWorkers,
-    #[serde(default)]
-    pub tokio: UnresolvedTokio,
     #[serde(default = "default_utility_queue_size")]
     pub utility_queue_size: usize,
 }
@@ -38,14 +34,12 @@ impl UnresolvedCUWorkerConfig {
         let optimizations = self.optimizations.resolve_for_cu_worker()?;
         let logs = self.logs.resolve();
         let workers = self.workers.resolve();
-        let tokio = self.tokio.resolve();
         let utility_queue_size = self.utility_queue_size;
 
         let config = CUWorkerConfig {
             optimizations,
             logs,
             workers,
-            tokio,
             utility_queue_size,
         };
         Ok(config)
