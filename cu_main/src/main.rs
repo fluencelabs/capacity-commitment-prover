@@ -1,4 +1,7 @@
+mod transport;
+
 use ccp_cu::{CUProver, CUProverConfig};
+use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
 
@@ -10,6 +13,8 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
+use crate::transport::UpstreamTransport;
+
 // same as ccp_main crate
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
 
@@ -18,6 +23,7 @@ struct TaskParameters {
     global_nonce: GlobalNonce,
     difficulty: Difficulty,
     cu_id: CUID,
+    upstream_url: String,
 }
 
 #[derive(Parser)]
@@ -49,8 +55,9 @@ async fn main() -> eyre::Result<()> {
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
 
-    let (to_stats_collecting, mut from_stats_collecting) = mpsc::channel(config.utility_queue_size);
+    let rpc_client = CcpCuRpcHttpClient::new(parameters.upstream_url).await?;
 
+    let (to_stats_collecting, mut from_stats_collecting) = mpsc::channel(config.utility_queue_size);
     let (to_state_operating, mut from_state_operating) = mpsc::channel(config.utility_queue_size);
 
     // dummy disabled instance
@@ -83,10 +90,15 @@ async fn main() -> eyre::Result<()> {
                     use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
                     match msg.expect("worker thread failed") {
                         ProofFound { proof } => {
-                            tracing::error!("TODO ignoring received proof: {proof:?}");
+                            tracing::info!("sending received proof upstream: {proof:?}");
+                            // TODO retries
+                            let result = UpstreamTransport::report_proof(&rpc_client, proof).await;
+                            if let Err(e) = result {
+                                tracing::error!("failed to send a proof {proof:?} upstream: {e}")
+                            }
                         },
                         ErrorHappened { core_id: _core_id, error } => {
-                            todo!("send error upstream: {error:?}")
+                            unreachable!("no error reported because of no valid core_id: {error:?}");
                         },
                     }
                 }

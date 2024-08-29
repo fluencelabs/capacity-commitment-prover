@@ -319,6 +319,7 @@ dependencies = [
  "maplit",
  "nonempty",
  "rand 0.8.5",
+ "serde",
  "tempdir",
  "test-log",
  "thiserror",
@@ -332,6 +333,7 @@ version = "0.1.0"
 dependencies = [
  "ccp-config",
  "ccp-cu",
+ "ccp-cu-rpc-client",
  "ccp-msr",
  "ccp-randomx",
  "ccp-shared",
@@ -344,6 +346,18 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "ccp-cu-rpc-client"
+version = "0.1.0"
+dependencies = [
+ "ccp-cu",
+ "ccp-shared",
+ "hex",
+ "jsonrpsee",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

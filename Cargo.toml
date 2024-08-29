@@ -18,7 +18,7 @@ members = [
     "crates/test-utils",
     "crates/utils",
     "main",
-    "cu_main",
+    "cu_main", "crates/cu-rpc-client",
 ]
 
 [workspace.dependencies]
@@ -28,6 +28,7 @@ ccp-cu = { path = "./crates/cu", version = "0.13.0" }
 ccp-randomx = { path = "./crates/randomx", version = "0.13.0" }
 ccp-msr = { path = "./crates/msr", version = "0.13.0" }
 ccp-rpc-client = { version = "0.13.0", path = "./crates/rpc-client" }
+ccp-cu-rpc-client = { version = "0.1.0", path = "./crates/cu-rpc-client" }
 ccp-rpc-server = { version = "0.13.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.13.0" }
 ccp-test-utils = { path = "./crates/test-utils", version = "0.13.0" }

@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 ccp-config.workspace = true
 ccp-cu.workspace = true
+ccp-cu-rpc-client.workspace = true
 ccp-msr.workspace = true
 ccp-randomx.workspace = true
 ccp-shared.workspace = true
