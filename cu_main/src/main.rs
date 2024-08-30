@@ -28,6 +28,7 @@ struct TaskParameters {
 
 #[derive(Parser)]
 struct Args {
+    #[arg(help = "YAML config file")]
     config: Option<String>,
 }
 
