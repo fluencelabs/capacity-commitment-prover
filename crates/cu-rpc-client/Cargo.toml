@@ -18,8 +18,15 @@ ccp-shared.workspace = true
 ccp-cu.workspace = true
 
 hex.workspace = true
-jsonrpsee.workspace = true
+tokio.workspace = true
+tonic.workspace = true
 serde.workspace = true
+prost = "0.13.2"
+hyper-util = "0.1.7"
+tower = "0.4"
 
 [dev-dependencies]
 serde_json.workspace = true
+
+[build-dependencies]
+tonic-build = "0.12.2"

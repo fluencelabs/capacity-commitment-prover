@@ -26,49 +26,57 @@
     unreachable_patterns
 )]
 
-use std::time::Duration;
-
-pub use jsonrpsee::core::ClientError;
-use jsonrpsee::proc_macros::rpc;
-pub use jsonrpsee::types::ErrorObjectOwned;
+use hyper_util::rt::TokioIo;
+use tokio::net::UnixStream;
+use tonic::transport::{Channel, Endpoint, Uri};
 
 use ccp_cu::RawProof;
+use tower::service_fn;
 
-// n.b.: the rpc macro also defines CcpCuRpcClient type which is a working async JSON RPC client.
-#[rpc(server, client, namespace = "ccp_cu")]
-pub trait CcpCuRpc {
-    #[method(name = "report_proof", param_kind = map)]
-    async fn report_proof(&self, proof: RawProof) -> Result<(), ErrorObjectOwned>;
+use crate::ccp_collector_rpc::collector_client::CollectorClient;
+use crate::ccp_collector_rpc::ReportRequest;
+
+pub mod ccp_collector_rpc {
+    tonic::include_proto!("cu_rpc_client");
 }
 
+// n.b.: the rpc macro also defines CcpCuRpcClient type which is a working async JSON RPC client.
 pub struct CcpCuRpcHttpClient {
-    inner: jsonrpsee::http_client::HttpClient,
+    inner: CollectorClient<Channel>,
 }
 
 impl CcpCuRpcHttpClient {
-    pub async fn new(endpoint_url: String) -> Result<Self, ClientError> {
-        let inner = jsonrpsee::http_client::HttpClientBuilder::default().build(endpoint_url)?;
-
+    pub async fn new_unix_socket(path: String) -> Result<Self, Box<dyn std::error::Error>> {
+        // The URL is dummy and is ignored by the connector function
+        let channel = Endpoint::try_from("http://[::]:9999")?
+            .connect_with_connector(service_fn(move |_: Uri| {
+                let path = path.clone();
+                async {
+                    // Connect to a Uds socket
+                    Ok::<_, std::io::Error>(TokioIo::new(UnixStream::connect(path).await?))
+                }
+            }))
+            .await?;
+        let inner = CollectorClient::new(channel);
         Ok(Self { inner })
     }
 
-    pub async fn with_timeout(
-        endpoint_url: String,
-        request_timeout: Duration,
-    ) -> Result<Self, ClientError> {
-        let builder =
-            jsonrpsee::http_client::HttpClientBuilder::default().request_timeout(request_timeout);
-        let inner = builder.build(endpoint_url)?;
+    pub async fn report_proof(
+        &mut self,
+        proof: &RawProof,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let epoch_message = self::ccp_collector_rpc::EpochParameters {
+            difficulty: proof.epoch.difficulty.to_string(),
+            global_nonce: proof.epoch.global_nonce.to_string(),
+        };
+        let proof_message = ReportRequest {
+            epoch: Some(epoch_message),
+            cu_id: proof.cu_id.to_string(),
+            local_nonce: proof.local_nonce.to_string(),
+            result_hash: proof.result_hash.to_string(),
+        };
 
-        Ok(Self { inner })
-    }
-
-    #[inline]
-    pub fn from_http_client(client: jsonrpsee::http_client::HttpClient) -> Self {
-        Self { inner: client }
-    }
-
-    pub async fn report_proof(&self, proof: RawProof) -> Result<(), ClientError> {
-        CcpCuRpcClient::report_proof(&self.inner, proof).await
+        self.inner.report_proof(proof_message).await?;
+        Ok(())
     }
 }
