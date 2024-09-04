@@ -46,12 +46,12 @@ struct CuProofCollector {
 
 #[tonic::async_trait]
 impl ccp_cu_rpc_client::ccp_collector_rpc::collector_server::Collector for CuProofCollector {
-    #[tracing::instrument(skip(self))]
     async fn report_proof(
         &self,
         request: Request<ReportRequest>,
     ) -> Result<Response<ReportResponse>, Status> {
         let proof = request.into_inner();
+        tracing::info!("Got proof {proof:?}");
         self.proofs.lock().expect("invalid mutex").push(proof);
         let reply = ReportResponse {};
         Ok(Response::new(reply))

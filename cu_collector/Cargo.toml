@@ -19,4 +19,4 @@ tokio.workspace = true
 tokio-stream = { version = "0.1.15", features = ["net"] }
 tonic.workspace = true
 tracing = { workspace = true, features = ["async-await"] }
-tracing-subscriber = "0.3.18"
+tracing-subscriber.workspace = true
