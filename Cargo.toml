@@ -11,6 +11,7 @@ members = [
     "crates/cu",
     "crates/randomx",
     "crates/config",
+    "crates/cu-rpc-client",
     "crates/cpu-utils",
     "crates/rpc-client",
     "crates/rpc-server",
@@ -18,7 +19,8 @@ members = [
     "crates/test-utils",
     "crates/utils",
     "main",
-    "cu_main", "crates/cu-rpc-client",
+    "cu_main",
+    "cu_collector",
 ]
 
 [workspace.dependencies]
