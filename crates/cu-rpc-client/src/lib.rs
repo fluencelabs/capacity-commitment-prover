@@ -40,13 +40,15 @@ pub mod ccp_collector_rpc {
     tonic::include_proto!("cu_rpc_client");
 }
 
+pub type ClientError = tonic::Status;
+
 // n.b.: the rpc macro also defines CcpCuRpcClient type which is a working async JSON RPC client.
 pub struct CcpCuRpcHttpClient {
     inner: CollectorClient<Channel>,
 }
 
 impl CcpCuRpcHttpClient {
-    pub async fn new_unix_socket(path: String) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new_unix_socket(path: String) -> Result<Self, tonic::transport::Error> {
         // The URL is dummy and is ignored by the connector function
         let channel = Endpoint::try_from("http://[::]:9999")?
             .connect_with_connector(service_fn(move |_: Uri| {
@@ -61,10 +63,7 @@ impl CcpCuRpcHttpClient {
         Ok(Self { inner })
     }
 
-    pub async fn report_proof(
-        &mut self,
-        proof: &RawProof,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn report_proof(&mut self, proof: &RawProof) -> Result<(), ClientError> {
         let epoch_message = self::ccp_collector_rpc::EpochParameters {
             difficulty: proof.epoch.difficulty.to_string(),
             global_nonce: proof.epoch.global_nonce.to_string(),

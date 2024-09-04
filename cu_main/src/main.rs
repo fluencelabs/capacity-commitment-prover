@@ -55,7 +55,7 @@ async fn main() -> eyre::Result<()> {
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
 
-    let rpc_client = CcpCuRpcHttpClient::new(parameters.upstream_url).await?;
+    let mut rpc_client = CcpCuRpcHttpClient::new_unix_socket(parameters.upstream_url).await?;
 
     let (to_stats_collecting, mut from_stats_collecting) = mpsc::channel(config.utility_queue_size);
     let (to_state_operating, mut from_state_operating) = mpsc::channel(config.utility_queue_size);
@@ -92,7 +92,7 @@ async fn main() -> eyre::Result<()> {
                         ProofFound { proof } => {
                             tracing::info!("sending received proof upstream: {proof:?}");
                             // TODO retries
-                            let result = UpstreamTransport::report_proof(&rpc_client, proof).await;
+                            let result = UpstreamTransport::report_proof(&mut rpc_client, proof).await;
                             if let Err(e) = result {
                                 tracing::error!("failed to send a proof {proof:?} upstream: {e}")
                             }
