@@ -1,5 +1,7 @@
 mod transport;
 
+use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::{CUProver, CUProverConfig};
 use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 use ccp_msr::MSRModeEnforcer;
@@ -55,10 +57,8 @@ async fn main() -> eyre::Result<()> {
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
 
-    let mut rpc_client = CcpCuRpcHttpClient::new_unix_socket(parameters.upstream_url).await?;
-
-    let (to_stats_collecting, mut from_stats_collecting) = mpsc::channel(config.utility_queue_size);
-    let (to_state_operating, mut from_state_operating) = mpsc::channel(config.utility_queue_size);
+    let (to_stats_collecting, from_stats_collecting) = mpsc::channel(config.utility_queue_size);
+    let (to_state_operating, from_state_operating) = mpsc::channel(config.utility_queue_size);
 
     // dummy disabled instance
     let msr_enforcer = MSRModeEnforcer::from_os(false);
@@ -83,6 +83,18 @@ async fn main() -> eyre::Result<()> {
         // error is not Send, convert it to a string
         .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
+    message_dispatching_loop(
+        from_stats_collecting,
+        from_state_operating,
+        parameters.upstream_url,
+    ).await
+}
+
+async fn message_dispatching_loop(
+    mut from_stats_collecting: ToStatsCollectingOutlet,
+    mut from_state_operating: ToStateOperatingOutlet,
+    rpc_endpoint: String,
+) -> eyre::Result<()> {
     loop {
         select! {
                 _ = from_stats_collecting.recv() => {}
@@ -92,6 +104,7 @@ async fn main() -> eyre::Result<()> {
                         ProofFound { proof } => {
                             tracing::info!("sending received proof upstream: {proof:?}");
                             // TODO retries
+                            let mut rpc_client = CcpCuRpcHttpClient::new_unix_socket(rpc_endpoint.clone()).await.expect("invalid client");
                             let result = UpstreamTransport::report_proof(&mut rpc_client, proof).await;
                             if let Err(e) = result {
                                 tracing::error!("failed to send a proof {proof:?} upstream: {e}")
