@@ -26,11 +26,11 @@ use ccp_shared::types::*;
 
 pub use super::config::ProvingThreadConfig;
 use super::errors::ProvingThreadAsyncError;
-use crate::cu::proving_thread::facade::ProvingThreadFacade;
-use crate::cu::proving_thread::messages::*;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
-use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
-use crate::cu::proving_thread::sync::ProvingThreadSync;
+use crate::proving_thread::facade::ProvingThreadFacade;
+use crate::proving_thread::messages::*;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
+use crate::proving_thread::sync::ProvingThreadSync;
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadAsync {

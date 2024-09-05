@@ -807,6 +807,7 @@ async fn prover_restart_keeps_proofs_vm_623() {
 
     let epoch_params = generate_epoch_params(1, 50);
     let cu_allocation = get_cu_allocation();
+    let cuids: Vec<_> = cu_allocation.values().cloned().collect();
 
     let state_path = state_dir.path().join("state.json");
     let initial_state = Some(CCPState {
@@ -848,11 +849,11 @@ async fn prover_restart_keeps_proofs_vm_623() {
 
     let prover = get_prover_from_saved_state(state_dir.path()).await;
 
-    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION)
+    let proofs = wait_for_proofs(&prover, 3, 10, PROOFS_RETRY_DURATION, &cuids)
         .await
         .expect("reading proofs")
         .into_iter()
-        .collect::<Vec<CCProof>>();
+        .collect::<Vec<BatchResponse>>();
 
     assert!(
         // it really depends on your hardware; you may need to increase second value

@@ -30,11 +30,11 @@ use tokio_util::sync::CancellationToken;
 use super::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use super::CUProver;
 use super::CUProverConfig;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
-use crate::cu::status::CUStatus;
-use crate::cu::status::ToCUStatus;
-use crate::state_operating_thread::message::RawProof;
-use crate::state_operating_thread::message::ToStateOperatingOutlet;
+use crate::proving_thread::sync::raw_proof::RawProof;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage;
+use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
+use crate::status::CUStatus;
+use crate::status::ToCUStatus;
 
 fn batch_proof_verification(
     epoch: EpochParameters,

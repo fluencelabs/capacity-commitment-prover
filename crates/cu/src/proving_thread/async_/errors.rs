@@ -18,13 +18,14 @@ use std::any::Any;
 use thiserror::Error as ThisError;
 use tokio::sync::mpsc;
 
-use crate::cu::proving_thread::sync::ProvingThreadSyncFacadeError;
+use crate::proving_thread::sync::ProvingThreadSyncFacadeError;
+use crate::AnyhowError;
 use ccp_msr::MSRError;
 
 #[derive(ThisError, Debug)]
 pub enum ProvingThreadAsyncError {
     #[error(transparent)]
-    ChannelError(#[from] anyhow::Error),
+    ChannelError(#[from] AnyhowError),
 
     #[error(transparent)]
     SyncThreadError(#[from] ProvingThreadSyncFacadeError),

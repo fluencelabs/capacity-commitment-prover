@@ -28,7 +28,6 @@
 
 mod alignment_roadmap;
 pub mod cpuids_handle;
-mod cu;
 mod errors;
 mod hashrate;
 mod persistence;
@@ -44,5 +43,3 @@ pub use errors::CCProverError;
 pub use persistence::StorageMetrics;
 pub use prover::CCProver;
 pub use prover::CCResult;
-
-pub(crate) use ccp_shared::types::*;

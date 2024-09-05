@@ -16,25 +16,29 @@
 
 use std::collections::HashMap;
 
-use ccp_config::Optimizations;
-use ccp_config::Workers;
-use ccp_msr::MSRModeEnforcer;
-use ccp_shared::types::*;
-use ccp_utils::run_utils::run_unordered;
 use futures::future;
 use futures::FutureExt;
+use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
+use ccp_config::Optimizations;
+use ccp_config::Workers;
+use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
+use ccp_cu::CUProver;
+use ccp_cu::CUProverConfig;
+use ccp_cu::CUResult;
+use ccp_msr::MSRModeEnforcer;
+use ccp_shared::types::*;
+use ccp_utils::run_utils::run_unordered;
+
 use crate::alignment_roadmap::*;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
-use crate::cu::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
-use crate::cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
-use crate::cu::CUProver;
-use crate::cu::CUProverConfig;
-use crate::cu::CUResult;
 use crate::errors::CCProverError;
+use crate::prover::BatchRequest;
+use crate::prover::BatchResponse;
+use crate::prover::ProofIdx;
+use crate::state_storage::CCPState;
 use crate::status::CCStatus;
 use crate::CCResult;
 
@@ -333,4 +337,30 @@ impl CUGovernor {
         run_unordered(self.cu_provers.drain(), join_closure).await?;
         Ok(())
     }
+}
+
+pub(crate) type StateOperatingControlInlet = mpsc::Sender<StateOperatingControlMessage>;
+pub(crate) type StateOperatingControlOutlet = mpsc::Receiver<StateOperatingControlMessage>;
+
+#[derive(Debug)]
+pub(crate) enum StateOperatingControlMessage {
+    // Why saving config is in the CU???
+    SaveConfig {
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
+        state: Option<CCPState>,
+    },
+    CleanProofCache {
+        notifier: oneshot::Sender<tokio::io::Result<()>>,
+    },
+    GetAllProofs {
+        last_known_proofs: HashMap<CUID, ProofIdx>,
+        limit: usize,
+        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+    },
+    GetBatchProofs {
+        reqs: HashMap<CUID, BatchRequest>,
+        min_batch_count: usize,
+        max_batch_count: usize,
+        notifier: oneshot::Sender<tokio::io::Result<Vec<BatchResponse>>>,
+    },
 }

@@ -17,10 +17,10 @@
 pub(crate) mod actions_state;
 use std::collections::HashMap;
 
+use ccp_cu::status::ToCUStatus;
 use ccp_shared::types::*;
 
 use super::roadmap_builder::RoadmapBuilder;
-use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
 
 use actions_state::*;

@@ -44,11 +44,10 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::CUID;
 
 use self::cu_governor::CUGovernor;
+use self::cu_governor::StateOperatingControlInlet;
+pub(crate) use self::cu_governor::StateOperatingControlMessage;
+pub(crate) use self::cu_governor::StateOperatingControlOutlet;
 use crate::cpuids_handle::CpuIdsHandle;
-use crate::cu::proving_thread::sync::to_state_operating_message::GovernorOperatingInlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::GovernorOperatingOutlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlInlet;
-use crate::cu::proving_thread::sync::to_state_operating_message::StateOperatingControlMessage;
 use crate::errors::CCProverError;
 use crate::hashrate::prometheus::PrometheusEndpoint;
 use crate::hashrate::HashrateCollector;
@@ -65,6 +64,8 @@ use crate::stats_collecting_thread::StatsCollectingThread;
 const PROOF_DIR: &str = "cc_proofs";
 
 pub type CCResult<T> = Result<T, CCProverError>;
+pub(crate) type GovernorOperatingInlet = mpsc::Sender<GovernorMessage>;
+pub(crate) type GovernorOperatingOutlet = mpsc::Receiver<GovernorMessage>;
 
 pub struct CCProver {
     governor_task: JoinHandle<()>,

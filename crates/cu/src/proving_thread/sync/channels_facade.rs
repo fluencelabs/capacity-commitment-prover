@@ -26,8 +26,8 @@ use super::to_state_operating_message::ToStateOperatingMessage;
 use super::to_stats_collecting_message::ToStatsCollectingInlet;
 use super::to_stats_collecting_message::ToStatsCollectingMessage;
 use super::STResult;
-use crate::cu::proving_thread::messages::*;
-use crate::hashrate::ThreadHashrateRecord;
+use crate::proving_thread::messages::*;
+use crate::ThreadHashrateRecord;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ToAsync {

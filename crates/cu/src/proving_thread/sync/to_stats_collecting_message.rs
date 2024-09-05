@@ -18,13 +18,13 @@ use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
-pub(crate) use crate::hashrate::ThreadHashrateRecord;
+pub(crate) use crate::ThreadHashrateRecord;
 
-pub(crate) type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
-pub(crate) type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;
+pub type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
+pub type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;
 
 #[derive(Debug)]
-pub(crate) enum ToStatsCollectingMessage {
+pub enum ToStatsCollectingMessage {
     ProofFound { core_id: LogicalCoreId },
     Hashrate(ThreadHashrateRecord),
     Epoch(EpochParameters),

@@ -14,17 +14,21 @@
  * limitations under the License.
  */
 
-mod channels_facade;
-mod errors;
-mod local_nonce;
-mod raw_proof;
-mod state;
-mod thread;
-pub(crate) mod to_state_operating_message;
-pub(crate) mod to_stats_collecting_message;
+use crate::CUProverConfig;
 
-pub(crate) use errors::ProvingThreadSyncFacadeError;
-pub(crate) use thread::ProvingThreadSync;
+#[derive(Debug, Clone)]
+pub struct ProvingThreadConfig {
+    pub hashes_per_round: usize,
+    pub async_to_sync_queue_size: usize,
+    pub sync_to_async_queue_size: usize,
+}
 
-type STResult<T> = Result<T, errors::ProvingThreadSyncError>;
-pub(crate) type STFResult<T> = Result<T, errors::ProvingThreadSyncFacadeError>;
+impl ProvingThreadConfig {
+    pub fn from_cu_prover_config(cu_config: &CUProverConfig) -> Self {
+        Self {
+            hashes_per_round: cu_config.hashes_per_round,
+            async_to_sync_queue_size: cu_config.async_to_sync_queue_size,
+            sync_to_async_queue_size: cu_config.sync_to_async_queue_size,
+        }
+    }
+}

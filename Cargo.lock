@@ -258,10 +258,9 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 name = "ccp"
 version = "0.13.0"
 dependencies = [
- "anyhow",
  "axum",
- "byteorder",
  "ccp-config",
+ "ccp-cu",
  "ccp-msr",
  "ccp-randomx",
  "ccp-shared",
@@ -277,7 +276,6 @@ dependencies = [
  "itertools",
  "log",
  "maplit",
- "nonempty",
  "parking_lot",
  "prometheus-client",
  "rand 0.8.5",
@@ -288,7 +286,6 @@ dependencies = [
  "test-log",
  "thiserror",
  "tokio",
- "tokio-stream",
  "tokio-util",
 ]
 
@@ -302,6 +299,31 @@ dependencies = [
  "eyre",
  "serde",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "ccp-cu"
+version = "0.13.0"
+dependencies = [
+ "anyhow",
+ "ccp-config",
+ "ccp-msr",
+ "ccp-randomx",
+ "ccp-shared",
+ "ccp-test-utils",
+ "ccp-utils",
+ "cpu-utils",
+ "env_logger 0.10.2",
+ "futures",
+ "log",
+ "maplit",
+ "nonempty",
+ "rand 0.8.5",
+ "tempdir",
+ "test-log",
+ "thiserror",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

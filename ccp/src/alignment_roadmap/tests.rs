@@ -19,6 +19,8 @@ use std::collections::HashMap;
 use rand::rngs::SmallRng;
 use rand::Rng;
 
+use ccp_cu::status::CUStatus;
+use ccp_cu::status::ToCUStatus;
 use ccp_shared::types::CUAllocation;
 use ccp_shared::types::PhysicalCoreId;
 use ccp_shared::types::CUID;
@@ -27,8 +29,6 @@ use ccp_test_utils::test_values as test;
 use super::CCProverAlignmentRoadmap;
 use crate::alignment_roadmap::CUProverAction;
 use crate::alignment_roadmap::CUProverPreAction;
-use crate::cu::status::CUStatus;
-use crate::cu::status::ToCUStatus;
 use crate::status::CCStatus;
 
 struct DumpProvider {
