@@ -1,6 +1,6 @@
 [package]
-name = "ccp-cu-main"
-description = "CCP server launcher"
+name = "ccp-cu-worker"
+description = "CCP CU worker"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 publish = false
 
 [[bin]]
-name = "ccp_cu"
+name = "ccp_cu_worker"
 path = "src/main.rs"
 
 [dependencies]

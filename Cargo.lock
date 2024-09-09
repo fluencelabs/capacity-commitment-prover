@@ -350,7 +350,24 @@ dependencies = [
 ]
 
 [[package]]
-name = "ccp-cu-main"
+name = "ccp-cu-rpc-client"
+version = "0.1.0"
+dependencies = [
+ "ccp-cu",
+ "ccp-shared",
+ "hex",
+ "hyper-util",
+ "prost",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "tonic-build",
+ "tower",
+]
+
+[[package]]
+name = "ccp-cu-worker"
 version = "0.1.0"
 dependencies = [
  "ccp-config",
@@ -368,23 +385,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "ccp-cu-rpc-client"
-version = "0.1.0"
-dependencies = [
- "ccp-cu",
- "ccp-shared",
- "hex",
- "hyper-util",
- "prost",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "tonic-build",
- "tower",
 ]
 
 [[package]]
