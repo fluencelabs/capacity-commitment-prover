@@ -25,8 +25,8 @@ RUN cargo chef cook --release --target $(cat /rust_target.txt) --recipe-path rec
 FROM common-builder AS ccp-builder
 WORKDIR /app
 COPY . .
-RUN cargo build --release --target $(cat /rust_target.txt) --bin ccp_cu
-RUN cp /app/target/$(cat /rust_target.txt)/release/ccp_cu /tmp/ccp_cu
+RUN cargo build --release --target $(cat /rust_target.txt) --bin ccp_cu_worker
+RUN cp /app/target/$(cat /rust_target.txt)/release/ccp_cu_worker /tmp/ccp_cu_worker
 
 FROM ubuntu:latest AS user-builder
 RUN useradd -u 10001 ccp_user && \
@@ -39,8 +39,8 @@ RUN useradd -u 10001 ccp_user && \
         /var/tmp/*
 
 FROM user-builder AS ccp_main
-COPY --from=ccp-builder /tmp/ccp_cu /usr/local/bin/ccp_cu
-COPY cu_main/docker/Config.default.toml /Config.toml
-COPY cu_main/docker/entrypoint.sh /entrypoint.sh
+COPY --from=ccp-builder /tmp/ccp_cu_worker /usr/local/bin/ccp_cu_worker
+COPY cu_worker/docker/Config.default.toml /Config.toml
+COPY cu_worker/docker/entrypoint.sh /entrypoint.sh
 USER ccp_user
-ENTRYPOINT ["/usr/local/bin/ccp_cu"]
+ENTRYPOINT ["/usr/local/bin/ccp_cu_worker"]

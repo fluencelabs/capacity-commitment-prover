@@ -19,8 +19,8 @@ members = [
     "crates/test-utils",
     "crates/utils",
     "main",
-    "cu_main",
     "cu_collector",
+    "cu_worker",
 ]
 
 [workspace.dependencies]
