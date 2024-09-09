@@ -87,7 +87,8 @@ async fn main() -> eyre::Result<()> {
         from_stats_collecting,
         from_state_operating,
         parameters.upstream_url,
-    ).await
+    )
+    .await
 }
 
 async fn message_dispatching_loop(

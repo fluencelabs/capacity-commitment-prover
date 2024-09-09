@@ -25,13 +25,13 @@ pub mod status;
 #[cfg(test)]
 mod tests;
 
+pub use crate::proving_thread::sync::RawProof;
 pub use config::CUProverConfig;
 pub use cu_prover::CUProver;
 pub use errors::CUProverError;
 pub use errors::ThreadAllocationError;
 pub use hashrate_record::HashrateRecordType;
 pub use hashrate_record::ThreadHashrateRecord;
-pub use crate::proving_thread::sync::RawProof;
 
 pub type CUResult<T> = Result<T, errors::CUProverError>;
 

@@ -22,13 +22,16 @@ use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 pub(crate) trait UpstreamTransport: Send {
     type Error;
 
-    fn report_proof(&mut self, proof: RawProof) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn report_proof(
+        &mut self,
+        proof: RawProof,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
 impl UpstreamTransport for CcpCuRpcHttpClient {
     type Error = ccp_cu_rpc_client::ClientError;
 
-    fn report_proof(&mut self, proof: RawProof) -> impl Future<Output = Result<(), Self::Error>> + Send {
-        async move { Self::report_proof(self, &proof).await }
+    async fn report_proof(&mut self, proof: RawProof) -> Result<(), Self::Error> {
+        Self::report_proof(self, &proof).await
     }
 }
