@@ -66,6 +66,11 @@ pub struct Logs {
     pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct SimpleLogs {
+    pub log_level: tracing_subscriber::filter::LevelFilter,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct State {
     pub state_dir: std::path::PathBuf,
