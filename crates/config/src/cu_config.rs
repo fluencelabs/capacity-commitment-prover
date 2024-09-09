@@ -10,8 +10,7 @@ use crate::*;
 #[derive(Clone, Debug, PartialEq)]
 pub struct CUWorkerConfig {
     pub optimizations: Optimizations,
-    // TODO remove
-    pub logs: Logs,
+    pub logs: SimpleLogs,
     pub workers: Workers,
     pub utility_queue_size: usize,
 }
@@ -22,7 +21,7 @@ pub struct UnresolvedCUWorkerConfig {
     #[serde(default)]
     pub optimizations: UnresolvedOptimizations,
     #[serde(default)]
-    pub logs: UnresolvedLogs,
+    pub logs: UnresolvedSimpleLogs,
     #[serde(default)]
     pub workers: UnresolvedWorkers,
     #[serde(default = "default_utility_queue_size")]
