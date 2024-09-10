@@ -76,19 +76,28 @@ impl CcpCuRpcHttpClient {
         }
     }
 
-    pub async fn report_proof(&mut self, proof: &RawProof) -> Result<(), ClientError> {
-        let epoch_message = self::ccp_collector_rpc::EpochParameters {
-            difficulty: proof.epoch.difficulty.to_string(),
-            global_nonce: proof.epoch.global_nonce.to_string(),
-        };
-        let proof_message = ReportRequest {
-            epoch: Some(epoch_message),
-            cu_id: proof.cu_id.to_string(),
-            local_nonce: proof.local_nonce.to_string(),
-            result_hash: proof.result_hash.to_string(),
-        };
+    pub async fn report_proofs(&mut self, proof: &[RawProof]) -> Result<(), ClientError> {
+        use crate::ccp_collector_rpc::EpochParameters;
+        use crate::ccp_collector_rpc::Proof;
 
-        self.inner.report_proof(proof_message).await?;
+        let proofs = proof
+            .iter()
+            .map(|proof| {
+                let epoch = EpochParameters {
+                    difficulty: proof.epoch.difficulty.to_string(),
+                    global_nonce: proof.epoch.global_nonce.to_string(),
+                };
+                Proof {
+                    epoch: Some(epoch),
+                    cu_id: proof.cu_id.to_string(),
+                    local_nonce: proof.local_nonce.to_string(),
+                    result_hash: proof.result_hash.to_string(),
+                }
+            })
+            .collect();
+
+        let report_request = ReportRequest { proofs };
+        self.inner.report_proof(report_request).await?;
         Ok(())
     }
 }

@@ -32,6 +32,6 @@ impl UpstreamTransport for CcpCuRpcHttpClient {
     type Error = ccp_cu_rpc_client::ClientError;
 
     async fn report_proof(&mut self, proof: RawProof) -> Result<(), Self::Error> {
-        Self::report_proof(self, &proof).await
+        Self::report_proofs(self, std::slice::from_ref(&proof)).await
     }
 }

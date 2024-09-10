@@ -7,11 +7,15 @@ message EpochParameters {
     string global_nonce = 2;
 }
 
-message ReportRequest {
+message Proof {
     EpochParameters epoch = 1;
     string cu_id = 2;
     string local_nonce = 3;
     string result_hash = 4;
+}
+
+message ReportRequest {
+    repeated Proof proofs = 1;
 }
 
 message ReportResponse {
