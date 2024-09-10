@@ -105,7 +105,8 @@ async fn message_dispatching_loop(
                         ProofFound { proof } => {
                             tracing::info!("sending received proof upstream: {proof:?}");
                             // TODO retries
-                            let mut rpc_client = CcpCuRpcHttpClient::new_unix_socket(rpc_endpoint.clone()).await.expect("invalid client");
+                            let mut rpc_client = CcpCuRpcHttpClient::auto(rpc_endpoint.clone())
+                                .await.expect("invalid RPC endpoint");
                             let result = UpstreamTransport::report_proof(&mut rpc_client, proof).await;
                             if let Err(e) = result {
                                 tracing::error!("failed to send a proof {proof:?} upstream: {e}")

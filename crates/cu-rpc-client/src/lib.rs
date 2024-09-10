@@ -48,6 +48,11 @@ pub struct CcpCuRpcHttpClient {
 }
 
 impl CcpCuRpcHttpClient {
+    pub async fn new_http(url: String) -> Result<Self, tonic::transport::Error> {
+        let inner = CollectorClient::connect(url).await?;
+        Ok(Self { inner })
+    }
+
     pub async fn new_unix_socket(path: String) -> Result<Self, tonic::transport::Error> {
         // The URL is dummy and is ignored by the connector function
         let channel = Endpoint::try_from("http://[::]:9999")?
@@ -63,19 +68,36 @@ impl CcpCuRpcHttpClient {
         Ok(Self { inner })
     }
 
-    pub async fn report_proof(&mut self, proof: &RawProof) -> Result<(), ClientError> {
-        let epoch_message = self::ccp_collector_rpc::EpochParameters {
-            difficulty: proof.epoch.difficulty.to_string(),
-            global_nonce: proof.epoch.global_nonce.to_string(),
-        };
-        let proof_message = ReportRequest {
-            epoch: Some(epoch_message),
-            cu_id: proof.cu_id.to_string(),
-            local_nonce: proof.local_nonce.to_string(),
-            result_hash: proof.result_hash.to_string(),
-        };
+    pub async fn auto(endpoint: String) -> Result<Self, tonic::transport::Error> {
+        if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
+            Self::new_http(endpoint).await
+        } else {
+            Self::new_unix_socket(endpoint).await
+        }
+    }
 
-        self.inner.report_proof(proof_message).await?;
+    pub async fn report_proofs(&mut self, proof: &[RawProof]) -> Result<(), ClientError> {
+        use crate::ccp_collector_rpc::EpochParameters;
+        use crate::ccp_collector_rpc::Proof;
+
+        let proofs = proof
+            .iter()
+            .map(|proof| {
+                let epoch = EpochParameters {
+                    difficulty: proof.epoch.difficulty.to_string(),
+                    global_nonce: proof.epoch.global_nonce.to_string(),
+                };
+                Proof {
+                    epoch: Some(epoch),
+                    cu_id: proof.cu_id.to_string(),
+                    local_nonce: proof.local_nonce.to_string(),
+                    result_hash: proof.result_hash.to_string(),
+                }
+            })
+            .collect();
+
+        let report_request = ReportRequest { proofs };
+        self.inner.report_proof(report_request).await?;
         Ok(())
     }
 }
