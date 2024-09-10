@@ -48,6 +48,11 @@ pub struct CcpCuRpcHttpClient {
 }
 
 impl CcpCuRpcHttpClient {
+    pub async fn new_http(url: String) -> Result<Self, tonic::transport::Error> {
+        let inner = CollectorClient::connect(url).await?;
+        Ok(Self { inner })
+    }
+
     pub async fn new_unix_socket(path: String) -> Result<Self, tonic::transport::Error> {
         // The URL is dummy and is ignored by the connector function
         let channel = Endpoint::try_from("http://[::]:9999")?
@@ -61,6 +66,14 @@ impl CcpCuRpcHttpClient {
             .await?;
         let inner = CollectorClient::new(channel);
         Ok(Self { inner })
+    }
+
+    pub async fn auto(endpoint: String) -> Result<Self, tonic::transport::Error> {
+        if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
+            Self::new_http(endpoint).await
+        } else {
+            Self::new_unix_socket(endpoint).await
+        }
     }
 
     pub async fn report_proof(&mut self, proof: &RawProof) -> Result<(), ClientError> {
