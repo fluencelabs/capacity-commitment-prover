@@ -89,6 +89,7 @@ impl CUProver {
         cu_id: CUID,
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
+        log::info!("Generating dataset for new epoch: {epoch:?}");
         // pause provers to not produce proofs with a changing dataset at the moment
         self.pause().await?;
 
