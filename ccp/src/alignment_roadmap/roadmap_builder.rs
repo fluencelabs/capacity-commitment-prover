@@ -54,6 +54,8 @@ impl RoadmapBuilder {
         };
 
         let state = Self::clean_proofs_if_new_epoch(state);
+
+        log::debug!("roadmap: {state:?}");
         BuilderFirstStage::new(state)
     }
 

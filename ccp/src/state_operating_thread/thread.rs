@@ -230,6 +230,7 @@ impl NewProofHandler {
             proof.cu_id,
             proof.result_hash,
         );
+        log::debug!("Assign index {} to the proof {:?}", self.proof_idx, cc_proof);
         self.proof_storage.store_new_proof(cc_proof).await?;
 
         Ok(())
