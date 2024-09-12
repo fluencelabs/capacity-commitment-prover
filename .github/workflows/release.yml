@@ -190,6 +190,7 @@ jobs:
       - name: Upload ccp binaries to s3
         env:
           AWS_REGION: eu-west-1
+          VERSION: ${{ needs.release-please.outputs.version }}
         run: aws s3 sync docker/ s3://fluence-artifacts/ccp/${{ env.VERSION }}/ --acl public-read --exact-timestamps --delete --include "ccp*"
 
       - name: Login to DockerHub
