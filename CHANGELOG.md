@@ -1,12 +1,5 @@
 # Changelog
 
-## [0.13.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.1...ccp-v0.13.2) (2024-09-12)
-
-
-### Bug Fixes
-
-* **ccp:** more extensive proof lifecycle logging ([#169](https://github.com/fluencelabs/capacity-commitment-prover/issues/169)) ([5df7e03](https://github.com/fluencelabs/capacity-commitment-prover/commit/5df7e03bb421d7070f20959c78428aa0a82e739f))
-
 ## [0.13.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.0...ccp-v0.13.1) (2024-09-11)
 
 
