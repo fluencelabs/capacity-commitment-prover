@@ -256,6 +256,7 @@ impl CUGovernor {
                 Some(state.new_core_id),
             )
             .await?;
+            log::info!("New dataset because of CU creation");
             prover
                 .new_epoch(epoch, state.new_cu_id, child_cancel_token)
                 .await?;
@@ -284,6 +285,7 @@ impl CUGovernor {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         let cancel_token = self.cancellation_token.clone();
+        log::info!("New dataset because of parameter change");
         async move {
             prover
                 .new_epoch(epoch, state.new_cu_id, cancel_token)
@@ -300,6 +302,7 @@ impl CUGovernor {
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let mut prover = self.cu_provers.remove(&state.current_core_id).unwrap();
         let cancel_token = self.cancellation_token.clone();
+        log::info!("New dataset because of a repin to {}", state.new_core_id);
         async move {
             prover.pin(state.new_core_id).await?;
             prover

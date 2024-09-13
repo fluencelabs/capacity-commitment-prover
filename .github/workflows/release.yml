@@ -157,8 +157,8 @@ jobs:
           secrets: |
             kv/hub.docker.com/fluencebot username | DOCKER_HUB_USERNAME ;
             kv/hub.docker.com/fluencebot password | DOCKER_HUB_PASSWORD ;
-            kv/ci/fcli-binaries id | AWS_ACCESS_KEY_ID ;
-            kv/ci/fcli-binaries secret | AWS_SECRET_ACCESS_KEY
+            kv/ci/fluence-artifacts id | AWS_ACCESS_KEY_ID ;
+            kv/ci/fluence-artifacts secret | AWS_SECRET_ACCESS_KEY
 
       - name: Download binaries
         uses: actions/download-artifact@v4
@@ -190,6 +190,7 @@ jobs:
       - name: Upload ccp binaries to s3
         env:
           AWS_REGION: eu-west-1
+          VERSION: ${{ needs.release-please.outputs.version }}
         run: aws s3 sync docker/ s3://fluence-artifacts/ccp/${{ env.VERSION }}/ --acl public-read --exact-timestamps --delete --include "ccp*"
 
       - name: Login to DockerHub

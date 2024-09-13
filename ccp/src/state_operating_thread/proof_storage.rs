@@ -56,12 +56,12 @@ impl ProofStorage {
 
         let proof_storage_metrics = self.proof_storage_metrics.clone();
 
+        self.proof_queue.lock().insert(proof);
+
         tokio::task::spawn_blocking(move || {
             save_reliably(&proof_path, proof_as_string, &proof_storage_metrics)
         })
         .await??;
-
-        self.proof_queue.lock().insert(proof);
 
         Ok(())
     }

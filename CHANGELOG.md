@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.13.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.1...ccp-v0.13.2) (2024-09-12)
+
+
+### Bug Fixes
+
+* **ccp:** more extensive proof lifecycle logging ([#169](https://github.com/fluencelabs/capacity-commitment-prover/issues/169)) ([5df7e03](https://github.com/fluencelabs/capacity-commitment-prover/commit/5df7e03bb421d7070f20959c78428aa0a82e739f))
+
+## [0.13.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.0...ccp-v0.13.1) (2024-09-11)
+
+
+### Features
+
+* **ccp:** split off CU threads into a separate crate ([#163](https://github.com/fluencelabs/capacity-commitment-prover/issues/163)) ([6c3c5a8](https://github.com/fluencelabs/capacity-commitment-prover/commit/6c3c5a83dbdc3fb9d8354dcf4472cceda9340785))
+
+
+### Bug Fixes
+
+* **ccp:** log start and dataset generation reason ([#167](https://github.com/fluencelabs/capacity-commitment-prover/issues/167)) ([6f46d2e](https://github.com/fluencelabs/capacity-commitment-prover/commit/6f46d2e2f7049868b22113011883dda685ff01de))
+
 ## [0.13.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.12.1...ccp-v0.13.0) (2024-07-05)
 
 

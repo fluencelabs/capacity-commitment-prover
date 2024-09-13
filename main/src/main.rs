@@ -74,6 +74,8 @@ fn main() -> eyre::Result<()> {
         .wrap_err("setting global tracing subscriber failed")?;
     tracing_log::LogTracer::init()?;
 
+    tracing::info!("Starting a Capacity Commitment Prover at PID: {}", std::process::id());
+
     if !config.state_dir.exists() {
         std::fs::create_dir_all(&config.state_dir)?
     }

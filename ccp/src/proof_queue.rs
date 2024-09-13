@@ -65,7 +65,12 @@ impl ProofMultiQueue {
         <_>::default()
     }
 
+    pub fn len(&self) -> usize {
+        self.cu_proofs.values().map(|state| state.len()).sum()
+    }
+
     pub(crate) fn insert(&mut self, proof: CCProof) {
+        log::debug!("adding proof to a queue: {proof:?}");
         self.cu_proofs
             .entry(proof.cu_id)
             .or_default()
@@ -182,11 +187,16 @@ impl ProofMultiQueue {
         &mut self,
         last_known_proofs: impl Iterator<Item = (&'a CUID, &'a ProofIdx)>,
     ) {
-        for (cid, last_known_idx) in last_known_proofs {
-            if let Some(n) = self.cu_proofs.get_mut(cid) {
+        for (cu_id, last_known_idx) in last_known_proofs {
+            log::debug!("Skipping queue for {cu_id} till {last_known_idx}");
+            if let Some(n) = self.cu_proofs.get_mut(cu_id) {
                 while let Some(head) = n.proofs.front() {
                     if head.id.idx <= *last_known_idx {
-                        n.proofs.pop_front();
+                        let proof = n.proofs.pop_front();
+
+                        if let Some(proof) = proof {
+                            log::debug!("Dropping {proof:?} from the queue");
+                        }
                     } else {
                         break;
                     }
