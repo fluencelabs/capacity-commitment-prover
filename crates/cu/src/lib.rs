@@ -25,6 +25,7 @@ pub mod status;
 #[cfg(test)]
 mod tests;
 
+pub use crate::proving_thread::sync::RawProof;
 pub use config::CUProverConfig;
 pub use cu_prover::CUProver;
 pub use errors::CUProverError;

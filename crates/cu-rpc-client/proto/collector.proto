@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package cu_rpc_client;
+
+message EpochParameters {
+    string difficulty = 1;
+    string global_nonce = 2;
+}
+
+message Proof {
+    EpochParameters epoch = 1;
+    string cu_id = 2;
+    string local_nonce = 3;
+    string result_hash = 4;
+}
+
+message ReportRequest {
+    repeated Proof proofs = 1;
+}
+
+message ReportResponse {
+    // empty
+}
+
+service Collector {
+    rpc report_proof(ReportRequest) returns (ReportResponse) {}
+}

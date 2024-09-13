@@ -1,0 +1,22 @@
+[package]
+name = "ccp-cu-collector"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+axum = "0.7.5"
+ccp-cu.workspace = true
+ccp-cu-rpc-client.workspace = true
+ccp-shared.workspace = true
+clap.workspace = true
+eyre.workspace = true
+tokio.features = ["fs"]
+tokio.workspace = true
+tokio-stream = { version = "0.1.15", features = ["net"] }
+tonic.workspace = true
+tracing = { workspace = true, features = ["async-await"] }
+tracing-subscriber.workspace = true

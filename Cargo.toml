@@ -11,6 +11,7 @@ members = [
     "crates/cu",
     "crates/randomx",
     "crates/config",
+    "crates/cu-rpc-client",
     "crates/cpu-utils",
     "crates/rpc-client",
     "crates/rpc-server",
@@ -18,6 +19,8 @@ members = [
     "crates/test-utils",
     "crates/utils",
     "main",
+    "cu_collector",
+    "cu_worker",
 ]
 
 [workspace.dependencies]
@@ -27,6 +30,7 @@ ccp-cu = { path = "./crates/cu", version = "0.13.0" }
 ccp-randomx = { path = "./crates/randomx", version = "0.13.0" }
 ccp-msr = { path = "./crates/msr", version = "0.13.0" }
 ccp-rpc-client = { version = "0.13.0", path = "./crates/rpc-client" }
+ccp-cu-rpc-client = { version = "0.1.0", path = "./crates/cu-rpc-client" }
 ccp-rpc-server = { version = "0.13.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.13.0" }
 ccp-test-utils = { path = "./crates/test-utils", version = "0.13.0" }
@@ -35,7 +39,7 @@ cpu-utils = { path = "./crates/cpu-utils", version = "0.13.0" }
 
 async-trait = "0.1.77"
 futures = "0.3"
-tokio = { version = "1.36", features = ["sync", "rt", "rt-multi-thread", "macros", "fs", "signal"] }
+tokio = { version = "1.36", features = ["sync", "macros"] }
 tokio-stream = { version = "0.1", features = ["fs"] }
 tokio-util = "0.7.10"
 
@@ -52,9 +56,11 @@ crossterm = "0.27"
 csv = "0.15"
 chrono = "0.4"
 env_logger = "0.10"
+envconfig = "0.10.0"
 eyre = "0.6.12"
 itertools = "0.12"
 jsonrpsee = { version = "0.23.0", features = ["client", "macros", "tokio", "server"] }
+tonic = "0.12.2"
 rand = "0.8"
 raw-cpuid = "11.0.1"
 log = "0.4"

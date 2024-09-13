@@ -28,6 +28,7 @@
 
 mod config;
 mod config_loader;
+pub mod cu_config;
 mod defaults;
 mod tests;
 mod unresolved_config;

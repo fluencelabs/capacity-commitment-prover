@@ -1,0 +1,19 @@
+[optimizations]
+# large-pages = true
+# hard-aes = true
+# jit = true
+# secure = false
+# argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
+# msr = false
+# threads-per-core = 2
+
+[workers]
+# # how large is hash chunk to process; after each chunk, threads
+# # react to interruptions etc.
+# hashes_per_round = 1024
+# # async to sync queue size
+# async_to_sync_queue_size = 1
+# # sync to async queue size
+# sync_to_async_queue_size = 1
+# # dataset generation chunk size; default value is for ca. 10 seconds of uninterrupted execution
+# dataset_chunk_size = 5000000

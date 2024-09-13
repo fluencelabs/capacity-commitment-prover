@@ -211,7 +211,12 @@ impl RoadmapAlignable for CUGovernor {
             .into_iter()
             .map(Result::unwrap)
             .flat_map(|prover_post_action| match prover_post_action {
-                AlignmentPostAction::KeepProver(prover) => Some((prover.pinned_core_id(), prover)),
+                AlignmentPostAction::KeepProver(prover) => Some((
+                    prover
+                        .pinned_core_id()
+                        .expect("cu_governor uses real core_id"),
+                    prover,
+                )),
                 AlignmentPostAction::Nothing => None,
             })
             .collect::<Vec<_>>();
@@ -248,7 +253,7 @@ impl CUGovernor {
                 to_state_operating,
                 to_stats_collecting,
                 msr_enforcer,
-                state.new_core_id,
+                Some(state.new_core_id),
             )
             .await?;
             log::info!("New dataset because of CU creation");

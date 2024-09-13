@@ -43,7 +43,7 @@ use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInl
 #[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
-    pinned_core_id: PhysicalCoreId,
+    pinned_core_id: Option<PhysicalCoreId>,
     randomx_flags: RandomXFlags,
     cpu_topology: HwlocCPUTopology,
     dataset: Dataset,
@@ -57,7 +57,7 @@ impl CUProver {
         to_state_operating: ToStateOperatingInlet,
         to_stats_collecting: ToStatsCollectingInlet,
         msr_enforcer: MSRModeEnforcer,
-        core_id: PhysicalCoreId,
+        core_id: Option<PhysicalCoreId>,
     ) -> CUResult<Self> {
         let topology = HwlocCPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
@@ -122,7 +122,7 @@ impl CUProver {
             thread.pin(core_id).boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;
-        self.pinned_core_id = new_core_id;
+        self.pinned_core_id = Some(new_core_id);
 
         Ok(())
     }
@@ -165,7 +165,7 @@ impl CUProver {
         Ok(())
     }
 
-    pub fn pinned_core_id(&self) -> PhysicalCoreId {
+    pub fn pinned_core_id(&self) -> Option<PhysicalCoreId> {
         self.pinned_core_id
     }
 

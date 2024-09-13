@@ -73,7 +73,7 @@ impl RandomXJob {
 
     pub(crate) fn cc_prove(
         &mut self,
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         to_state_operating: &ToStateOperating,
         to_stats_collecting: &ToStatsCollecting,
     ) -> STResult<()> {
@@ -94,15 +94,19 @@ impl RandomXJob {
 
                 let proof = self.create_golden_proof(result_hash);
                 to_state_operating.send_proof(proof)?;
-                to_stats_collecting.send_proof(core_id)?;
+                if let Some(core_id) = core_id {
+                    to_stats_collecting.send_proof(core_id)?;
+                }
             }
         }
 
         let duration = start.elapsed();
 
-        let message =
-            ThreadHashrateRecord::checked_hashes(core_id, duration, self.hashes_per_round);
-        to_stats_collecting.send_hashrate(message)?;
+        if let Some(core_id) = core_id {
+            let message =
+                ThreadHashrateRecord::checked_hashes(core_id, duration, self.hashes_per_round);
+            to_stats_collecting.send_hashrate(message)?;
+        }
 
         Ok(())
     }

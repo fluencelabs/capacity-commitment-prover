@@ -1,0 +1,32 @@
+[package]
+name = "ccp-cu-rpc-client"
+description = "CCP CU RPC client"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = true
+
+[lib]
+path = "src/lib.rs"
+doctest = false
+
+[dependencies]
+ccp-shared.workspace = true
+# TODO move RawProof to ccp-shared
+ccp-cu.workspace = true
+
+hex.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+serde.workspace = true
+prost = "0.13.2"
+hyper-util = "0.1.7"
+tower = "0.4"
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[build-dependencies]
+tonic-build = "0.12.2"
