@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
 use ccp_msr::MSRModeEnforcer;
@@ -23,6 +24,7 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
+use ccp_utils::run_utils::run_unordered2;
 use cpu_utils::CPUTopology;
 use cpu_utils::HwlocCPUTopology;
 
@@ -176,36 +178,45 @@ impl CUProver {
         dataset: DatasetHandle,
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
-        use futures::FutureExt;
-
         let dataset_size = dataset.items_count();
+        let dataset_phase1_size = dataset_size / 4;
+        let dataset_phase0_size = dataset_size - dataset_phase1_size;
+
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;
 
-        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
-            let thread_id = thread_id as u64;
+        run_unordered2(
+            self.threads.iter_mut(),
+            InitializationState {
+                range_start: 0,
+                range_len: dataset_phase0_size,
+                cache: cache.clone(),
+                dataset: dataset.clone(),
+                threads_number,
+                chunk_size,
+                cancel_token: cancel_token.clone(),
+            },
+            initialization_body,
+        )
+        .await
+        .unwrap();
 
-            let start_item = (dataset_size * thread_id) / threads_number;
-            let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
+        run_unordered2(
+            self.threads.iter_mut(),
+            InitializationState {
+                range_start: dataset_phase0_size,
+                range_len: dataset_phase1_size,
+                cache,
+                dataset,
+                threads_number,
+                chunk_size,
+                cancel_token,
+            },
+            initialization_body,
+        )
+        .await
+        .unwrap();
 
-            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
-            async {
-                for chunk in chunk_generator {
-                    if cancel_token.is_cancelled() {
-                        break;
-                    }
-                    let start_item = chunk.start;
-                    let items_count = chunk.size;
-                    thread
-                        .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
-                        .await?;
-                }
-                Ok(())
-            }
-            .boxed()
-        };
-
-        run_unordered(self.threads.iter_mut(), closure).await?;
         Ok(())
     }
 
@@ -228,6 +239,59 @@ impl CUProver {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Clone)]
+struct InitializationState {
+    range_start: u64,
+    range_len: u64,
+    cache: CacheHandle,
+    dataset: DatasetHandle,
+    threads_number: u64,
+    chunk_size: u64,
+    cancel_token: CancellationToken,
+}
+
+fn initialization_body<'a>(
+    thread_id: usize,
+    state: InitializationState,
+    thread: &'a mut ProvingThreadAsync,
+) -> BoxFuture<'a, Result<(), <ProvingThreadAsync as ProvingThreadFacade>::Error>> {
+    use futures::FutureExt;
+
+    let InitializationState {
+        range_start,
+        range_len,
+        cache,
+        dataset,
+        threads_number,
+        chunk_size,
+        cancel_token,
+    } = state;
+
+    let thread_id = thread_id as u64;
+
+    let start_item = range_start + (range_len * thread_id) / threads_number;
+    let next_start_item = range_start + (range_len * (thread_id + 1)) / threads_number;
+
+    let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
+    let cancel_token = cancel_token.clone();
+    let cache = cache.clone();
+    let dataset = dataset.clone();
+    async move {
+        for chunk in chunk_generator {
+            if cancel_token.is_cancelled() {
+                break;
+            }
+            let start_item = chunk.start;
+            let items_count = chunk.size;
+            thread
+                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
+                .await?;
+        }
+        Ok(())
+    }
+    .boxed()
 }
 
 impl ToCUStatus for CUProver {
