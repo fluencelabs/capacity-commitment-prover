@@ -114,6 +114,10 @@ impl DatasetHandle {
     pub(crate) fn raw(&self) -> *mut randomx_dataset {
         self.inner.dataset
     }
+
+    pub fn memory(&self) -> *mut ::std::os::raw::c_void {
+        unsafe { randomx_get_dataset_memory(self.raw()) }
+    }
 }
 
 impl Drop for DatasetInner {
