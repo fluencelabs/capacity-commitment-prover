@@ -321,9 +321,7 @@ fn initialization_body<'a>(
     let next_start_item = range_start + (range_len * (thread_id + 1)) / threads_number;
 
     let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
-    let cancel_token = cancel_token.clone();
-    let cache = cache.clone();
-    let dataset = dataset.clone();
+
     async move {
         for chunk in chunk_generator {
             if cancel_token.is_cancelled() {
