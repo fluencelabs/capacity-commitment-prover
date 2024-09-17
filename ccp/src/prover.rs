@@ -235,6 +235,7 @@ impl CCProver {
             msr_enforcer,
             cancellation_token,
             target_epoch_params,
+            config.state_dir.clone(),
         );
         let cu_governor = Arc::new(RwLock::new(cu_governor));
 

@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+use std::io::Read;
+use std::io::Write;
+use std::path::PathBuf;
+
 use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
@@ -51,6 +55,7 @@ pub struct CUProver {
     dataset: Dataset,
     status: CUStatus,
     dataset_chunk_size: u64,
+    temp_dir: PathBuf,
 }
 
 impl CUProver {
@@ -60,6 +65,7 @@ impl CUProver {
         to_stats_collecting: ToStatsCollectingInlet,
         msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
+        temp_dir: PathBuf,
     ) -> CUResult<Self> {
         let topology = HwlocCPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
@@ -81,6 +87,7 @@ impl CUProver {
             dataset,
             status: CUStatus::Idle,
             dataset_chunk_size: config.dataset_chunk_size,
+            temp_dir,
         };
         Ok(prover)
     }
@@ -179,8 +186,8 @@ impl CUProver {
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
         let dataset_size = dataset.items_count();
-        let dataset_phase1_size = dataset_size / 4;
-        let dataset_phase0_size = dataset_size - dataset_phase1_size;
+        let dataset_phase0_size = dataset_size / 4;
+        let dataset_phase1_size = dataset_size - dataset_phase0_size;
 
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;
@@ -201,13 +208,37 @@ impl CUProver {
         .await
         .unwrap();
 
+        // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
+        // So, the file is removed automagically when the handle is closed, e.g. when
+        // the file object is dropped.
+        let mut dump_file =
+            tempfile::tempfile_in(&self.temp_dir).expect("cannot create a temp file");
+
+        const DATASET_ITEM_SIZE: u64 = 64; // TODO STUB we need to get it from C++
+        let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
+        {
+            // TODO 2. save to file
+            let dataset_data =
+                unsafe {
+                    let dataset_base = dataset.memory() as *const u8;
+                    eprintln!("Base: {dataset_base:?}, len {dataset_phase0_len}");
+                    std::slice::from_raw_parts(dataset_base, dataset_phase0_len)
+                };
+            dump_file.write(dataset_data).expect("Failed to dump");
+            // TODO 3. uncommit memory saved to file
+            let dataset_base = dataset.memory() as *const u8;
+            // Safety: it is safe because current implementation of RandomX allocates memory with mmap.
+            let retcode = unsafe { libc::madvise(dataset_base as _, dataset_phase0_len, libc::MADV_DONTNEED) };
+            assert!(retcode != 0);
+        }
+
         run_unordered2(
             self.threads.iter_mut(),
             InitializationState {
                 range_start: dataset_phase0_size,
                 range_len: dataset_phase1_size,
                 cache,
-                dataset,
+                dataset: dataset.clone(),
                 threads_number,
                 chunk_size,
                 cancel_token,
@@ -216,6 +247,21 @@ impl CUProver {
         )
         .await
         .unwrap();
+
+        // TODO 4. load memory back
+        {
+            use std::io::Seek;
+            let dataset_base = dataset.memory() as *mut u8;
+            let dataset_data =
+                unsafe { std::slice::from_raw_parts_mut(dataset_base, dataset_phase0_len) };
+            dump_file.rewind().expect("failed to restore");
+            dump_file
+                .read_exact(dataset_data)
+                .expect("failed to restore a dump");
+        }
+
+        // explicitely drop the file handle just to make it clear
+        std::mem::drop(dump_file);
 
         Ok(())
     }

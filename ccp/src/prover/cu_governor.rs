@@ -15,6 +15,7 @@
  */
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use futures::future;
 use futures::FutureExt;
@@ -55,6 +56,7 @@ pub(crate) struct CUGovernor {
     state_operating_control_inlet: StateOperatingControlInlet,
     msr_enforcer: MSRModeEnforcer,
     cancellation_token: CancellationToken,
+    temp_dir: PathBuf,
 }
 
 impl CUGovernor {
@@ -67,6 +69,7 @@ impl CUGovernor {
         msr_enforcer: MSRModeEnforcer,
         cancellation_token: CancellationToken,
         target_epoch_params: Option<EpochParameters>,
+        temp_dir: PathBuf,
     ) -> Self {
         let cu_prover_config = CUProverConfig::new(optimizations_config, workers_config);
 
@@ -84,6 +87,7 @@ impl CUGovernor {
             state_operating_control_inlet,
             msr_enforcer,
             cancellation_token,
+            temp_dir,
         }
     }
 
@@ -241,6 +245,7 @@ impl CUGovernor {
         let to_stats_collecting = self.stats_collecting_inlet.clone();
         let msr_enforcer = self.msr_enforcer.clone();
         let child_cancel_token = self.cancellation_token.clone();
+        let temp_dir = self.temp_dir.clone();
 
         async move {
             let mut prover = CUProver::create(
@@ -249,6 +254,7 @@ impl CUGovernor {
                 to_stats_collecting,
                 msr_enforcer,
                 state.new_core_id,
+                temp_dir,
             )
             .await?;
             log::info!("New dataset because of CU creation");

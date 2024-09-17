@@ -27,9 +27,11 @@ futures.workspace = true
 anyhow.workspace = true
 log.workspace = true
 nonempty.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 
 tokio-util.workspace = true
+libc.workspace = true
 
 [dev-dependencies]
 ccp-test-utils.workspace = true
