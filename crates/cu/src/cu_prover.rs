@@ -43,6 +43,7 @@ use super::status::ToCUStatus;
 use super::CUResult;
 use crate::memory_dumper::MemoryDumper;
 use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::CUProverError;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
@@ -216,7 +217,7 @@ impl CUProver {
             MemoryDumper::new(&self.temp_dir, dataset_base, dataset_phase0_len)
         }
         .await
-        .expect("cannot create a memory dumper");
+        .map_err(CUProverError::DumperError)?;
 
         run_unordered2(
             self.threads.iter_mut(),
@@ -238,7 +239,7 @@ impl CUProver {
         // Safety: safe because memory_dumper referts to valid dataset memory range
         unsafe { memory_dumper.restore() }
             .await
-            .expect("failed to restore a dump");
+            .map_err(CUProverError::DumperError)?;
 
         Ok(())
     }
