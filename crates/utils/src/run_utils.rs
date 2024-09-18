@@ -45,18 +45,17 @@ where
 }
 
 /// Runs the provided closure with parameters on all supplied runnables concurrently in the unordered way.
-pub async fn run_unordered2<
-    'future,
-    Runnable: 'future,
-    Params: Clone + 'static,
-    T: 'static,
-    E: 'static,
->(
+pub async fn run_unordered2<'future, Runnable: 'future, Params, T, E>(
     runnables: impl Iterator<Item = &'future mut Runnable>,
     params: Params,
-    closure: impl for<'b> Fn(usize, Params, &'b mut Runnable) -> futures::future::BoxFuture<'b, Result<T, E>>,
+    closure: impl for<'b> Fn(
+        usize,
+        Params,
+        &'b mut Runnable,
+    ) -> futures::future::BoxFuture<'b, Result<T, E>>,
 ) -> Result<Vec<T>, Vec<E>>
 where
+    Params: Clone,
     T: std::fmt::Debug,
     E: std::fmt::Debug,
 {

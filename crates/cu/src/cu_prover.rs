@@ -211,7 +211,7 @@ impl CUProver {
         const DATASET_ITEM_SIZE: u64 = 64; // TODO STUB we need to get it from C++
         let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
 
-        // safety: dataset is valid, initialized, mmap-allocated memory range
+        // Safety: dataset is valid, initialized, mmap-allocated memory range
         let memory_dumper = unsafe {
             let dataset_base = dataset.memory() as usize;
             MemoryDumper::new(&self.temp_dir, dataset_base, dataset_phase0_len)
@@ -276,11 +276,11 @@ struct InitializationState {
     cancel_token: CancellationToken,
 }
 
-fn initialization_body<'a>(
+fn initialization_body(
     thread_id: usize,
     state: InitializationState,
-    thread: &'a mut ProvingThreadAsync,
-) -> BoxFuture<'a, Result<(), <ProvingThreadAsync as ProvingThreadFacade>::Error>> {
+    thread: &mut ProvingThreadAsync,
+) -> BoxFuture<'_, Result<(), <ProvingThreadAsync as ProvingThreadFacade>::Error>> {
     use futures::FutureExt;
 
     let InitializationState {
