@@ -23,7 +23,7 @@ use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 #[derive(Debug)]
 pub(crate) struct MemoryDumper {
     dump_file: File,
-    dump_start: usize,
+    dump_start: *mut u8,
     dump_len: usize,
 }
 
@@ -37,6 +37,13 @@ impl MemoryDumper {
         dump_start: usize,
         dump_len: usize,
     ) -> std::io::Result<Self> {
+        // aligning page size
+        // madvise needs to aligned memory; but RandomX doesn't give an aligned base address (it stores header,
+        // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
+        // data needed for generation of other parts.
+        let align = page_size::get();
+        let aligned_dump_start = (dump_start + align - 1) / align * align;
+
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
@@ -45,11 +52,11 @@ impl MemoryDumper {
         // Hide the pointer into a Send object, otherwise async code fails to compile
         let mut self_ = Self {
             dump_file,
-            dump_start,
+            dump_start: aligned_dump_start as _,
             dump_len,
         };
 
-        let dump_buffer = std::slice::from_raw_parts(self_.dump_start as *const u8, self_.dump_len);
+        let dump_buffer = std::slice::from_raw_parts(self_.dump_start, self_.dump_len);
         self_.dump_file.write_all(dump_buffer).await?;
 
         dont_need_helper(self_.dump_start as _, self_.dump_len)?;
@@ -59,7 +66,7 @@ impl MemoryDumper {
 
     pub(crate) async unsafe fn restore(mut self) -> tokio::io::Result<()> {
         self.dump_file.rewind().await?;
-        let dump_buffer = std::slice::from_raw_parts_mut(self.dump_start as *mut u8, self.dump_len);
+        let dump_buffer = std::slice::from_raw_parts_mut(self.dump_start, self.dump_len);
         self.dump_file.read_exact(dump_buffer).await?;
         Ok(())
     }
