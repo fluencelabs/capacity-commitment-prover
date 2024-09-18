@@ -16,6 +16,7 @@
 
 use std::path::PathBuf;
 
+use ccp_randomx::Cache;
 use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
@@ -108,8 +109,7 @@ impl CUProver {
         let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
 
         let dataset_handle = self.dataset.handle();
-        let cache_handle = cache.handle();
-        self.initialize_dataset(cache_handle, dataset_handle.clone(), cancel_token)
+        self.initialize_dataset(cache, dataset_handle.clone(), cancel_token)
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -180,7 +180,7 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
-        cache: CacheHandle,
+        cache: Cache,
         dataset: DatasetHandle,
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
@@ -196,7 +196,7 @@ impl CUProver {
             InitializationState {
                 range_start: 0,
                 range_len: dataset_phase0_size,
-                cache: cache.clone(),
+                cache: cache.handle(),
                 dataset: dataset.clone(),
                 threads_number,
                 chunk_size,
@@ -223,7 +223,7 @@ impl CUProver {
             InitializationState {
                 range_start: dataset_phase0_size,
                 range_len: dataset_phase1_size,
-                cache,
+                cache: cache.handle(),
                 dataset: dataset.clone(),
                 threads_number,
                 chunk_size,
@@ -233,6 +233,7 @@ impl CUProver {
         )
         .await
         .unwrap();
+        std::mem::drop(cache);
 
         eprintln!("Restoring memory dumper at {}", std::process::id());
         // Safety: safe because memory_dumper referts to valid dataset memory range
