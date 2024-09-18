@@ -234,6 +234,7 @@ impl CUProver {
         .await
         .unwrap();
 
+        eprintln!("Restoring memory dumper");
         // Safety: safe because memory_dumper referts to valid dataset memory range
         unsafe { memory_dumper.restore() }
             .await

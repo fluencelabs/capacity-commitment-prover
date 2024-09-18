@@ -97,6 +97,7 @@ impl CacheHandle {
 
 impl Drop for CacheInner {
     fn drop(&mut self) {
+        eprintln!("Dropped cache at thread {}", std::process::id());
         unsafe { randomx_release_cache(self.cache) }
     }
 }
