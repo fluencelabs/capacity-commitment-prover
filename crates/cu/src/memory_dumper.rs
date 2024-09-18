@@ -73,6 +73,7 @@ impl MemoryDumper {
 }
 
 unsafe fn dont_need_helper(dump_start: *mut u8, dump_len: usize) -> std::io::Result<()> {
+    eprintln!("start: {dump_start:?}, len: {dump_len}");
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     eprintln!("dontneed madvice ret: {}, errno {}", ret, errno::errno());
     assert!(ret == 0);

@@ -234,7 +234,7 @@ impl CUProver {
         .await
         .unwrap();
 
-        eprintln!("Restoring memory dumper");
+        eprintln!("Restoring memory dumper at {}", std::process::id());
         // Safety: safe because memory_dumper referts to valid dataset memory range
         unsafe { memory_dumper.restore() }
             .await
