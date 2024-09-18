@@ -41,8 +41,13 @@ impl MemoryDumper {
         // madvise needs to aligned memory; but RandomX doesn't give an aligned base address (it stores header,
         // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
         // data needed for generation of other parts.
-        let align = page_size::get();
-        let aligned_dump_start = (dump_start + align - 1) / align * align;
+        let page_alignment = page_size::get();
+        let aligned_dump_start = dump_start.next_multiple_of(page_alignment);
+        let aligned_dump_len = if aligned_dump_start == dump_start {
+            dump_len
+        } else {
+            dump_len - page_alignment
+        };
 
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
@@ -53,7 +58,7 @@ impl MemoryDumper {
         let mut self_ = Self {
             dump_file,
             dump_start: aligned_dump_start as _,
-            dump_len,
+            dump_len: aligned_dump_len,
         };
 
         let dump_buffer = std::slice::from_raw_parts(self_.dump_start, self_.dump_len);
