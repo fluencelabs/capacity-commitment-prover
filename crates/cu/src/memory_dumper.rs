@@ -67,7 +67,7 @@ impl MemoryDumper {
         let dump_buffer = std::slice::from_raw_parts(self_.dump_start, self_.dump_len);
         self_.dump_file.write_all(dump_buffer).await?;
 
-        dont_need_helper(self_.dump_start as _, self_.dump_len)?;
+        release_memory(self_.dump_start as _, self_.dump_len);
 
         Ok(self_)
     }
@@ -81,11 +81,12 @@ impl MemoryDumper {
     }
 }
 
-/// Safety: dump_start is a page-aligned pointer to a mmap-allocated memory range of length dump_len.
-unsafe fn dont_need_helper(dump_start: *mut u8, dump_len: usize) -> std::io::Result<()> {
+/// This function marks mmap-allocated memory as unneeded, but still allocated.  A error is logged, but ignored.
+///
+/// Safety: dump_start is a pointer to a mmap-allocated memory range of length dump_len.
+unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     if ret != 0 {
-        log::error!("dontneed madvice ret: {}, errno {}", ret, errno::errno());
+        log::error!("freeing madvice ret: {}, errno {}. Ignoring.", ret, errno::errno());
     }
-    Ok(())
 }
