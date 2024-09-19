@@ -35,7 +35,7 @@ impl MemoryDumper {
     ///
     /// It's OK if memory range is not page-aligned.
     pub(crate) async unsafe fn new(
-        tmp_dir: &Path,
+        temp_dir: &Path,
         // n.b.: this is actually a pointer, but async doesn't work well with pointer (they are not Send)
         dump_start: usize,
         dump_len: usize,
@@ -55,7 +55,7 @@ impl MemoryDumper {
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
-        let dump_file: File = tempfile_in(tmp_dir)?.into();
+        let dump_file: File = tempfile_in(temp_dir)?.into();
 
         // Hide the pointer into a Send object, otherwise async code fails to compile
         let mut self_ = Self {
