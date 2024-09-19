@@ -17,6 +17,7 @@
 use std::path::PathBuf;
 
 use ccp_randomx::Cache;
+use ccp_randomx::DATASET_ITEM_SIZE;
 use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
@@ -208,7 +209,6 @@ impl CUProver {
         .await
         .unwrap();
 
-        const DATASET_ITEM_SIZE: u64 = 64; // TODO STUB we need to get it from C++
         let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
 
         // Safety: dataset is valid, initialized, mmap-allocated memory range

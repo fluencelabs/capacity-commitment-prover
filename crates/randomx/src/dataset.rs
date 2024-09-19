@@ -23,6 +23,8 @@ use crate::flags::RandomXFlags;
 use crate::try_alloc;
 use crate::RResult;
 
+pub const DATASET_ITEM_SIZE: u64 = 64;
+
 #[derive(Debug)]
 pub struct Dataset {
     inner: Arc<DatasetInner>,

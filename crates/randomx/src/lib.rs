@@ -40,6 +40,7 @@ pub type RResult<T> = Result<T, errors::RandomXError>;
 
 pub use cache::Cache;
 pub use dataset::Dataset;
+pub use dataset::DATASET_ITEM_SIZE;
 pub use errors::RandomXError;
 pub use errors::VmCreationError;
 pub use flags::RandomXFlags;
