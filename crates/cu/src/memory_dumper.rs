@@ -31,6 +31,9 @@ unsafe impl Send for MemoryDumper {}
 unsafe impl Sync for MemoryDumper {}
 
 impl MemoryDumper {
+    /// Safety: dump_start is a pointer to initialized mmap-allocated memory range of length dump_len.
+    ///
+    /// It's OK if memory range is not page-aligned.
     pub(crate) async unsafe fn new(
         tmp_dir: &Path,
         // n.b.: this is actually a pointer, but async doesn't work well with pointer (they are not Send)
@@ -69,6 +72,7 @@ impl MemoryDumper {
         Ok(self_)
     }
 
+    /// Safety: memory range passed to `new` is still valid and can be written to.
     pub(crate) async unsafe fn restore(mut self) -> tokio::io::Result<()> {
         self.dump_file.rewind().await?;
         let dump_buffer = std::slice::from_raw_parts_mut(self.dump_start, self.dump_len);
@@ -77,6 +81,7 @@ impl MemoryDumper {
     }
 }
 
+/// Safety: dump_start is a page-aligned pointer to a mmap-allocated memory range of length dump_len.
 unsafe fn dont_need_helper(dump_start: *mut u8, dump_len: usize) -> std::io::Result<()> {
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     if ret != 0 {
