@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.2...ccp-v0.13.3) (2024-09-19)
+
+
+### Features
+
+* **ccp:** reduce CCP memory consumption ([#175](https://github.com/fluencelabs/capacity-commitment-prover/issues/175)) ([36b172b](https://github.com/fluencelabs/capacity-commitment-prover/commit/36b172b2c0a92de728e88791ecc6c5aeb8f4945f))
+
 ## [0.13.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.1...ccp-v0.13.2) (2024-09-12)
 
 
