@@ -32,8 +32,8 @@ thiserror.workspace = true
 
 tokio-util.workspace = true
 libc.workspace = true
-errno = "0.3.9"
-page_size = "0.6.0"
+errno.workspace = true
+page_size.workspace = true
 
 [dev-dependencies]
 ccp-test-utils.workspace = true

@@ -28,7 +28,7 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
-use ccp_utils::run_utils::run_unordered2;
+use ccp_utils::run_utils::run_unordered_with_params;
 use cpu_utils::CPUTopology;
 use cpu_utils::HwlocCPUTopology;
 
@@ -193,21 +193,18 @@ impl CUProver {
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;
 
-        run_unordered2(
-            self.threads.iter_mut(),
-            InitializationState {
-                range_start: 0,
-                range_len: dataset_phase0_size,
-                cache: cache.handle(),
-                dataset: dataset.clone(),
-                threads_number,
-                chunk_size,
-                cancel_token: cancel_token.clone(),
-            },
-            initialization_body,
-        )
-        .await
-        .unwrap();
+        let params_phase0 = InitializationState {
+            range_start: 0,
+            range_len: dataset_phase0_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token: cancel_token.clone(),
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase0, initialization_body)
+            .await
+            .unwrap();
 
         let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
 
@@ -219,24 +216,21 @@ impl CUProver {
         .await
         .map_err(CUProverError::DumperError)?;
 
-        run_unordered2(
-            self.threads.iter_mut(),
-            InitializationState {
-                range_start: dataset_phase0_size,
-                range_len: dataset_phase1_size,
-                cache: cache.handle(),
-                dataset: dataset.clone(),
-                threads_number,
-                chunk_size,
-                cancel_token,
-            },
-            initialization_body,
-        )
-        .await
-        .unwrap();
+        let params_phase1 = InitializationState {
+            range_start: dataset_phase0_size,
+            range_len: dataset_phase1_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token,
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase1, initialization_body)
+            .await
+            .unwrap();
         std::mem::drop(cache);
 
-        // Safety: safe because memory_dumper referts to valid dataset memory range
+        // Safety: safe because memory_dumper refers to valid dataset memory range
         unsafe { memory_dumper.restore() }
             .await
             .map_err(CUProverError::DumperError)?;

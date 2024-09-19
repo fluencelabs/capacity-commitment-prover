@@ -45,7 +45,7 @@ where
 }
 
 /// Runs the provided closure with parameters on all supplied runnables concurrently in the unordered way.
-pub async fn run_unordered2<'future, Runnable: 'future, Params, T, E>(
+pub async fn run_unordered_with_params<'future, Runnable: 'future, Params, T, E>(
     runnables: impl Iterator<Item = &'future mut Runnable>,
     params: Params,
     closure: impl for<'b> Fn(
@@ -59,12 +59,13 @@ where
     T: std::fmt::Debug,
     E: std::fmt::Debug,
 {
+    use futures::stream::FuturesUnordered;
     use futures::StreamExt;
 
     let (results, errors): (Vec<Result<T, E>>, Vec<Result<T, E>>) = runnables
         .enumerate()
         .map(|(idx, runnable)| closure(idx, params.clone(), runnable))
-        .collect::<futures::stream::FuturesUnordered<_>>()
+        .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()
         .await
         .into_iter()
