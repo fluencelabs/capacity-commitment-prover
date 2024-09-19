@@ -79,6 +79,8 @@ thiserror = "1.0"
 tracing = "0.1.40"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+errno = "0.3.9"
+page_size = "0.6.0"
 
 [profile.dev.package.clap]
 debug-assertions = false

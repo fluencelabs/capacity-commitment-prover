@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+use std::path::PathBuf;
+
+use ccp_randomx::Cache;
+use ccp_randomx::DATASET_ITEM_SIZE;
+use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
 use ccp_msr::MSRModeEnforcer;
@@ -23,6 +28,7 @@ use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 use ccp_utils::run_utils::run_unordered;
+use ccp_utils::run_utils::run_unordered_with_params;
 use cpu_utils::CPUTopology;
 use cpu_utils::HwlocCPUTopology;
 
@@ -36,7 +42,9 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
+use crate::memory_dumper::MemoryDumper;
 use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
+use crate::CUProverError;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
@@ -49,6 +57,7 @@ pub struct CUProver {
     dataset: Dataset,
     status: CUStatus,
     dataset_chunk_size: u64,
+    temp_dir: PathBuf,
 }
 
 impl CUProver {
@@ -58,6 +67,7 @@ impl CUProver {
         to_stats_collecting: ToStatsCollectingInlet,
         msr_enforcer: MSRModeEnforcer,
         core_id: PhysicalCoreId,
+        temp_dir: PathBuf,
     ) -> CUResult<Self> {
         let topology = HwlocCPUTopology::new()?;
         let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
@@ -79,6 +89,7 @@ impl CUProver {
             dataset,
             status: CUStatus::Idle,
             dataset_chunk_size: config.dataset_chunk_size,
+            temp_dir,
         };
         Ok(prover)
     }
@@ -100,8 +111,7 @@ impl CUProver {
         let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
 
         let dataset_handle = self.dataset.handle();
-        let cache_handle = cache.handle();
-        self.initialize_dataset(cache_handle, dataset_handle.clone(), cancel_token)
+        self.initialize_dataset(cache, dataset_handle.clone(), cancel_token)
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -172,40 +182,59 @@ impl CUProver {
     #[allow(clippy::needless_lifetimes)]
     async fn initialize_dataset<'threads>(
         &'threads mut self,
-        cache: CacheHandle,
+        cache: Cache,
         dataset: DatasetHandle,
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
-        use futures::FutureExt;
-
         let dataset_size = dataset.items_count();
+        let dataset_phase0_size = dataset_size / 4;
+        let dataset_phase1_size = dataset_size - dataset_phase0_size;
+
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;
 
-        let closure = |thread_id: usize, thread: &'threads mut ProvingThreadAsync| {
-            let thread_id = thread_id as u64;
-
-            let start_item = (dataset_size * thread_id) / threads_number;
-            let next_start_item = (dataset_size * (thread_id + 1)) / threads_number;
-
-            let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
-            async {
-                for chunk in chunk_generator {
-                    if cancel_token.is_cancelled() {
-                        break;
-                    }
-                    let start_item = chunk.start;
-                    let items_count = chunk.size;
-                    thread
-                        .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
-                        .await?;
-                }
-                Ok(())
-            }
-            .boxed()
+        let params_phase0 = InitializationState {
+            range_start: 0,
+            range_len: dataset_phase0_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token: cancel_token.clone(),
         };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase0, initialization_body)
+            .await
+            .unwrap();
 
-        run_unordered(self.threads.iter_mut(), closure).await?;
+        let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
+
+        // Safety: dataset is valid, initialized, mmap-allocated memory range
+        let memory_dumper = unsafe {
+            let dataset_base = dataset.memory() as usize;
+            MemoryDumper::new(&self.temp_dir, dataset_base, dataset_phase0_len)
+        }
+        .await
+        .map_err(CUProverError::DumperError)?;
+
+        let params_phase1 = InitializationState {
+            range_start: dataset_phase0_size,
+            range_len: dataset_phase1_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token,
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase1, initialization_body)
+            .await
+            .unwrap();
+        std::mem::drop(cache);
+
+        // Safety: safe because memory_dumper refers to valid dataset memory range
+        unsafe { memory_dumper.restore() }
+            .await
+            .map_err(CUProverError::DumperError)?;
+
         Ok(())
     }
 
@@ -228,6 +257,57 @@ impl CUProver {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Clone)]
+struct InitializationState {
+    range_start: u64,
+    range_len: u64,
+    cache: CacheHandle,
+    dataset: DatasetHandle,
+    threads_number: u64,
+    chunk_size: u64,
+    cancel_token: CancellationToken,
+}
+
+fn initialization_body(
+    thread_id: usize,
+    state: InitializationState,
+    thread: &mut ProvingThreadAsync,
+) -> BoxFuture<'_, Result<(), <ProvingThreadAsync as ProvingThreadFacade>::Error>> {
+    use futures::FutureExt;
+
+    let InitializationState {
+        range_start,
+        range_len,
+        cache,
+        dataset,
+        threads_number,
+        chunk_size,
+        cancel_token,
+    } = state;
+
+    let thread_id = thread_id as u64;
+
+    let start_item = range_start + (range_len * thread_id) / threads_number;
+    let next_start_item = range_start + (range_len * (thread_id + 1)) / threads_number;
+
+    let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
+
+    async move {
+        for chunk in chunk_generator {
+            if cancel_token.is_cancelled() {
+                break;
+            }
+            let start_item = chunk.start;
+            let items_count = chunk.size;
+            thread
+                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
+                .await?;
+        }
+        Ok(())
+    }
+    .boxed()
 }
 
 impl ToCUStatus for CUProver {

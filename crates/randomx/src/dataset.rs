@@ -23,6 +23,8 @@ use crate::flags::RandomXFlags;
 use crate::try_alloc;
 use crate::RResult;
 
+pub const DATASET_ITEM_SIZE: u64 = 64;
+
 #[derive(Debug)]
 pub struct Dataset {
     inner: Arc<DatasetInner>,
@@ -113,6 +115,10 @@ impl DatasetHandle {
 
     pub(crate) fn raw(&self) -> *mut randomx_dataset {
         self.inner.dataset
+    }
+
+    pub fn memory(&self) -> *mut ::std::os::raw::c_void {
+        unsafe { randomx_get_dataset_memory(self.raw()) }
     }
 }
 

@@ -21,15 +21,19 @@ ccp-utils.workspace = true
 cpu-utils.workspace = true
 
 tokio.workspace = true
-tokio.features = ["time"]
+tokio.features = ["time", "io-util"]
 futures.workspace = true
 
 anyhow.workspace = true
 log.workspace = true
 nonempty.workspace = true
+tempfile.workspace = true
 thiserror.workspace = true
 
 tokio-util.workspace = true
+libc.workspace = true
+errno.workspace = true
+page_size.workspace = true
 
 [dev-dependencies]
 ccp-test-utils.workspace = true
