@@ -23,6 +23,7 @@ use axum::http;
 use axum::response;
 use axum::response::ErrorResponse;
 use axum::routing::get;
+use prometheus_client::metrics;
 use prometheus_client::registry::Registry;
 use tokio::net::ToSocketAddrs;
 use tokio::task::JoinHandle;
@@ -94,6 +95,8 @@ async fn handle_metrics(
             );
         }
 
+        registry.register("version", "CCP version", VersionMetrics::new().ccp_version);
+
         prometheus_client::encoding::text::encode(&mut buf, &registry).map_err(|e| {
             log::warn!("Metrics encode error: {}", e);
             ErrorResponse::from(http::StatusCode::INTERNAL_SERVER_ERROR)
@@ -129,12 +132,12 @@ async fn run_prometheus_endpoint(
         .route("/metrics", get(handle_metrics))
         .fallback(handler_404)
         .with_state(state);
-    log::info!("Starting a prometheus endpoint at {prometheus_listen_address:?}");
+    log::info!("Starting a Prometheus endpoint at {prometheus_listen_address:?}");
     let listener = tokio::net::TcpListener::bind(&prometheus_listen_address)
         .await
         .inspect_err(|e| {
             log::error!(
-                "Failed to start a prometheus endpoint at {prometheus_listen_address:?}: {e}"
+                "Failed to start a Prometheus endpoint at {prometheus_listen_address:?}: {e}"
             );
         })?;
     let server = axum::serve(listener, app.into_make_service());
@@ -177,5 +180,24 @@ impl PrometheusEndpoint {
         log::info!("Shutting down Prometheus endpoint");
         self.cancellation.cancel();
         (&mut self.handle).await?
+    }
+}
+
+#[derive(Debug)]
+struct VersionMetrics {
+    ccp_version: metrics::info::Info<Vec<(&'static str, &'static str)>>,
+}
+
+impl VersionMetrics {
+    fn new() -> Self {
+        VersionMetrics {
+            ccp_version: metrics::info::Info::new(vec![("version", crate::version())]),
+        }
+    }
+}
+
+impl Default for VersionMetrics {
+    fn default() -> Self {
+        Self::new()
     }
 }
