@@ -80,6 +80,11 @@ fn main() -> eyre::Result<()> {
         std::process::id()
     );
 
+    if config.print_config {
+        let toml_config = toml::to_string_pretty(&config)?;
+        tracing::info!("Using the resolved config:\n{}", toml_config);
+    }
+
     if !config.state_dir.exists() {
         std::fs::create_dir_all(&config.state_dir)?
     }

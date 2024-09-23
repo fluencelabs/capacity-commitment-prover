@@ -16,6 +16,7 @@
 
 use std::path::Path;
 
+use defaults::default_state_print_config;
 use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
@@ -132,12 +133,15 @@ impl Default for UnresolvedLogs {
 pub struct State {
     #[serde(default = "default_state_path")]
     pub path: std::path::PathBuf,
+    #[serde(default = "default_state_print_config")]
+    pub print_config: bool,
 }
 
 impl Default for State {
     fn default() -> Self {
         State {
             path: default_state_path(),
+            print_config: default_state_print_config(),
         }
     }
 }
@@ -205,6 +209,7 @@ impl UnresolvedCCPConfig {
             optimizations: optimization,
             logs,
             state_dir: config_dir.join(self.state.path),
+            print_config: self.state.print_config,
             workers,
             tokio,
         };

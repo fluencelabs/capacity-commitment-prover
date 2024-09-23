@@ -28,6 +28,7 @@ log-level = "info"
 # relative path will be resolved relative to Config.toml
 # absolute path will work as is
 path = "./state"
+print_config = true
 
 [workers]
 # # how large is hash chunk to process; after each chunk, threads
