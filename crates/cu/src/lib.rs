@@ -27,6 +27,7 @@ pub mod status;
 mod tests;
 
 pub use crate::proving_thread::sync::RawProof;
+pub use ccp_shared::types::EpochParameters;
 pub use config::CUProverConfig;
 pub use cu_prover::CUProver;
 pub use errors::CUProverError;

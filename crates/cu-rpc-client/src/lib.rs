@@ -31,6 +31,7 @@ use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 
 pub use ccp_cu::RawProof;
+pub use ccp_cu::EpochParameters;
 use tower::service_fn;
 
 pub use crate::ccp_collector_rpc::collector_client::CollectorClient;
