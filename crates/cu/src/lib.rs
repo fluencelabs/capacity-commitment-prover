@@ -19,6 +19,7 @@ mod config;
 pub mod cu_prover;
 mod errors;
 pub mod hashrate_record;
+mod memory_dumper;
 pub mod proving_thread;
 mod proving_thread_utils;
 pub mod status;

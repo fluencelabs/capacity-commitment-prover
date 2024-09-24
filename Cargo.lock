@@ -278,7 +278,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "axum",
  "ccp-config",
@@ -313,7 +313,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-config"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-cu"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "anyhow",
  "ccp-config",
@@ -336,13 +336,17 @@ dependencies = [
  "ccp-utils",
  "cpu-utils",
  "env_logger 0.10.2",
+ "errno",
  "futures",
+ "libc",
  "log",
  "maplit",
  "nonempty",
+ "page_size",
  "rand 0.8.5",
  "serde",
  "tempdir",
+ "tempfile",
  "test-log",
  "thiserror",
  "tokio",
@@ -389,7 +393,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp",
  "ccp-config",
@@ -408,7 +412,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -423,7 +427,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "bitflags 2.5.0",
  "ccp-shared",
@@ -437,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -448,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "async-trait",
  "ccp",
@@ -463,7 +467,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "hex",
  "newtype_derive",
@@ -474,7 +478,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -484,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -626,7 +630,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
 name = "cpu-utils"
-version = "0.13.2"
+version = "0.13.3"
 dependencies = [
  "ccp-shared",
  "ccp_core_affinity",
@@ -857,9 +861,9 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a258e46cdc063eb8519c00b9fc845fc47bcfca4130e2f08e88665ceda8474245"
+checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
@@ -1884,6 +1888,16 @@ name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
+
+[[package]]
+name = "page_size"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
+dependencies = [
+ "libc",
+ "winapi",
+]
 
 [[package]]
 name = "parking_lot"

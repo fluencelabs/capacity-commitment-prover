@@ -1,11 +1,6 @@
 mod transport;
 
-use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
-use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
-use ccp_cu::{CUProver, CUProverConfig};
-use ccp_cu_rpc_client::CcpCuRpcHttpClient;
-use ccp_msr::MSRModeEnforcer;
-use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
+use std::path::PathBuf;
 
 use clap::Parser;
 use envconfig::Envconfig;
@@ -14,6 +9,13 @@ use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
+
+use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
+use ccp_cu::{CUProver, CUProverConfig};
+use ccp_cu_rpc_client::CcpCuRpcHttpClient;
+use ccp_msr::MSRModeEnforcer;
+use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
 
 use crate::transport::UpstreamTransport;
 
@@ -26,6 +28,7 @@ struct TaskParameters {
     difficulty: Difficulty,
     cu_id: CUID,
     upstream_url: String,
+    temp_dir: PathBuf,
 }
 
 #[derive(Parser)]
@@ -70,6 +73,7 @@ async fn main() -> eyre::Result<()> {
         to_stats_collecting,
         msr_enforcer,
         core_id,
+        parameters.temp_dir,
     )
     .await
     // error is not Send, convert it to a string

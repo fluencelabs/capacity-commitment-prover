@@ -43,6 +43,9 @@ pub enum CUProverError {
 
     #[error(transparent)]
     TopologyError(#[from] CPUTopologyError),
+
+    #[error("Dumper error: {0:?}")]
+    DumperError(tokio::io::Error),
 }
 
 #[derive(ThisError, Debug)]

@@ -177,6 +177,7 @@ async fn idle_cu_prover_can_be_stopped() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
@@ -205,6 +206,7 @@ async fn cu_prover_can_be_stopped() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
@@ -242,6 +244,7 @@ async fn cu_prover_can_be_paused() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
@@ -295,6 +298,7 @@ async fn cu_prover_produces_correct_proofs() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
@@ -349,6 +353,7 @@ async fn cu_prover_works_with_odd_threads_number() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
@@ -402,6 +407,7 @@ async fn cu_prover_changes_epoch_correctly() {
         to_stats_collecting_inlet,
         msr_enforcer,
         Some(3.into()),
+        std::env::temp_dir(),
     )
     .await
     .unwrap();
