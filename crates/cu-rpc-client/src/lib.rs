@@ -45,7 +45,7 @@ pub mod ccp_collector_rpc {
 
     impl From<&RawProof> for RpcProof {
         fn from(value: &RawProof) -> Self {
-            let epoch = EpochParameters {
+            let epoch = RpcEpochParameters {
                 difficulty: value.epoch.difficulty.to_string(),
                 global_nonce: value.epoch.global_nonce.to_string(),
             };
