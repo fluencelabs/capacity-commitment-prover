@@ -30,14 +30,77 @@ use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 
-use ccp_cu::RawProof;
+pub use ccp_cu::RawProof;
 use tower::service_fn;
 
-use crate::ccp_collector_rpc::collector_client::CollectorClient;
-use crate::ccp_collector_rpc::ReportRequest;
+pub use crate::ccp_collector_rpc::collector_client::CollectorClient;
+pub use crate::ccp_collector_rpc::MalformedRpcProof;
+pub use crate::ccp_collector_rpc::ReportRequest;
+pub use crate::ccp_collector_rpc::RpcProof;
 
 pub mod ccp_collector_rpc {
+    use ccp_cu::RawProof;
+
     tonic::include_proto!("cu_rpc_client");
+
+    impl From<&RawProof> for RpcProof {
+        fn from(value: &RawProof) -> Self {
+            let epoch = EpochParameters {
+                difficulty: value.epoch.difficulty.to_string(),
+                global_nonce: value.epoch.global_nonce.to_string(),
+            };
+            Self {
+                epoch: Some(epoch),
+                cu_id: value.cu_id.to_string(),
+                local_nonce: value.local_nonce.to_string(),
+                result_hash: value.result_hash.to_string(),
+            }
+        }
+    }
+
+    #[derive(thiserror::Error, Debug, Clone)]
+    pub enum MalformedRpcProof {
+        #[error("field {0} is undefined")]
+        MissingField(&'static str),
+        #[error("field {0} is malformed: {1:?}")]
+        MalformedField(&'static str, hex::FromHexError),
+    }
+
+    impl TryFrom<&RpcProof> for RawProof {
+        type Error = MalformedRpcProof;
+
+        fn try_from(value: &RpcProof) -> Result<Self, Self::Error> {
+            use MalformedRpcProof::*;
+
+            let epoch_params = value.epoch.as_ref().ok_or(MissingField("epoch"))?;
+            let epoch = ccp_shared::types::EpochParameters {
+                global_nonce: epoch_params
+                    .global_nonce
+                    .parse()
+                    .map_err(|e| MalformedField("global_nonce", e))?,
+                difficulty: epoch_params
+                    .difficulty
+                    .parse()
+                    .map_err(|e| MalformedField("difficulty", e))?,
+            };
+
+            Ok(Self {
+                epoch,
+                local_nonce: value
+                    .local_nonce
+                    .parse()
+                    .map_err(|e| MalformedField("local_nonce", e))?,
+                cu_id: value
+                    .cu_id
+                    .parse()
+                    .map_err(|e| MalformedField("cu_id", e))?,
+                result_hash: value
+                    .result_hash
+                    .parse()
+                    .map_err(|e| MalformedField("result_hash", e))?,
+            })
+        }
+    }
 }
 
 pub type ClientError = tonic::Status;
@@ -77,24 +140,7 @@ impl CcpCuRpcHttpClient {
     }
 
     pub async fn report_proofs(&mut self, proof: &[RawProof]) -> Result<(), ClientError> {
-        use crate::ccp_collector_rpc::EpochParameters;
-        use crate::ccp_collector_rpc::Proof;
-
-        let proofs = proof
-            .iter()
-            .map(|proof| {
-                let epoch = EpochParameters {
-                    difficulty: proof.epoch.difficulty.to_string(),
-                    global_nonce: proof.epoch.global_nonce.to_string(),
-                };
-                Proof {
-                    epoch: Some(epoch),
-                    cu_id: proof.cu_id.to_string(),
-                    local_nonce: proof.local_nonce.to_string(),
-                    result_hash: proof.result_hash.to_string(),
-                }
-            })
-            .collect();
+        let proofs = proof.iter().map(Into::into).collect();
 
         let report_request = ReportRequest { proofs };
         self.inner.report_proof(report_request).await?;

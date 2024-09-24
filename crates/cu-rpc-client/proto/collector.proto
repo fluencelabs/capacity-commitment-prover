@@ -7,7 +7,7 @@ message EpochParameters {
     string global_nonce = 2;
 }
 
-message Proof {
+message RpcProof {
     EpochParameters epoch = 1;
     string cu_id = 2;
     string local_nonce = 3;
@@ -15,7 +15,7 @@ message Proof {
 }
 
 message ReportRequest {
-    repeated Proof proofs = 1;
+    repeated RpcProof proofs = 1;
 }
 
 message ReportResponse {
