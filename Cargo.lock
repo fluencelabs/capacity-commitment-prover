@@ -363,7 +363,6 @@ dependencies = [
  "hyper-util",
  "prost",
  "serde",
- "serde_json",
  "tokio",
  "tonic",
  "tonic-build",
