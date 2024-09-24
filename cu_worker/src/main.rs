@@ -27,7 +27,7 @@ struct TaskParameters {
     global_nonce: GlobalNonce,
     difficulty: Difficulty,
     cu_id: CUID,
-    upstream_url: String,
+    upstream: String,
     temp_dir: PathBuf,
 }
 
@@ -90,7 +90,7 @@ async fn main() -> eyre::Result<()> {
     message_dispatching_loop(
         from_stats_collecting,
         from_state_operating,
-        parameters.upstream_url,
+        parameters.upstream,
     )
     .await
 }

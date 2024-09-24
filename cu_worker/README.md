@@ -7,7 +7,7 @@ Required variables:
 + `GLOBAL_NONCE`: a hex string with a global nonce;
 + `DIFFICULTY`: a hex string with difficulty;
 + `CU_ID`: a hex string with compute unit (instance) ID;
-+ `UPSTREAM_URL`: an path or HTTP URL to `ccp_collector`'s Unix domain socket
++ `UPSTREAM`: an path or HTTP URL to `ccp_collector`'s or `lightmare` endpoint
 + `TEMP_DIR`: a path to directory where the worker can dump memory during epoch initialization
 
 Optional variables:
