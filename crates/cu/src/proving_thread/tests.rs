@@ -59,7 +59,7 @@ impl ThreadInitIngredients {
         };
         let msr_enforcer = MSRModeEnforcer::from_preset(false, <_>::default());
         let mut thread = ProvingThreadAsync::new(
-            core_id,
+            Some(core_id),
             msr_enforcer,
             state_operating_inlet,
             stats_collecting_inlet,
@@ -99,7 +99,7 @@ async fn cache_creation_works() {
         sync_to_async_queue_size: 1,
     };
     let mut thread = ProvingThreadAsync::new(
-        2.into(),
+        Some(2.into()),
         msr_enforcer,
         state_operating_inlet,
         stats_collecting_inlet,
@@ -136,7 +136,7 @@ async fn dataset_creation_works() {
         sync_to_async_queue_size: 1,
     };
     let mut thread = ProvingThreadAsync::new(
-        2.into(),
+        Some(2.into()),
         msr_enforcer,
         state_operating_inlet,
         stats_collecting_inlet,
@@ -199,7 +199,7 @@ async fn dataset_creation_works_with_three_threads() {
                 sync_to_async_queue_size: 1,
             };
             ProvingThreadAsync::new(
-                (2 + thread_id).into(),
+                Some((2 + thread_id).into()),
                 msr_enforcer.clone(),
                 state_operating_inlet.clone(),
                 stats_collecting_inlet.clone(),
