@@ -58,7 +58,8 @@ struct Args {
 
 fn main() -> eyre::Result<()> {
     let args = Args::parse();
-    let config = load_config(args.config_path.as_str())?;
+    let unresolved_config = load_config(args.config_path.as_str())?;
+    let config = unresolved_config.clone().resolve(args.config_path.as_str())?;
 
     let filter = EnvFilter::builder()
         .with_env_var(CCP_LOG_ENV_VAR)
@@ -81,7 +82,7 @@ fn main() -> eyre::Result<()> {
     );
 
     if config.print_config {
-        let toml_config = toml::to_string_pretty(&config)?;
+        let toml_config = toml::to_string_pretty(&unresolved_config)?;
         tracing::info!("Using the resolved config:\n{}", toml_config);
     }
 
