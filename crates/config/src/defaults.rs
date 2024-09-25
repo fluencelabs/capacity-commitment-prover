@@ -81,6 +81,6 @@ pub(crate) fn default_dataset_chunk_size() -> u64 {
     DEFAULT_DATASET_CHUNK_SIZE
 }
 
-pub(crate) fn default_state_print_config() -> bool {
+pub(crate) fn default_log_print_config() -> bool {
     DEFAULT_PRINT_CONFIG
 }

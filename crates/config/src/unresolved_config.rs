@@ -16,7 +16,7 @@
 
 use std::path::Path;
 
-use defaults::default_state_print_config;
+use defaults::default_log_print_config;
 use eyre::eyre;
 use serde::Deserialize;
 use serde::Serialize;
@@ -116,6 +116,9 @@ pub struct UnresolvedLogs {
 
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
+
+    #[serde(default = "default_log_print_config")]
+    pub print_config: bool,
 }
 
 impl Default for UnresolvedLogs {
@@ -125,23 +128,22 @@ impl Default for UnresolvedLogs {
             cumulative_hashrate_update_interval_secs:
                 default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level(),
+            print_config: default_log_print_config(),
         }
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct State {
     #[serde(default = "default_state_path")]
     pub path: std::path::PathBuf,
-    #[serde(default = "default_state_print_config")]
-    pub print_config: bool,
 }
 
 impl Default for State {
     fn default() -> Self {
         State {
             path: default_state_path(),
-            print_config: default_state_print_config(),
         }
     }
 }
@@ -209,7 +211,6 @@ impl UnresolvedCCPConfig {
             optimizations: optimization,
             logs,
             state_dir: config_dir.join(self.state.path),
-            print_config: self.state.print_config,
             workers,
             tokio,
         };
@@ -310,6 +311,7 @@ impl UnresolvedLogs {
             report_hashrate: self.report_hashrate,
             cumulative_hashrate_update_interval_secs: self.cumulative_hashrate_update_interval_secs,
             log_level: self.log_level.to_tracing_filter(),
+            print_config: self.print_config,
         }
     }
 }

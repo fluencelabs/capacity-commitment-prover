@@ -24,6 +24,7 @@ use crate::defaults::default_control_queue_size;
 use crate::defaults::default_cumulative_hashrate_update_interval_secs;
 use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
+use crate::defaults::default_log_print_config;
 use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
 use crate::defaults::default_utility_queue_size;
@@ -38,7 +39,6 @@ pub struct CCPConfig {
     pub workers: Workers,
     pub tokio: Tokio,
     pub state_dir: std::path::PathBuf,
-    pub print_config: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -71,6 +71,7 @@ pub struct Logs {
     pub cumulative_hashrate_update_interval_secs: f64,
     #[serde(serialize_with = "serialize_debug")]
     pub log_level: tracing_subscriber::filter::LevelFilter,
+    pub print_config: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -135,6 +136,7 @@ impl Default for Logs {
             cumulative_hashrate_update_interval_secs:
                 default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level().to_tracing_filter(),
+            print_config: default_log_print_config(),
         }
     }
 }
