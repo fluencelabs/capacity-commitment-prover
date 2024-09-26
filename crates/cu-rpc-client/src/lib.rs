@@ -30,8 +30,8 @@ use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 
-pub use ccp_cu::RawProof;
 pub use ccp_cu::EpochParameters;
+pub use ccp_cu::RawProof;
 use tower::service_fn;
 
 pub use crate::ccp_collector_rpc::collector_client::CollectorClient;
@@ -133,7 +133,10 @@ impl CcpCuRpcHttpClient {
     }
 
     pub async fn auto(endpoint: String) -> Result<Self, tonic::transport::Error> {
-        if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
+        if endpoint.starts_with("http://")
+            || endpoint.starts_with("https://")
+            || endpoint.starts_with("grpc://")
+        {
             Self::new_http(endpoint).await
         } else {
             Self::new_unix_socket(endpoint).await
