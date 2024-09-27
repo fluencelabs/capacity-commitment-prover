@@ -1,3 +1,4 @@
+mod retry_client;
 mod transport;
 
 use std::path::PathBuf;
@@ -5,6 +6,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use envconfig::Envconfig;
 use eyre::WrapErr as _;
+use retry_client::RetryClient;
 use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
@@ -13,11 +15,8 @@ use tracing_subscriber::EnvFilter;
 use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::{CUProver, CUProverConfig};
-use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
-
-use crate::transport::UpstreamTransport;
 
 // same as ccp_main crate
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
@@ -100,6 +99,8 @@ async fn message_dispatching_loop(
     mut from_state_operating: ToStateOperatingOutlet,
     rpc_endpoint: String,
 ) -> eyre::Result<()> {
+    let (client, sender) = RetryClient::new(rpc_endpoint);
+    let mut client_handle = tokio::task::spawn(client.run());
     loop {
         select! {
                 _ = from_stats_collecting.recv() => {}
@@ -108,18 +109,20 @@ async fn message_dispatching_loop(
                     match msg.expect("worker thread failed") {
                         ProofFound { proof } => {
                             tracing::info!("sending received proof upstream: {proof:?}");
-                            // TODO retries
-                            let mut rpc_client = CcpCuRpcHttpClient::auto(rpc_endpoint.clone())
-                                .await.expect("invalid RPC endpoint");
-                            let result = UpstreamTransport::report_proof(&mut rpc_client, proof).await;
-                            if let Err(e) = result {
-                                tracing::error!("failed to send a proof {proof:?} upstream: {e}")
+                            if let Err(e) = sender.send(proof).await {
+                                tracing::error!("failed to send proof: {e}")
                             }
                         },
                         ErrorHappened { core_id: _core_id, error } => {
                             unreachable!("no error reported because of no valid core_id: {error:?}");
                         },
                     }
+                }
+                client_result = &mut client_handle => {
+                    if let Err(e) = &client_result {
+                        tracing::error!("RetryClient task failed: {e}");
+                    };
+                    return client_result.context("client task: ")?;
                 }
         }
     }

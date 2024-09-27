@@ -31,3 +31,4 @@ tracing-log.workspace = true
 tokio-util.workspace = true
 
 envconfig.workspace = true
+backoff.workspace = true
