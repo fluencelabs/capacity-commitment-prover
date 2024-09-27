@@ -55,6 +55,7 @@ async fn main() -> eyre::Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)
         .wrap_err("setting global tracing subscriber failed")?;
+    tracing_log::LogTracer::init()?;
 
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
