@@ -76,6 +76,7 @@ tempdir = "0.3.7"
 tempfile = "3.10.1"
 test-log = "0.2.14"
 thiserror = "1.0"
+toml = "0.8.19"
 tracing = "0.1.40"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

@@ -20,3 +20,4 @@ config.workspace = true
 eyre.workspace = true
 tracing-subscriber.workspace = true
 serde.workspace = true
+serde_with.workspace = true

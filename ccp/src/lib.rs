@@ -43,3 +43,7 @@ pub use errors::CCProverError;
 pub use persistence::StorageMetrics;
 pub use prover::CCProver;
 pub use prover::CCResult;
+
+pub fn version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}

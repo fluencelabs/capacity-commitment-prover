@@ -23,6 +23,7 @@ port = "9384"
 report-hashrate = false
 # cumulative-hashrate-update-interval-secs = 60
 log-level = "info"
+print-config = true
 
 [state]
 # relative path will be resolved relative to Config.toml

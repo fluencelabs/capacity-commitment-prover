@@ -29,6 +29,8 @@ const DEFAULT_CONTROL_QUEUE_SIZE: usize = 100;
 // chunk size for roughly 10s of execution
 const DEFAULT_DATASET_CHUNK_SIZE: u64 = 5_000_000;
 
+const DEFAULT_PRINT_CONFIG: bool = false;
+
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: f64 = 60.0;
 
 pub(crate) fn default_log_level() -> LogLevel {
@@ -77,4 +79,8 @@ pub(crate) fn default_control_queue_size() -> usize {
 
 pub(crate) fn default_dataset_chunk_size() -> u64 {
     DEFAULT_DATASET_CHUNK_SIZE
+}
+
+pub(crate) fn default_log_print_config() -> bool {
+    DEFAULT_PRINT_CONFIG
 }
