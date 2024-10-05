@@ -279,9 +279,10 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: Build and push container
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: ./cu_worker/docker
+          context: .
+          file: ./cu_worker/docker/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |

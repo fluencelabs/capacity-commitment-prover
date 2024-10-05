@@ -1,12 +1,12 @@
 FROM rustlang/rust:nightly-slim AS chef
 USER root
+WORKDIR /app
 RUN apt-get update && apt-get install -y clang llvm libhwloc-dev libudev-dev protobuf-compiler pkg-config cmake
 RUN cargo install cargo-chef
-WORKDIR /app
 
 FROM chef AS planner
-COPY . .
 WORKDIR /app
+COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS common-builder
@@ -40,6 +40,6 @@ RUN useradd -u 10001 ccp_user && \
 
 FROM user-builder AS ccp_main
 COPY --from=ccp-builder /tmp/ccp_cu_worker /usr/local/bin/ccp_cu_worker
-COPY Config.default.toml /Config.toml
+COPY cu_worker/docker/Config.default.toml /Config.toml
 USER ccp_user
 ENTRYPOINT ["/usr/local/bin/ccp_cu_worker"]
