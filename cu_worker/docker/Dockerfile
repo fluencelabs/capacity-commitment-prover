@@ -40,6 +40,6 @@ RUN useradd -u 10001 ccp_user && \
 
 FROM user-builder AS ccp_main
 COPY --from=ccp-builder /tmp/ccp_cu_worker /usr/local/bin/ccp_cu_worker
-COPY cu_worker/docker/Config.default.toml /Config.toml
+COPY Config.default.toml /Config.toml
 USER ccp_user
 ENTRYPOINT ["/usr/local/bin/ccp_cu_worker"]
