@@ -224,6 +224,7 @@ jobs:
         with:
           repository: fluencelabs/capacity-commitment-prover
           ref: ${{ inputs.ref }}
+          submodules: recursive
 
       - name: Import secrets
         uses: hashicorp/vault-action@v3.0.0
