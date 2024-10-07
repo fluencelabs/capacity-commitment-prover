@@ -81,7 +81,7 @@ jobs:
 
   build-arm64:
     name: "Build arm64"
-    runs-on: linux-amd64-c-2xlarge
+    runs-on: linux-arm64-c-2xlarge
     permissions:
       contents: read
       id-token: write
