@@ -75,7 +75,7 @@ jobs:
           file: ./cu_worker/docker/Dockerfile
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: ${{ steps.cache.outputs.cache-from }}
           cache-to: ${{ steps.cache.outputs.cache-to }}
 
@@ -140,7 +140,7 @@ jobs:
           file: ./cu_worker/docker/Dockerfile
           platforms: linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.metadata.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: ${{ steps.cache.outputs.cache-from }}
           cache-to: ${{ steps.cache.outputs.cache-to }}
 
