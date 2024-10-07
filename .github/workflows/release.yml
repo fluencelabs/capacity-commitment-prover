@@ -130,7 +130,13 @@ jobs:
     with:
       ref: ${{ needs.release-please.outputs.tag-name }}
       image: "fluencelabs/ccp"
-      image_cu_worker: "fluencelabs/ccp_cu_worker"
+
+  ccp_cu_worker:
+    if: needs.release-please.outputs.release-created
+    needs: release-please
+    uses: ./.github/workflows/artifact_cu_worker.yml
+    with:
+      ref: ${{ needs.release-please.outputs.tag-name }}
 
   publish:
     if: needs.release-please.outputs.release-created

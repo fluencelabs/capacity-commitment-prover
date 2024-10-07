@@ -11,10 +11,6 @@ on:
         type: string
         description: "ccp image name"
         default: "docker.fluence.dev/ccp"
-      image_cu_worker:
-        type: string
-        description: "ccp cu worker image name"
-        default: "docker.fluence.dev/ccp_cu_worker"
 
 jobs:
   build:
@@ -185,105 +181,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./docker
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ steps.artifacts.outputs.image }}
-          labels: |
-            org.opencontainers.image.version=${{ inputs.ref }}
-            org.opencontainers.image.created=${{ env.BUILD_DATE }}
-            org.opencontainers.image.revision=${{ github.sha }}
-
-      - name: Print results to check summary
-        run: |
-          cat <<'SNAPSHOT' >> $GITHUB_STEP_SUMMARY
-          ## ccp
-          ```
-          ${{ steps.artifacts.outputs.image }}
-          ```
-
-          ### Access to Fluence docker registry
-          ```
-          vault read kv/basicauth/dev
-          docker login docker.fluence.dev
-          ```
-          SNAPSHOT
-
-  container_cu_worker:
-    name: "Build CU Worker container image"
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-
-    permissions:
-      contents: write
-      id-token: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          repository: fluencelabs/capacity-commitment-prover
-          ref: ${{ inputs.ref }}
-          submodules: recursive
-
-      - name: Import secrets
-        uses: hashicorp/vault-action@v3.0.0
-        with:
-          url: https://vault.fluence.dev
-          path: jwt/github
-          role: ci
-          method: jwt
-          jwtGithubAudience: "https://github.com/fluencelabs"
-          jwtTtl: 300
-          secrets: |
-            kv/hub.docker.com/fluencebot username | DOCKER_HUB_USERNAME ;
-            kv/hub.docker.com/fluencebot password | DOCKER_HUB_PASSWORD ;
-            kv/docker-registry/basicauth/ci username | DOCKER_USERNAME ;
-            kv/docker-registry/basicauth/ci password | DOCKER_PASSWORD
-
-      - name: Set build date
-        run: echo "BUILD_DATE=$(date '+%Y-%m-%dT%H:%M:%S%:z')" >> $GITHUB_ENV
-
-      - name: Generate snapshot version
-        id: version
-        uses: fluencelabs/github-actions/generate-snapshot-id@main
-
-      - name: Construct artifacts names
-        id: artifacts
-        run: |
-          if [[ ${{ inputs.image_cu_worker }} == "fluencelabs/ccp_cu_worker" ]]; then
-            version="$(jq -r .[] .github/release-please/manifest.json)"
-            echo "image=${{ inputs.image_cu_worker }}:${version}" >> "$GITHUB_OUTPUT"
-          else
-            echo "image=${{ inputs.image_cu_worker }}:${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKER_HUB_USERNAME }}
-          password: ${{ env.DOCKER_HUB_PASSWORD }}
-
-      - name: Login to private container registry
-        uses: docker/login-action@v3
-        with:
-          registry: docker.fluence.dev
-          username: ${{ env.DOCKER_USERNAME }}
-          password: ${{ env.DOCKER_PASSWORD }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Build and push container
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./cu_worker/docker/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
