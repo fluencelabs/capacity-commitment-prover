@@ -16,3 +16,9 @@ tracing.workspace = true
 eyre.workspace = true
 
 backoff.workspace = true
+
+[dev-dependencies]
+ccp-shared.workspace = true
+rand.workspace = true
+tonic.workspace = true
+tokio-util.workspace = true

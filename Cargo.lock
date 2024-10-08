@@ -389,8 +389,12 @@ dependencies = [
  "backoff",
  "ccp-cu",
  "ccp-cu-rpc-client",
+ "ccp-shared",
  "eyre",
+ "rand 0.8.5",
  "tokio",
+ "tokio-util",
+ "tonic",
  "tracing",
 ]
 
