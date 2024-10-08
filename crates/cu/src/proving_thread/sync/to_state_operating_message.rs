@@ -18,7 +18,7 @@ use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
 pub(crate) use super::errors::ProvingThreadSyncError;
-pub(crate) use super::raw_proof::RawProof;
+pub(crate) use super::RawProof;
 
 pub type ToStateOperatingInlet = mpsc::Sender<ToStateOperatingMessage>;
 pub type ToStateOperatingOutlet = mpsc::Receiver<ToStateOperatingMessage>;

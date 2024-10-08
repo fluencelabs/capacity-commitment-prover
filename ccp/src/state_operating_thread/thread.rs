@@ -19,7 +19,7 @@ use std::sync::Arc;
 use parking_lot::Mutex as PLMutex;
 use tokio::sync::mpsc;
 
-use ccp_cu::proving_thread::sync::RawProof;
+use ccp_shared::proof::raw::RawProof;
 use ccp_shared::proof::CCProof;
 use ccp_shared::proof::CCProofId;
 use ccp_shared::proof::ProofIdx;
@@ -230,7 +230,11 @@ impl NewProofHandler {
             proof.cu_id,
             proof.result_hash,
         );
-        log::debug!("Assign index {} to the proof {:?}", self.proof_idx, cc_proof);
+        log::debug!(
+            "Assign index {} to the proof {:?}",
+            self.proof_idx,
+            cc_proof
+        );
         self.proof_storage.store_new_proof(cc_proof).await?;
 
         Ok(())

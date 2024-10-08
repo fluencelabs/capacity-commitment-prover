@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-use ccp_shared::types::*;
+use crate::types::*;
 use serde::Deserialize;
 use serde::Serialize;
 

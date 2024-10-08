@@ -17,15 +17,14 @@
 mod channels_facade;
 mod errors;
 mod local_nonce;
-pub(crate) mod raw_proof;
 mod state;
 mod thread;
 pub mod to_state_operating_message;
 pub mod to_stats_collecting_message;
 
 pub(crate) use self::errors::ProvingThreadSyncFacadeError;
-pub use self::raw_proof::RawProof;
 pub(crate) use self::thread::ProvingThreadSync;
+pub use crate::RawProof;
 
 type STResult<T> = Result<T, errors::ProvingThreadSyncError>;
 pub(crate) type STFResult<T> = Result<T, errors::ProvingThreadSyncFacadeError>;

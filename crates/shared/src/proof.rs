@@ -15,6 +15,7 @@
  */
 
 mod idx;
+pub mod raw;
 
 use serde::Deserialize;
 use serde::Serialize;

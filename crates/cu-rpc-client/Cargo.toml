@@ -14,8 +14,6 @@ doctest = false
 
 [dependencies]
 ccp-shared.workspace = true
-# TODO move RawProof to ccp-shared
-ccp-cu.workspace = true
 
 hex.workspace = true
 tokio.workspace = true
