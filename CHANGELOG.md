@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.4...ccp-v0.14.0) (2024-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ccp:** add CU worker binary ([#164](https://github.com/fluencelabs/capacity-commitment-prover/issues/164))
+
+### Features
+
+* **ccp:** add CU worker binary ([#164](https://github.com/fluencelabs/capacity-commitment-prover/issues/164)) ([7247e29](https://github.com/fluencelabs/capacity-commitment-prover/commit/7247e29105d182aa5a719a7da12e65dac88ab390))
+
 ## [0.13.4](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.3...ccp-v0.13.4) (2024-10-02)
 
 
