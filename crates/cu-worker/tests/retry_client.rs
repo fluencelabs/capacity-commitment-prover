@@ -34,7 +34,7 @@ async fn test_normal() {
     tokio::spawn(async move {
         select! {
             _ = client_cancel_cloned.cancelled() => {},
-            r = client.run() => { r.unwrap(); },
+            _ = client.run() => {},
         }
     });
 
@@ -66,7 +66,7 @@ async fn test_failing_server() {
     tokio::spawn(async move {
         select! {
             _ = client_cancel_cloned.cancelled() => {},
-            r = client.run() => { r.unwrap(); },
+            _ = client.run() => {},
         }
     });
 

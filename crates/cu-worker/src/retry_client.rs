@@ -6,7 +6,6 @@ use backoff::ExponentialBackoffBuilder;
 use ccp_cu::RawProof;
 use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 use eyre::Context;
-use eyre::OptionExt;
 use tokio::select;
 use tokio::sync::mpsc::Receiver;
 use tokio::sync::mpsc::Sender;
@@ -30,16 +29,16 @@ impl RetryClient {
         (self_, sender)
     }
 
-    pub async fn run(mut self) -> eyre::Result<()> {
+    pub async fn run(mut self) {
         let mut collected_proofs = vec![];
 
         loop {
             assert!(collected_proofs.is_empty());
-            let raw_proof = self
-                .receiver
-                .recv()
-                .await
-                .ok_or_eyre("No more input data")?;
+            let raw_proof = match self.receiver.recv().await {
+                Some(raw_proof) => raw_proof,
+                // nothing to read
+                None => return,
+            };
             collected_proofs.push(raw_proof);
 
             // Retry loop: untill the request succeeds.

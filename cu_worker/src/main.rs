@@ -98,7 +98,7 @@ async fn message_dispatching_loop(
     rpc_endpoint: String,
 ) -> eyre::Result<()> {
     let (client, sender) = RetryClient::new(rpc_endpoint);
-    let mut client_handle = tokio::task::spawn(client.run());
+    let _client_handle = tokio::task::spawn(client.run());
     loop {
         select! {
                 _ = from_stats_collecting.recv() => {}
@@ -115,12 +115,6 @@ async fn message_dispatching_loop(
                             unreachable!("no error reported because of no valid core_id: {error:?}");
                         },
                     }
-                }
-                client_result = &mut client_handle => {
-                    if let Err(e) = &client_result {
-                        tracing::error!("RetryClient task failed: {e}");
-                    };
-                    return client_result.context("client task: ")?;
                 }
         }
     }
