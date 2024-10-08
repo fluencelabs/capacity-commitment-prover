@@ -1,5 +1,5 @@
 [package]
-name = "ccp-cu-worker"
+name = "ccp-cu-worker-bin"
 description = "CCP CU worker"
 version = "0.1.0"
 authors.workspace = true
@@ -15,11 +15,9 @@ path = "src/main.rs"
 [dependencies]
 ccp-config.workspace = true
 ccp-cu.workspace = true
-ccp-cu-rpc-client.workspace = true
+ccp-cu-worker.workspace = true
 ccp-msr.workspace = true
-ccp-randomx.workspace = true
 ccp-shared.workspace = true
-cpu-utils.workspace = true
 
 clap.workspace = true
 tokio.workspace = true
@@ -31,4 +29,3 @@ tracing-log.workspace = true
 tokio-util.workspace = true
 
 envconfig.workspace = true
-backoff.workspace = true

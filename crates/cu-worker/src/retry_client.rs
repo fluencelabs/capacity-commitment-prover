@@ -13,7 +13,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::transport::UpstreamTransport;
 
-pub(crate) struct RetryClient {
+pub struct RetryClient {
     rpc_endpoint: String,
     receiver: Receiver<RawProof>,
 }
@@ -21,7 +21,7 @@ pub(crate) struct RetryClient {
 const BUFFER_SIZE: usize = 1000;
 
 impl RetryClient {
-    pub(crate) fn new(rpc_endpoint: String) -> (Self, Sender<RawProof>) {
+    pub fn new(rpc_endpoint: String) -> (Self, Sender<RawProof>) {
         let (sender, receiver) = tokio::sync::mpsc::channel(BUFFER_SIZE);
         let self_ = RetryClient {
             rpc_endpoint,
@@ -30,7 +30,7 @@ impl RetryClient {
         (self_, sender)
     }
 
-    pub(crate) async fn run(mut self) -> eyre::Result<()> {
+    pub async fn run(mut self) -> eyre::Result<()> {
         let mut collected_proofs = vec![];
 
         loop {

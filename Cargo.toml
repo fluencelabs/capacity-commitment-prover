@@ -14,6 +14,7 @@ members = [
     "crates/cpu-utils",
     "crates/rpc-client",
     "crates/cu-rpc-client",
+    "crates/cu-worker",
     "crates/rpc-server",
     "crates/shared",
     "crates/test-utils",
@@ -30,6 +31,7 @@ ccp-randomx = { path = "./crates/randomx", version = "0.13.0" }
 ccp-msr = { path = "./crates/msr", version = "0.13.0" }
 ccp-rpc-client = { version = "0.13.0", path = "./crates/rpc-client" }
 ccp-cu-rpc-client = { version = "0.1.0", path = "./crates/cu-rpc-client" }
+ccp-cu-worker = { version = "0.1.0", path = "./crates/cu-worker" }
 ccp-rpc-server = { version = "0.13.0", path = "./crates/rpc-server" }
 ccp-shared = { path = "./crates/shared", version = "0.13.0" }
 ccp-test-utils = { path = "./crates/test-utils", version = "0.13.0" }

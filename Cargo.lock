@@ -387,14 +387,23 @@ name = "ccp-cu-worker"
 version = "0.1.0"
 dependencies = [
  "backoff",
- "ccp-config",
  "ccp-cu",
  "ccp-cu-rpc-client",
+ "eyre",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "ccp-cu-worker-bin"
+version = "0.1.0"
+dependencies = [
+ "ccp-config",
+ "ccp-cu",
+ "ccp-cu-worker",
  "ccp-msr",
- "ccp-randomx",
  "ccp-shared",
  "clap",
- "cpu-utils",
  "envconfig",
  "eyre",
  "tokio",

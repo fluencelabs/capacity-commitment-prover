@@ -1,12 +1,8 @@
-mod retry_client;
-mod transport;
-
 use std::path::PathBuf;
 
 use clap::Parser;
 use envconfig::Envconfig;
 use eyre::WrapErr as _;
-use retry_client::RetryClient;
 use tokio::{select, sync::mpsc};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
@@ -15,6 +11,7 @@ use tracing_subscriber::EnvFilter;
 use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::{CUProver, CUProverConfig};
+use ccp_cu_worker::retry_client::RetryClient;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
 
