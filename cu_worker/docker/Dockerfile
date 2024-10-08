@@ -1,12 +1,12 @@
 FROM rustlang/rust:nightly-slim AS chef
 USER root
+WORKDIR /app
 RUN apt-get update && apt-get install -y clang llvm libhwloc-dev libudev-dev protobuf-compiler pkg-config cmake
 RUN cargo install cargo-chef
-WORKDIR /app
 
 FROM chef AS planner
-COPY . .
 WORKDIR /app
+COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS common-builder
