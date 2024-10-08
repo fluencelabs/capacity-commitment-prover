@@ -369,7 +369,6 @@ dependencies = [
 name = "ccp-cu-rpc-client"
 version = "0.14.0"
 dependencies = [
- "ccp-cu",
  "ccp-shared",
  "hex",
  "hyper-util",

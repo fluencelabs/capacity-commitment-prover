@@ -25,7 +25,7 @@ use ccp_shared::types::LocalNonce;
 use super::channels_facade::ToStateOperating;
 use super::channels_facade::ToStatsCollecting;
 use super::local_nonce::NonceIterable;
-use super::raw_proof::RawProof;
+use super::RawProof;
 use super::STResult;
 use crate::proving_thread::messages::AsyncToSyncMessage;
 use crate::proving_thread::messages::NewCCJob;

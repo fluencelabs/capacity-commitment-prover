@@ -20,13 +20,13 @@ use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
 use super::to_state_operating_message::ProvingThreadSyncError;
-use super::to_state_operating_message::RawProof;
 use super::to_state_operating_message::ToStateOperatingInlet;
 use super::to_state_operating_message::ToStateOperatingMessage;
 use super::to_stats_collecting_message::ToStatsCollectingInlet;
 use super::to_stats_collecting_message::ToStatsCollectingMessage;
 use super::STResult;
 use crate::proving_thread::messages::*;
+use crate::RawProof;
 use crate::ThreadHashrateRecord;
 
 #[derive(Clone, Debug)]

@@ -29,10 +29,10 @@
 use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
-
-pub use ccp_cu::EpochParameters;
-pub use ccp_cu::RawProof;
 use tower::service_fn;
+
+pub use ccp_shared::proof::raw::RawProof;
+pub use ccp_shared::types::EpochParameters;
 
 pub use crate::ccp_collector_rpc::collector_client::CollectorClient;
 pub use crate::ccp_collector_rpc::MalformedRpcProof;
@@ -40,7 +40,7 @@ pub use crate::ccp_collector_rpc::ReportRequest;
 pub use crate::ccp_collector_rpc::RpcProof;
 
 pub mod ccp_collector_rpc {
-    use ccp_cu::RawProof;
+    use crate::RawProof;
 
     tonic::include_proto!("cu_rpc_client");
 
