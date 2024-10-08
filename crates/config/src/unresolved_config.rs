@@ -123,12 +123,27 @@ pub struct UnresolvedLogs {
 
 impl Default for UnresolvedLogs {
     fn default() -> Self {
-        UnresolvedLogs {
+        Self {
             report_hashrate: default_report_hashrate(),
             cumulative_hashrate_update_interval_secs:
                 default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level(),
             print_config: default_log_print_config(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct UnresolvedSimpleLogs {
+    #[serde(default = "default_log_level")]
+    pub log_level: LogLevel,
+}
+
+impl Default for UnresolvedSimpleLogs {
+    fn default() -> Self {
+        Self {
+            log_level: default_log_level(),
         }
     }
 }
@@ -257,6 +272,22 @@ impl UnresolvedOptimizations {
         };
         Ok(opt)
     }
+
+    pub fn resolve_for_cu_worker(self) -> eyre::Result<Optimizations> {
+        let randomx_flags = self.randomx.resolve();
+        let msr_config = self.msr_enabled;
+        let threads_count = self.threads_per_core.unwrap_or(1);
+        let threads_per_core_policy = ThreadsPerCoreAllocationPolicy::Exact {
+            threads_per_physical_core: threads_count.try_into()?,
+        };
+
+        let opt = Optimizations {
+            randomx_flags,
+            msr_enabled: msr_config,
+            threads_per_core_policy,
+        };
+        Ok(opt)
+    }
 }
 
 impl UnresolvedRandomX {
@@ -312,6 +343,14 @@ impl UnresolvedLogs {
             cumulative_hashrate_update_interval_secs: self.cumulative_hashrate_update_interval_secs,
             log_level: self.log_level.to_tracing_filter(),
             print_config: self.print_config,
+        }
+    }
+}
+
+impl UnresolvedSimpleLogs {
+    pub fn resolve(self) -> SimpleLogs {
+        SimpleLogs {
+            log_level: self.log_level.to_tracing_filter(),
         }
     }
 }

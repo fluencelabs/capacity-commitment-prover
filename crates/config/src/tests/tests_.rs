@@ -32,7 +32,10 @@ fn parse_basic_config() {
     let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let config_path = manifest_path.join("src/tests/test.toml");
 
-    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap())
+        .unwrap()
+        .resolve(&config_path)
+        .unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
@@ -59,6 +62,7 @@ fn parse_basic_config() {
         report_hashrate: true,
         cumulative_hashrate_update_interval_secs: 50.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
+        print_config: false,
     };
     let state_dir = manifest_path.join("src/tests/../test");
     let expected_config = CCPConfig {
@@ -79,7 +83,10 @@ fn parse_config_without_optimiziations() {
     let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let config_path = manifest_path.join("src/tests/test-no-optimization.toml");
 
-    let actual_config = load_config(config_path.as_os_str().to_str().unwrap()).unwrap();
+    let actual_config = load_config(config_path.as_os_str().to_str().unwrap())
+        .unwrap()
+        .resolve(&config_path)
+        .unwrap();
 
     let rpc_endpoint = RpcEndpoint {
         host: "127.0.0.1".to_string(),
@@ -98,6 +105,7 @@ fn parse_config_without_optimiziations() {
         report_hashrate: true,
         cumulative_hashrate_update_interval_secs: 60.0,
         log_level: tracing_subscriber::filter::LevelFilter::WARN,
+        print_config: false,
     };
 
     let state_dir = manifest_path.join("src/tests/../test");

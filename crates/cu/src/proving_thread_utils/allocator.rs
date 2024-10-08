@@ -31,7 +31,7 @@ use crate::proving_thread::ProvingThreadConfig;
 use crate::CUResult;
 use crate::ThreadAllocationError;
 
-type ThreadAllocationStrategy = NonEmpty<LogicalCoreId>;
+type ThreadAllocationStrategy = NonEmpty<Option<LogicalCoreId>>;
 
 pub(crate) struct ThreadAllocator {
     allocation_strategy: ThreadAllocationStrategy,
@@ -40,7 +40,7 @@ pub(crate) struct ThreadAllocator {
 impl ThreadAllocator {
     pub(crate) fn new(
         policy: ThreadsPerCoreAllocationPolicy,
-        core_id: PhysicalCoreId,
+        core_id: Option<PhysicalCoreId>,
         topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocator> {
         let allocation_strategy = Self::create_allocate_strategy(policy, core_id, topology)?;
@@ -77,27 +77,41 @@ impl ThreadAllocator {
 
     pub(crate) fn create_allocate_strategy(
         policy: ThreadsPerCoreAllocationPolicy,
-        core_id: PhysicalCoreId,
+        core_id: Option<PhysicalCoreId>,
         topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
         use super::ThreadDistributionPolicy;
 
-        let logical_cores = topology
-            .logical_cores_for_physical(core_id)
-            .map_err(ThreadAllocationError::TopologyError)?;
+        let logical_cores = match core_id {
+            Some(core_id) => Some(
+                topology
+                    .logical_cores_for_physical(core_id)
+                    .map_err(ThreadAllocationError::TopologyError)?,
+            ),
+            None => None,
+        };
 
         let threads_count = match policy {
             ThreadsPerCoreAllocationPolicy::Exact {
                 threads_per_physical_core,
             } => threads_per_physical_core,
             ThreadsPerCoreAllocationPolicy::Optimal => unsafe {
-                std::num::NonZeroUsize::new_unchecked(logical_cores.len())
+                std::num::NonZeroUsize::new_unchecked(
+                    logical_cores
+                        .as_ref()
+                        .expect("Optimal core allocation strategy requires a valid core_id")
+                        .len(),
+                )
             },
         };
 
         let distributor = RoundRobinDistributor {};
         let strategy = (0..threads_count.get())
-            .map(|thread_id| distributor.distribute(thread_id, &logical_cores))
+            .map(|thread_id| {
+                logical_cores
+                    .as_ref()
+                    .map(|logical_cores| distributor.distribute(thread_id, logical_cores))
+            })
             .collect::<Vec<_>>();
         Ok(NonEmpty::from_vec(strategy).unwrap())
     }

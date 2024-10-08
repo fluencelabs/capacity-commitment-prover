@@ -49,7 +49,7 @@ pub(crate) struct ProvingThreadSync {
 
 impl ProvingThreadSync {
     pub(crate) fn spawn(
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         msr_enforcer: MSRModeEnforcer,
         from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
@@ -76,7 +76,7 @@ impl ProvingThreadSync {
     }
 
     fn proving_closure(
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         mut msr_enforcer: MSRModeEnforcer,
         mut from_async: AsyncToSyncOutlet,
         to_async: SyncToAsyncInlet,
@@ -92,11 +92,13 @@ impl ProvingThreadSync {
         let to_stats_collecting = ToStatsCollecting::new(to_stats_collecting);
 
         let mut inner_closure = move || -> Result<(), ProvingThreadSyncError> {
-            if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(core_id) {
-                to_state_operating
-                    .send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
-            } else if let Err(error) = msr_enforcer.enforce(core_id) {
-                to_state_operating.send_error(core_id, error.into())?;
+            if let Some(core_id) = core_id {
+                if !cpu_utils::pinning::DEFAULT.pin_current_thread_to(core_id) {
+                    to_state_operating
+                        .send_error(core_id, ProvingThreadSyncError::pinning_failed(core_id))?;
+                } else if let Err(error) = msr_enforcer.enforce(core_id) {
+                    to_state_operating.send_error(core_id, error.into())?;
+                }
             }
 
             let mut thread_state = ThreadState::WaitForMessage;
@@ -142,16 +144,20 @@ impl ProvingThreadSync {
         Box::new(move || match inner_closure() {
             Ok(_) => Ok(()),
             Err(error) => {
-                let message = ToStateOperatingMessage::error_happened(core_id, error);
-                to_state_operating_outer
-                    .blocking_send(message)
-                    .map_err(Into::into)
+                if let Some(core_id) = core_id {
+                    let message = ToStateOperatingMessage::error_happened(core_id, error);
+                    to_state_operating_outer
+                        .blocking_send(message)
+                        .map_err(Into::into)
+                } else {
+                    Ok(())
+                }
             }
         })
     }
 
     fn handle_message(
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         message: AsyncToSyncMessage,
         msr_enforcer: &mut MSRModeEnforcer,
         to_async: &ToAsync,
@@ -174,8 +180,10 @@ impl ProvingThreadSync {
                 to_async.send_cache(cache)?;
 
                 to_stats_collecting.send_epoch(params.epoch)?;
-                let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
-                to_stats_collecting.send_hashrate(hashrate)?;
+                if let Some(core_id) = core_id {
+                    let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
+                    to_stats_collecting.send_hashrate(hashrate)?;
+                }
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -196,13 +204,15 @@ impl ProvingThreadSync {
 
                 to_async.notify_dataset_initialized()?;
 
-                let hashrate = ThreadHashrateRecord::dataset_initialization(
-                    core_id,
-                    duration,
-                    params.start_item,
-                    params.items_count,
-                );
-                to_stats_collecting.send_hashrate(hashrate)?;
+                if let Some(core_id) = core_id {
+                    let hashrate = ThreadHashrateRecord::dataset_initialization(
+                        core_id,
+                        duration,
+                        params.start_item,
+                        params.items_count,
+                    );
+                    to_stats_collecting.send_hashrate(hashrate)?;
+                }
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -216,6 +226,7 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::PinThread(params) => {
+                let core_id = core_id.expect("cannot pin thread without a valid core_id");
                 if let Err(error) = msr_enforcer.cease(core_id) {
                     to_state_operating.send_error(core_id, error.into())?;
                 }
@@ -238,8 +249,10 @@ impl ProvingThreadSync {
             }
 
             AsyncToSyncMessage::Stop => {
-                if let Err(error) = msr_enforcer.cease(core_id) {
-                    to_state_operating.send_error(core_id, error.into())?;
+                if let Some(core_id) = core_id {
+                    if let Err(error) = msr_enforcer.cease(core_id) {
+                        to_state_operating.send_error(core_id, error.into())?;
+                    }
                 }
 
                 Ok(ThreadState::Stop)

@@ -20,8 +20,9 @@ ccp-shared.workspace = true
 ccp-utils.workspace = true
 cpu-utils.workspace = true
 
+serde.workspace = true
 tokio.workspace = true
-tokio.features = ["time", "io-util"]
+tokio.features = ["time", "io-util", "fs"]
 futures.workspace = true
 
 anyhow.workspace = true

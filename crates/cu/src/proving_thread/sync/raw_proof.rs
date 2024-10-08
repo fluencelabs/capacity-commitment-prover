@@ -15,8 +15,10 @@
  */
 
 use ccp_shared::types::*;
+use serde::Deserialize;
+use serde::Serialize;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct RawProof {
     pub epoch: EpochParameters,
     pub local_nonce: LocalNonce,
