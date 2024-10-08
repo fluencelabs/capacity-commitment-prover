@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.0...ccp-v0.14.1) (2024-10-08)
+
+
+### Bug Fixes
+
+* **shared:** fix crate publishing ([#181](https://github.com/fluencelabs/capacity-commitment-prover/issues/181)) ([bad46e7](https://github.com/fluencelabs/capacity-commitment-prover/commit/bad46e7c0b980e8920614276602ebf0551689aff))
+
 ## [0.14.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.4...ccp-v0.14.0) (2024-10-08)
 
 
