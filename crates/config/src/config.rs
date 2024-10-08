@@ -16,28 +16,32 @@
 
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::LogicalCoreId;
+use serde::Serialize;
+use serde_with::serde_as;
+use serde_with::skip_serializing_none;
 
 use crate::defaults::default_control_queue_size;
 use crate::defaults::default_cumulative_hashrate_update_interval_secs;
 use crate::defaults::default_facade_queue_size;
 use crate::defaults::default_log_level;
+use crate::defaults::default_log_print_config;
 use crate::defaults::default_msr_enabled;
 use crate::defaults::default_report_hashrate;
 use crate::defaults::default_utility_queue_size;
 use crate::unresolved_config::UnresolvedWorkers;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CCPConfig {
     pub rpc_endpoint: RpcEndpoint,
     pub prometheus_endpoint: Option<PrometheusEndpoint>,
     pub optimizations: Optimizations,
     pub logs: Logs,
-    pub state_dir: std::path::PathBuf,
     pub workers: Workers,
     pub tokio: Tokio,
+    pub state_dir: std::path::PathBuf,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct RpcEndpoint {
     pub host: String,
     pub port: u16,
@@ -46,24 +50,28 @@ pub struct RpcEndpoint {
     pub control_queue_size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct PrometheusEndpoint {
     pub host: String,
     pub port: u16,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[serde_as]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Optimizations {
+    #[serde(serialize_with = "serialize_debug")]
     pub randomx_flags: RandomXFlags,
     pub threads_per_core_policy: ThreadsPerCoreAllocationPolicy,
     pub msr_enabled: bool,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
 pub struct Logs {
     pub report_hashrate: bool,
     pub cumulative_hashrate_update_interval_secs: f64,
+    #[serde(serialize_with = "serialize_debug")]
     pub log_level: tracing_subscriber::filter::LevelFilter,
+    pub print_config: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -71,12 +79,12 @@ pub struct SimpleLogs {
     pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct State {
     pub state_dir: std::path::PathBuf,
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub enum ThreadsPerCoreAllocationPolicy {
     /// CCP will try to run the optimal amount of threads per core,
     /// trying to utilize all benefits of HT and SMT.
@@ -88,7 +96,7 @@ pub enum ThreadsPerCoreAllocationPolicy {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Workers {
     pub hashes_per_round: usize,
     pub async_to_sync_queue_size: usize,
@@ -96,7 +104,8 @@ pub struct Workers {
     pub dataset_chunk_size: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, PartialEq, Eq, Default, Serialize)]
 pub struct Tokio {
     pub worker_threads: Option<usize>,
     pub max_blocking_threads: Option<usize>,
@@ -132,6 +141,7 @@ impl Default for Logs {
             cumulative_hashrate_update_interval_secs:
                 default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level().to_tracing_filter(),
+            print_config: default_log_print_config(),
         }
     }
 }
@@ -140,4 +150,12 @@ impl Default for Workers {
     fn default() -> Self {
         UnresolvedWorkers::default().resolve()
     }
+}
+
+fn serialize_debug<S, T>(value: &T, _s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+    T: std::fmt::Debug,
+{
+    _s.serialize_str(&format!("{value:?}"))
 }

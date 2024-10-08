@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.4](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.3...ccp-v0.13.4) (2024-10-02)
+
+
+### Features
+
+* **ccp:** more dev UX improvements ([#177](https://github.com/fluencelabs/capacity-commitment-prover/issues/177)) ([3574a6f](https://github.com/fluencelabs/capacity-commitment-prover/commit/3574a6f065baf0736a68e6bc0df64766457ce4c4))
+
 ## [0.13.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.13.2...ccp-v0.13.3) (2024-09-19)
 
 

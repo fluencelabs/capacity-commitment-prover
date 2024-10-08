@@ -289,7 +289,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "axum",
  "ccp-config",
@@ -324,19 +324,20 @@ dependencies = [
 
 [[package]]
 name = "ccp-config"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
  "config",
  "eyre",
  "serde",
+ "serde_with",
  "tracing-subscriber",
 ]
 
 [[package]]
 name = "ccp-cu"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "anyhow",
  "ccp-config",
@@ -405,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp",
  "ccp-config",
@@ -417,6 +418,7 @@ dependencies = [
  "eyre",
  "tokio",
  "tokio-util",
+ "toml",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -424,7 +426,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -439,7 +441,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "bitflags 2.5.0",
  "ccp-shared",
@@ -453,7 +455,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -464,7 +466,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "async-trait",
  "ccp",
@@ -479,7 +481,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "hex",
  "newtype_derive",
@@ -490,7 +492,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -500,7 +502,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -642,7 +644,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
 name = "cpu-utils"
-version = "0.13.3"
+version = "0.13.4"
 dependencies = [
  "ccp-shared",
  "ccp_core_affinity",
@@ -1114,7 +1116,7 @@ dependencies = [
  "futures-sink",
  "futures-util",
  "http 1.1.0",
- "indexmap 2.2.3",
+ "indexmap 2.5.0",
  "slab",
  "tokio",
  "tokio-util",
@@ -1379,9 +1381,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.2.3"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "233cf39063f058ea2caae4091bf4a3ef70a653afbc026f5c4a4135d114e3c177"
+checksum = "68b900aa2f7301e21c36462b170ee99994de34dff39a4a6a528e80e7376d07e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.3",
@@ -1962,7 +1964,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 2.2.3",
+ "indexmap 2.5.0",
 ]
 
 [[package]]
@@ -2550,9 +2552,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.5"
+version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb3622f419d1296904700073ea6cc23ad690adbd66f13ea683df73298736f0c1"
+checksum = "eb5b1b31579f3811bf615c144393417496f152e12ac8b7663bf664f4a815306d"
 dependencies = [
  "serde",
 ]
@@ -2579,7 +2581,7 @@ dependencies = [
  "chrono",
  "hex",
  "indexmap 1.9.3",
- "indexmap 2.2.3",
+ "indexmap 2.5.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -2965,36 +2967,23 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.2"
+version = "0.8.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "185d8ab0dfbb35cf1399a6344d8484209c088f75f8f68230da55d48d95d43e3d"
+checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
 dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.20.2",
+ "toml_edit 0.22.21",
 ]
 
 [[package]]
 name = "toml_datetime"
-version = "0.6.6"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4badfd56924ae69bcc9039335b2e017639ce3f9b001c393c1b2d1ef846ce2cbf"
+checksum = "0dd7358ecb8fc2f8d014bf86f6f638ce72ba252a2c3a2572f2a795f1d23efb41"
 dependencies = [
  "serde",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "396e4d48bbb2b7554c944bde63101b5ae446cff6ec4a24227428f15eb72ef338"
-dependencies = [
- "indexmap 2.2.3",
- "serde",
- "serde_spanned",
- "toml_datetime",
- "winnow",
 ]
 
 [[package]]
@@ -3003,9 +2992,22 @@ version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
 dependencies = [
- "indexmap 2.2.3",
+ "indexmap 2.5.0",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b072cee73c449a636ffd6f32bd8de3a9f7119139aff882f44943ce2986dc5cf"
+dependencies = [
+ "indexmap 2.5.0",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow 0.6.18",
 ]
 
 [[package]]
@@ -3500,6 +3502,15 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr 2.7.1",
+]
+
+[[package]]
+name = "winnow"
+version = "0.6.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68a9bda4691f099d435ad181000724da8e5899daa10713c2d432552b9ccd3a6f"
 dependencies = [
  "memchr 2.7.1",
 ]
