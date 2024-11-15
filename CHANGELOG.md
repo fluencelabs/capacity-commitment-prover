@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.1...ccp-v0.14.2) (2024-11-15)
+
+
+### Features
+
+* **shared:** add an optional `arbitrary` support ([#183](https://github.com/fluencelabs/capacity-commitment-prover/issues/183)) ([3e17b19](https://github.com/fluencelabs/capacity-commitment-prover/commit/3e17b19ad7760745cc2a5c85b510bcc0d7674fb4))
+
 ## [0.14.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.0...ccp-v0.14.1) (2024-10-08)
 
 
