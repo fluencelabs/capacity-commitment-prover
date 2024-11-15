@@ -24,12 +24,14 @@ pub type CPUIdType = u32;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct PhysicalCoreId(CPUIdType);
 
 /// An opaque type that represents a CPU logical core.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 #[repr(transparent)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct LogicalCoreId(CPUIdType);
 
 newtype_derive::NewtypeFrom! { () pub struct PhysicalCoreId(CPUIdType); }

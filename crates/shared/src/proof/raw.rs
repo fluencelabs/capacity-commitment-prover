@@ -19,6 +19,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct RawProof {
     pub epoch: EpochParameters,
     pub local_nonce: LocalNonce,

@@ -23,6 +23,7 @@ use serde::Serialize;
 #[derive(
     Debug, Copy, Clone, Hash, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize,
 )]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(transparent)]
 #[serde(transparent)]
 pub struct ProofIdx(u64);

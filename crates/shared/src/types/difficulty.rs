@@ -26,6 +26,7 @@ use crate::RANDOMX_RESULT_SIZE;
 pub type DifficultyInner = [u8; RANDOMX_RESULT_SIZE];
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(transparent)]
 pub struct Difficulty(DifficultyInner);
 

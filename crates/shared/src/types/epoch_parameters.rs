@@ -23,6 +23,7 @@ use crate::types::GlobalNonce;
 
 /// Describes a single epoch, contains global parameters, which come from the on-chain part.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct EpochParameters {
     pub global_nonce: GlobalNonce,
     pub difficulty: Difficulty,
