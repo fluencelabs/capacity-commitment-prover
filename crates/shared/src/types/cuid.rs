@@ -26,6 +26,7 @@ pub type CUIDInner = [u8; 32];
 #[derive(
     Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr, Default, PartialOrd, Ord,
 )]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(transparent)]
 pub struct CUID(CUIDInner);
 

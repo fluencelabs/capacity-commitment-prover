@@ -48,6 +48,7 @@ hwlocality = "1.0.0-alpha.1"
 ccp_core_affinity = "0.8.1"
 
 anyhow = "1.0"
+arbitrary = "1.4.1"
 backoff = "0.4.0"
 bitflags = "2.4"
 byteorder = "1.5"

@@ -28,6 +28,7 @@ pub type ResultHashInner = [u8; RANDOMX_RESULT_SIZE];
 #[derive(
     Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, SerializeDisplay, DeserializeFromStr,
 )]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(transparent)]
 pub struct ResultHash(ResultHashInner);
 

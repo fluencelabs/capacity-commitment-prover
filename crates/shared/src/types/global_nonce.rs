@@ -24,6 +24,7 @@ use serde_with::SerializeDisplay;
 pub type GlobalNonceInner = [u8; 32];
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, SerializeDisplay, DeserializeFromStr)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[repr(transparent)]
 pub struct GlobalNonce(GlobalNonceInner);
 

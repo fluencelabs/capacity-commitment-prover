@@ -25,6 +25,7 @@ use crate::types;
 
 /// Uniquely identifies a proof.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct CCProofId {
     pub global_nonce: types::GlobalNonce,
     pub difficulty: types::Difficulty,
@@ -34,6 +35,7 @@ pub struct CCProofId {
 
 /// Contains all necessary information to submit proof to verify it.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct CCProof {
     pub id: CCProofId,
     pub local_nonce: types::LocalNonce,
