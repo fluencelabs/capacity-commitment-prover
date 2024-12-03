@@ -77,30 +77,6 @@ jobs:
           path: target/${{ matrix.target }}/release/ccp
           if-no-files-found: error
 
-      - name: Import secrets
-        uses: hashicorp/vault-action@v3.0.0
-        with:
-          url: https://vault.fluence.dev
-          path: jwt/github
-          role: ci
-          method: jwt
-          jwtGithubAudience: "https://github.com/fluencelabs"
-          jwtTtl: 300
-          secrets: |
-            kv/ci/fluence-artifacts id | AWS_ACCESS_KEY_ID ;
-            kv/ci/fluence-artifacts secret | AWS_SECRET_ACCESS_KEY
-
-      - name: Rename ccp binary
-        run: |
-          mkdir -p s3
-          cp target/${{ matrix.target }}/release/ccp s3/ccp-${{ matrix.arch }}
-
-      - name: Upload ccp snapshot to s3
-        env:
-          AWS_REGION: eu-west-1
-          BRANCH: ${{ github.head_ref }}
-        run: aws s3 cp s3/ccp-${{ matrix.arch }} s3://fluence-artifacts/ccp/snapshots/${{ env.BRANCH }}/ --acl public-read
-
   container:
     name: "Build container image"
     runs-on: ubuntu-latest

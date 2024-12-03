@@ -1,0 +1,93 @@
+name: "Build binary"
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "git ref to checkout to"
+        type: string
+        default: "main"
+
+jobs:
+  build:
+    name: "Build (${{ matrix.arch }})"
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+
+    env:
+      RUSTFLAGS: "-C link-arg=-B/usr/local/bin/mold"
+      RUSTC_WRAPPER: "sccache"
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            target: x86_64-unknown-linux-gnu
+            runner: linux-amd64-m-xlarge
+          - arch: arm64
+            target: aarch64-unknown-linux-gnu
+            runner: linux-arm64-m-xlarge
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: fluencelabs/ccp
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Rust toolchain
+        uses: dsherret/rust-toolchain-file@v1
+
+      - name: Setup mold linker
+        uses: rui314/setup-mold@v1
+        with:
+          make-default: false
+
+      - name: Setup cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-directories: ~/.cache/sccache
+          save-if: true
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - name: Build ccp
+        run: cargo build --profile=release -p ccp-main --target ${{ matrix.target }}
+
+      - name: Build ccp-cu-worker
+        run: cargo build --profile=release -p ccp-cu-worker-bin --target ${{ matrix.target }}
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccp-${{ matrix.arch }}
+          path: |
+            target/${{ matrix.target }}/release/ccp
+            target/${{ matrix.target }}/release/ccp-cu-worker
+
+      - name: Import secrets
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          secrets: |
+            kv/ci/fluence-artifacts id | AWS_ACCESS_KEY_ID ;
+            kv/ci/fluence-artifacts secret | AWS_SECRET_ACCESS_KEY
+
+      - name: Rename ccp binary
+        run: |
+          mkdir -p s3
+          cp target/${{ matrix.target }}/release/ccp s3/ccp-${{ matrix.arch }}
+
+      - name: Upload ccp snapshot to s3
+        env:
+          AWS_REGION: eu-west-1
+          BRANCH: ${{ github.head_ref }}
+        run: aws s3 cp s3/ccp-${{ matrix.arch }} s3://fluence-artifacts/ccp/snapshots/${{ env.BRANCH }}/ --acl public-read
+
