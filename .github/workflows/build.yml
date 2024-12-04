@@ -58,7 +58,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.6
 
       - name: Setup musl-tools
-        run: apt install musl-tools -y
+        run: sudo apt-get install musl-tools -y
 
       - name: Build ccp
         run: cargo build --profile=release -p ccp-main --target ${{ matrix.target }}
