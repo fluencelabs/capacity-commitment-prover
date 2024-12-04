@@ -17,20 +17,16 @@ jobs:
     env:
       RUSTFLAGS: "-C link-arg=-B/usr/local/bin/mold"
       RUSTC_WRAPPER: "sccache"
-      CC_aarch64_unknown_linux_musl: clang
-      AR_aarch64_unknown_linux_musl: llvm-ar
-      CC_x86_64_unknown_linux_musl: clang
-      AR_x86_64_unknown_linux_musl: llvm-ar
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
-            target: x86_64-unknown-linux-musl
+            target: x86_64-unknown-linux-gnu
             runner: linux-amd64-c-2xlarge
           - arch: arm64
-            target: aarch64-unknown-linux-musl
+            target: aarch64-unknown-linux-gnu
             runner: linux-arm64-c-2xlarge
 
     steps:
@@ -56,9 +52,6 @@ jobs:
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.6
-
-      - name: Setup musl-tools
-        run: sudo apt-get install musl-tools -y
 
       - name: Build ccp
         run: cargo build --profile=release -p ccp-main --target ${{ matrix.target }}
