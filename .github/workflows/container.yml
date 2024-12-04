@@ -80,7 +80,7 @@ jobs:
           release: ${{ inputs.release }}
           branch: ${{ steps.version.outputs.branch }}
         run: |
-          if [[ ${ref} == "main" ]]; then
+          if [[ ${branch} == "main" ]]; then
             echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
             echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
             echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
