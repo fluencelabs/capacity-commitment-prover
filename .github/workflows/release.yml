@@ -123,19 +123,18 @@ jobs:
             --from-git \
             --yes
 
-  ccp:
+  build:
     if: needs.release-please.outputs.release-created
     needs: release-please
-    uses: ./.github/workflows/artifact.yml
+    uses: ./.github/workflows/build.yml
     with:
       ref: ${{ needs.release-please.outputs.tag-name }}
-      image: "fluencelabs/ccp"
 
-  ccp_cu_worker:
-    if: needs.release-please.outputs.release-created
-    needs: release-please
-    uses: ./.github/workflows/artifact_cu_worker.yml
+  container:
+    needs: build
+    uses: ./.github/workflows/container.yml
     with:
+      release: true
       ref: ${{ needs.release-please.outputs.tag-name }}
 
   publish:
@@ -145,7 +144,8 @@ jobs:
 
     needs:
       - release-please
-      - ccp
+      - build
+      - container
 
     permissions:
       contents: write
