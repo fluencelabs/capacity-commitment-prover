@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 60
 
     outputs:
-      ccp-cu-image: "${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}"
+      ccp-image: "${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}"
       ccp-cu-worker-image: "${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}"
 
     permissions:
