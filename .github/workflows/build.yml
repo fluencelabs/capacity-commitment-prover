@@ -35,6 +35,7 @@ jobs:
         with:
           repository: fluencelabs/ccp
           ref: ${{ inputs.ref }}
+          submodules: recursive
 
       - name: Setup Rust toolchain
         uses: dsherret/rust-toolchain-file@v1
