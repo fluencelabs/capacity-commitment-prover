@@ -78,7 +78,7 @@ jobs:
         id: artifacts
         env:
           release: ${{ inputs.release }}
-          ref: ${{ inputs.ref }}
+          branch: ${{ steps.version.outputs.branch }}
         run: |
           if [[ ${ref} == "main" ]]; then
             echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
