@@ -10,24 +10,28 @@ on:
 
 jobs:
   build:
-    name: "Build (${{ matrix.arch }})"
+    name: "Build binary (${{ matrix.arch }})"
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
 
     env:
       RUSTFLAGS: "-C link-arg=-B/usr/local/bin/mold"
       RUSTC_WRAPPER: "sccache"
+      CC_aarch64_unknown_linux_musl: clang
+      AR_aarch64_unknown_linux_musl: llvm-ar
+      CC_x86_64_unknown_linux_musl: clang
+      AR_x86_64_unknown_linux_musl: llvm-ar
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
-            target: x86_64-unknown-linux-gnu
-            runner: linux-amd64-m-xlarge
+            target: x86_64-unknown-linux-musl
+            runner: linux-amd64-c-2xlarge
           - arch: arm64
-            target: aarch64-unknown-linux-gnu
-            runner: linux-arm64-m-xlarge
+            target: aarch64-unknown-linux-musl
+            runner: linux-arm64-c-2xlarge
 
     steps:
       - name: Checkout repository
@@ -90,4 +94,3 @@ jobs:
           AWS_REGION: eu-west-1
           BRANCH: ${{ github.head_ref }}
         run: aws s3 cp s3/ccp-${{ matrix.arch }} s3://fluence-artifacts/ccp/snapshots/${{ env.BRANCH }}/ --acl public-read
-
