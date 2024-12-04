@@ -70,7 +70,7 @@ jobs:
           name: ccp-${{ matrix.arch }}
           path: |
             target/${{ matrix.target }}/release/ccp
-            target/${{ matrix.target }}/release/ccp-cu-worker
+            target/${{ matrix.target }}/release/ccp_cu_worker
 
       - name: Import secrets
         uses: hashicorp/vault-action@v3.0.0

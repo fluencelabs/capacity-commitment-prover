@@ -10,13 +10,11 @@ on:
       release:
         type: string
         default: "false"
-      image-name:
-        description: "image name"
-        type: string
-        required: true
     outputs:
-      image:
-        value: ${{ jobs.publish.outputs.image }}
+      ccp-image:
+        value: ${{ jobs.publish.outputs.ccp-image }}
+      ccp-cu-worker-image:
+        value: ${{ jobs.publish.outputs.ccp-cu-worker-image }}
 
 jobs:
   publish:
@@ -25,7 +23,8 @@ jobs:
     timeout-minutes: 60
 
     outputs:
-      image: "${{ inputs.image-name }}@${{ steps.docker.outputs.digest }}"
+      ccp-cu-image: "${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}"
+      ccp-cu-worker-image: "${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}"
 
     permissions:
       contents: read
@@ -79,14 +78,24 @@ jobs:
         id: artifacts
         env:
           release: ${{ inputs.release }}
+          ref: ${{ inputs.ref }}
         run: |
           if [[ ${release} == "false" ]]; then
-            echo "image=docker.fluence.dev/vodopad:${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
-            echo "latest=docker.fluence.dev/vodopad:${{ steps.version.outputs.branch }}" >> "$GITHUB_OUTPUT"
+            echo "ccp-repo=docker.fluence.dev/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=docker.fluence.dev/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=${{ steps.version.outputs.branch }}" >> "$GITHUB_OUTPUT"
+          if [[ ${ref} == "main" ]]; then
+            echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=main" >> "$GITHUB_OUTPUT"
           else
-            version="$(jq -r '."."' .github/release-please/manifest.json)"
-            echo "image=fluencelabs/vodopad:${version}" >> "$GITHUB_OUTPUT"
-            echo "latest=fluencelabs/vodopad:latest" >> "$GITHUB_OUTPUT"
+            version="$(jq -r .[] .github/release-please/manifest.json)"
+            echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${version}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up QEMU
@@ -97,31 +106,52 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
 
-      - name: Build and push container image
-        id: docker
+      - name: Build and push ccp image
         uses: docker/build-push-action@v6
+        id: ccp
         with:
           context: ./docker
           push: true
+          target: ccp
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ steps.artifacts.outputs.image }}
-            ${{ steps.artifacts.outputs.latest }}
+            ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}
+            ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.latest-tag }}
           labels: |
             branch=${{ steps.version.outputs.branch }}
             sha=${{ steps.version.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+      - name: Build and push ccp-cu-worker image image
+        uses: docker/build-push-action@v6
+        id: ccp-cu-worker
+        with:
+          context: ./docker
+          push: true
+          target: ccp-cu-worker
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}
+            ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          labels: |
+            branch=${{ steps.version.outputs.branch }}
+            sha=${{ steps.version.outputs.sha }}
 
       - name: Print results to check summary
         if: always()
         run: |
           cat <<'SNAPSHOT' >> $GITHUB_STEP_SUMMARY
-          ## vodopad
-          digest: `${{ steps.docker.outputs.digest }}`
+          ## ccp
+          digest: `${{ steps.ccp.outputs.digest }}`
           ```
-          ${{ steps.artifacts.outputs.image }}
-          ${{ steps.artifacts.outputs.latest }}
+          ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}
+          ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          ```
+
+          ## ccp-cu-worker
+          digest: `${{ steps.ccp-cu-worker.outputs.digest }}`
+          ```
+          ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}
+          ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.latest-tag }}
           ```
 
           ### Access to Fluence docker registry

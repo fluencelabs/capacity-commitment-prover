@@ -1,5 +1,5 @@
 # base image
-FROM ubuntu:jammy
+FROM ubuntu:jammy as base
 
 ARG TARGETARCH
 ARG VERSION="0.14.2" x-release-please-version
@@ -28,11 +28,25 @@ RUN \
   	/var/lib/apt/lists/* \
   	/var/tmp/*
 
+FROM base as ccp
 # copy binary
 COPY ./binaries/ccp-${TARGETARCH}/ccp /usr/bin/ccp
 RUN chmod +x /usr/bin/ccp
 # copy default ccp config
-COPY Config.default.toml /fluence/Config.toml
+COPY Config.ccp.toml /fluence/Config.toml
+# copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+
+VOLUME /fluence/data
+
+ENTRYPOINT ["/entrypoint.sh"]
+
+FROM base as ccp-cu-worker
+# copy binary
+COPY ./binaries/ccp-${TARGETARCH}/ccp_cu_worker /usr/bin/ccp
+RUN chmod +x /usr/bin/ccp
+# copy default ccp config
+COPY Config.ccp-cu-worker.toml /fluence/Config.toml
 # copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 
