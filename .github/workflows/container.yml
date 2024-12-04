@@ -80,22 +80,22 @@ jobs:
           release: ${{ inputs.release }}
           ref: ${{ inputs.ref }}
         run: |
-          if [[ ${release} == "false" ]]; then
-            echo "ccp-repo=docker.fluence.dev/ccp" >> "$GITHUB_OUTPUT"
-            echo "ccp-cu-worker-repo=docker.fluence.dev/ccp-cu-worker" >> "$GITHUB_OUTPUT"
-            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
-            echo "latest-tag=${{ steps.version.outputs.branch }}" >> "$GITHUB_OUTPUT"
           if [[ ${ref} == "main" ]]; then
             echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
             echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
             echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
             echo "latest-tag=main" >> "$GITHUB_OUTPUT"
-          else
+          elif [[ ${release} == "true" ]]; then
             version="$(jq -r .[] .github/release-please/manifest.json)"
             echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
             echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
             echo "tag=${version}" >> "$GITHUB_OUTPUT"
             echo "latest-tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "ccp-repo=docker.fluence.dev/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=docker.fluence.dev/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=${{ steps.version.outputs.branch }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up QEMU
