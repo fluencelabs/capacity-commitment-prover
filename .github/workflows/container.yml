@@ -34,7 +34,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: fluencelabs/vodopad
+          repository: fluencelabs/ccp
           ref: ${{ inputs.ref }}
 
       - name: Import secrets
