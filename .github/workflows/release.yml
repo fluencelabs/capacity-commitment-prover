@@ -131,10 +131,12 @@ jobs:
       ref: ${{ needs.release-please.outputs.tag-name }}
 
   container:
-    needs: build
+    needs: 
+      - release-please
+      - build
     uses: ./.github/workflows/container.yml
     with:
-      release: true
+      release: "true"
       ref: ${{ needs.release-please.outputs.tag-name }}
 
   publish:
