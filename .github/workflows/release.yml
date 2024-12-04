@@ -147,7 +147,6 @@ jobs:
     needs:
       - release-please
       - build
-      - container
 
     permissions:
       contents: write
@@ -188,7 +187,7 @@ jobs:
           done
 
       - name: Upload binaries to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ./docker/ccp-amd64
@@ -208,13 +207,8 @@ jobs:
           username: ${{ env.DOCKER_HUB_USERNAME }}
           password: ${{ env.DOCKER_HUB_PASSWORD }}
 
-      - name: Add latest tag to container image
-        env:
-          VERSION: ${{ needs.release-please.outputs.version }}
-        run: docker buildx imagetools create -t fluencelabs/ccp:latest fluencelabs/ccp:${{ env.VERSION }}
-
       - name: Update release notes
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release-please.outputs.tag-name }}
           append_body: true
@@ -223,8 +217,13 @@ jobs:
             ## Docker tags
 
             ```
+            # ccp
             fluencelabs/ccp:latest
             fluencelabs/ccp:${{ needs.release-please.outputs.version }}
+
+            # ccp-cu-worker
+            fluencelabs/ccp-cu-worker:latest
+            fluencelabs/ccp-cu-worker:${{ needs.release-please.outputs.version }}
 
             ```
 
@@ -236,7 +235,8 @@ jobs:
     needs:
       - release-please
       - crates
-      - ccp
+      - build
+      - container
       - publish
 
     permissions:
