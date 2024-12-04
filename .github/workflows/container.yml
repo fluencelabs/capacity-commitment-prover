@@ -1,0 +1,162 @@
+name: Publish container image
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "git ref to checkout to"
+        type: string
+        default: "main"
+      release:
+        type: string
+        default: "false"
+    outputs:
+      ccp-image:
+        value: ${{ jobs.publish.outputs.ccp-image }}
+      ccp-cu-worker-image:
+        value: ${{ jobs.publish.outputs.ccp-cu-worker-image }}
+
+jobs:
+  publish:
+    name: "Publish image"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    outputs:
+      ccp-image: "${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}"
+      ccp-cu-worker-image: "${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}"
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: fluencelabs/ccp
+          ref: ${{ inputs.ref }}
+
+      - name: Import secrets
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: https://vault.fluence.dev
+          path: jwt/github
+          role: ci
+          method: jwt
+          jwtGithubAudience: "https://github.com/fluencelabs"
+          jwtTtl: 300
+          secrets: |
+            kv/hub.docker.com/fluencebot username | DOCKER_HUB_USERNAME ;
+            kv/hub.docker.com/fluencebot password | DOCKER_HUB_PASSWORD ;
+            kv/docker-registry/basicauth/ci username | DOCKER_USERNAME ;
+            kv/docker-registry/basicauth/ci password | DOCKER_PASSWORD
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+
+      - name: Login to private docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: docker.fluence.dev
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ env.DOCKER_PASSWORD }}
+
+      - name: Download binary
+        uses: actions/download-artifact@v4
+        with:
+          path: docker/binaries
+
+      - name: Generate snapshot version
+        id: version
+        uses: fluencelabs/github-actions/generate-snapshot-id@main
+
+      - name: Construct artifacts names
+        id: artifacts
+        env:
+          release: ${{ inputs.release }}
+          ref: ${{ inputs.ref }}
+        run: |
+          if [[ ${ref} == "main" ]]; then
+            echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=main" >> "$GITHUB_OUTPUT"
+          elif [[ ${release} == "true" ]]; then
+            version="$(jq -r .[] .github/release-please/manifest.json)"
+            echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${version}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            echo "ccp-repo=docker.fluence.dev/ccp" >> "$GITHUB_OUTPUT"
+            echo "ccp-cu-worker-repo=docker.fluence.dev/ccp-cu-worker" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
+            echo "latest-tag=${{ steps.version.outputs.branch }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push ccp image
+        uses: docker/build-push-action@v6
+        id: ccp
+        with:
+          context: ./docker
+          push: true
+          target: ccp
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}
+            ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          labels: |
+            branch=${{ steps.version.outputs.branch }}
+            sha=${{ steps.version.outputs.sha }}
+
+      - name: Build and push ccp-cu-worker image image
+        uses: docker/build-push-action@v6
+        id: ccp-cu-worker
+        with:
+          context: ./docker
+          push: true
+          target: ccp-cu-worker
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}
+            ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          labels: |
+            branch=${{ steps.version.outputs.branch }}
+            sha=${{ steps.version.outputs.sha }}
+
+      - name: Print results to check summary
+        if: always()
+        run: |
+          cat <<'SNAPSHOT' >> $GITHUB_STEP_SUMMARY
+          ## ccp
+          digest: `${{ steps.ccp.outputs.digest }}`
+          ```
+          ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.tag }}
+          ${{ steps.artifacts.outputs.ccp-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          ```
+
+          ## ccp-cu-worker
+          digest: `${{ steps.ccp-cu-worker.outputs.digest }}`
+          ```
+          ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.tag }}
+          ${{ steps.artifacts.outputs.ccp-cu-worker-repo }}:${{ steps.artifacts.outputs.latest-tag }}
+          ```
+
+          ### Access to Fluence docker registry
+          ```
+          vault read kv/basicauth/dev
+          docker login docker.fluence.dev
+          ```
+          SNAPSHOT

@@ -6,7 +6,8 @@ on:
       - "**.md"
       - ".github/**"
       - "!.github/workflows/e2e.yml"
-      - "!.github/workflows/artifact.yml"
+      - "!.github/workflows/container.yml"
+      - "!.github/workflows/build.yml"
     types:
       - "labeled"
       - "synchronize"
@@ -19,31 +20,27 @@ on:
       - "**.md"
       - ".github/**"
       - "!.github/workflows/e2e.yml"
-      - "!.github/workflows/artifact.yml"
+      - "!.github/workflows/container.yml"
+      - "!.github/workflows/build.yml"
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
-  ccp:
+  build:
     if: >
       github.event_name == 'push' ||
       (
         contains(github.event.pull_request.labels.*.name, 'e2e') &&
         !github.event.pull_request.head.repo.fork
       )
-    uses: ./.github/workflows/artifact.yml
+    uses: ./.github/workflows/build.yml
     with:
       ref: ${{ github.ref }}
 
-  ccp_cu_worker:
-    if: >
-      github.event_name == 'push' ||
-      (
-        contains(github.event.pull_request.labels.*.name, 'e2e') &&
-        !github.event.pull_request.head.repo.fork
-      )
-    uses: ./.github/workflows/artifact_cu_worker.yml
+  container:
+    needs: build
+    uses: ./.github/workflows/container.yml
     with:
       ref: ${{ github.ref }}
