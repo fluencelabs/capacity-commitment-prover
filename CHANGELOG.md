@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.2...ccp-v0.14.3) (2024-12-10)
+
+
+### Features
+
+* **rpc-client:** add gRPC descriptor set ([#189](https://github.com/fluencelabs/capacity-commitment-prover/issues/189)) ([92d0fbb](https://github.com/fluencelabs/capacity-commitment-prover/commit/92d0fbbf3174ad3300766515d918d763944cb7d7))
+
 ## [0.14.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.1...ccp-v0.14.2) (2024-11-15)
 
 
