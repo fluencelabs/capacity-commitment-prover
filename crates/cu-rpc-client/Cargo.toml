@@ -25,4 +25,4 @@ tower = "0.4"
 thiserror.workspace = true
 
 [build-dependencies]
-tonic-build = "0.12.2"
+tonic-build = "0.12.3"

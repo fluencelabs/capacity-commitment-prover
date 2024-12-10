@@ -42,6 +42,9 @@ pub use crate::ccp_collector_rpc::RpcProof;
 pub mod ccp_collector_rpc {
     use crate::RawProof;
 
+    pub const COLLECTOR_DESCRIPTOR_SET: &[u8] =
+        tonic::include_file_descriptor_set!("collector_descriptor");
+
     tonic::include_proto!("cu_rpc_client");
 
     impl From<&RawProof> for RpcProof {
