@@ -63,7 +63,7 @@ envconfig = "0.10.0"
 eyre = "0.6.12"
 itertools = "0.12"
 jsonrpsee = { version = "0.23.0", features = ["client", "macros", "tokio", "server"] }
-tonic = "0.12.2"
+tonic = "0.12.3"
 rand = "0.8"
 raw-cpuid = "11.0.1"
 log = "0.4"
