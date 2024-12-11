@@ -45,6 +45,12 @@ impl MemoryDumper {
         // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
         // data needed for generation of other parts.
         let page_alignment = page_size::get();
+        if dump_len % page_alignment != 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "MemoryDumper dump_len has to be multiple of page_size".to_owned(),
+            ));
+        }
         let aligned_dump_start = dump_start.next_multiple_of(page_alignment);
         let aligned_dump_len = if aligned_dump_start == dump_start {
             dump_len
@@ -87,6 +93,10 @@ impl MemoryDumper {
 unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     if ret != 0 {
-        log::error!("freeing madvice ret: {}, errno {}. Ignoring.", ret, errno::errno());
+        log::error!(
+            "freeing madvice ret: {}, errno {}. Ignoring.",
+            ret,
+            errno::errno()
+        );
     }
 }
