@@ -35,6 +35,7 @@ tokio-util.workspace = true
 libc.workspace = true
 errno.workspace = true
 page_size.workspace = true
+sizes = "0.1.3"
 
 [dev-dependencies]
 ccp-test-utils.workspace = true
