@@ -34,7 +34,7 @@ const DEFAULT_PRINT_CONFIG: bool = false;
 const CUMULATIVE_HASHRATE_UPDATE_INTERVAL: f64 = 60.0;
 
 pub(crate) fn default_log_level() -> LogLevel {
-    LogLevel::Error
+    LogLevel::Info
 }
 
 pub(crate) fn default_report_hashrate() -> bool {
