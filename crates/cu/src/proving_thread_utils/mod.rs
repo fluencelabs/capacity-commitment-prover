@@ -18,6 +18,7 @@ mod allocator;
 mod round_robin_distributor;
 mod threads_distribution_policy;
 
+pub use allocator::CoreIdAllocation;
 pub(crate) use allocator::ThreadAllocator;
 pub(crate) use round_robin_distributor::RoundRobinDistributor;
 pub(crate) use threads_distribution_policy::ThreadDistributionPolicy;

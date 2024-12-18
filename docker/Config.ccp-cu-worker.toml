@@ -5,6 +5,7 @@
 # secure = false
 # argon2 = "default" # possible values are: "ssse3", "avx2" or "default"
 # msr = false
+# # Absent value is "autodetect"
 # threads-per-core = 2
 
 [workers]

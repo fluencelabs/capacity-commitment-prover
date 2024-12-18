@@ -12,8 +12,8 @@ Required variables:
 
 Optional variables:
 
-+ `OVERRIDE_THREADS_COUNT`: number of threads to run (1 by default, also can be changed by config,
-  but the variable has the highest priority).
++ `OVERRIDE_LOGICAL_CPU_LIST`: List of logical CPU ids to pin a worker thread to each. By default,
+   autodetection is used.
 + `CCP_LOG`: tracing configuration
 
 ## Config file

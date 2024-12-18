@@ -19,13 +19,12 @@ pub fn read_cpu_list_string() -> std::io::Result<String> {
     std::fs::read_to_string(LINUX_CPUSET_CPUS_PATH)
 }
 
-pub fn parse_cpu_list(content: &str) -> Result<HashSet<LogicalCoreId>, CpuListParserError> {
+pub fn parse_cpu_list(content: &str) -> Result<Vec<LogicalCoreId>, CpuListParserError> {
     if content.is_empty() {
-        return Ok(HashSet::new());
+        return Ok(vec![]);
     }
     let ranges = content
         .split(',')
-        .into_iter()
         .map(|group| match group.split_once('-') {
             Some((a, b)) => a
                 .trim()
@@ -39,11 +38,18 @@ pub fn parse_cpu_list(content: &str) -> Result<HashSet<LogicalCoreId>, CpuListPa
             error,
         })?;
 
-    Ok(ranges
+    // Remove possible duplicates.
+    let cpu_ids: HashSet<_> = ranges
         .into_iter()
         .flatten()
         .map(LogicalCoreId::new)
-        .collect())
+        .collect();
+
+    let mut cpu_ids: Vec<_> = cpu_ids.into_iter().collect();
+    // Make output prettier.
+    cpu_ids.sort_unstable();
+
+    Ok(cpu_ids)
 }
 
 #[cfg(test)]

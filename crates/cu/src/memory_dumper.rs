@@ -87,6 +87,10 @@ impl MemoryDumper {
 unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     if ret != 0 {
-        log::error!("freeing madvice ret: {}, errno {}. Ignoring.", ret, errno::errno());
+        log::error!(
+            "freeing madvice ret: {}, errno {}. Ignoring.",
+            ret,
+            errno::errno()
+        );
     }
 }

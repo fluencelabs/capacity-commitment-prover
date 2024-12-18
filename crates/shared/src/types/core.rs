@@ -47,6 +47,7 @@ impl PhysicalCoreId {
 }
 
 impl LogicalCoreId {
+    #[inline]
     pub const fn new(core_id: CPUIdType) -> Self {
         Self(core_id)
     }
