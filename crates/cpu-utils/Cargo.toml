@@ -23,3 +23,6 @@ nonempty.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 mockall = { workspace = true, optional = true }
+
+[dev-dependencies]
+maplit.workspace = true

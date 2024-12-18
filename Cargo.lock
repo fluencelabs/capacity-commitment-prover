@@ -671,6 +671,7 @@ dependencies = [
  "ccp-shared",
  "ccp_core_affinity",
  "hwlocality",
+ "maplit",
  "mockall",
  "nonempty",
  "serde",
