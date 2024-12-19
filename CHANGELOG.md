@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.15.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.3...ccp-v0.15.0) (2024-12-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ccp:** autodetect CU available logical cores ([#192](https://github.com/fluencelabs/capacity-commitment-prover/issues/192))
+
+### Features
+
+* **ccp:** autodetect CU available logical cores ([#192](https://github.com/fluencelabs/capacity-commitment-prover/issues/192)) ([4a76cb1](https://github.com/fluencelabs/capacity-commitment-prover/commit/4a76cb1a00d96c37c650c5b95abfc65bf707a955))
+* **ccp:** reduce disk usage on dataset generation ([#191](https://github.com/fluencelabs/capacity-commitment-prover/issues/191)) ([2ad865b](https://github.com/fluencelabs/capacity-commitment-prover/commit/2ad865b7933a2f55ce6c4bbe411fbd66cabfa38f))
+* **cfg:** default loglevel is info ([#193](https://github.com/fluencelabs/capacity-commitment-prover/issues/193)) ([5e37254](https://github.com/fluencelabs/capacity-commitment-prover/commit/5e37254f959601018ba1cdbe2436b4a707f4576a))
+
 ## [0.14.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.2...ccp-v0.14.3) (2024-12-10)
 
 
