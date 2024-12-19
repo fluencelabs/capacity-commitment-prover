@@ -21,6 +21,12 @@ use crate::flags::RandomXFlags;
 use crate::try_alloc;
 use crate::RResult;
 
+// constant that doesn't seems to ever change
+const ARGON_BLOCK_SIZE: u64 = 1024;
+// RandomX's configuration.h
+const RANDOMX_ARGON_MEMORY: u64 = 262144;
+pub const CACHE_LEN: u64 = RANDOMX_ARGON_MEMORY * ARGON_BLOCK_SIZE;
+
 #[derive(Debug)]
 pub struct Cache {
     inner: Arc<CacheInner>,

@@ -372,6 +372,7 @@ dependencies = [
  "page_size",
  "rand 0.8.5",
  "serde",
+ "sizes",
  "tempdir",
  "tempfile",
  "test-log",
@@ -2845,6 +2846,12 @@ checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "sizes"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "173037752f98025127681bd79f5012ba95018ea44e9fccc1096162001a112608"
 
 [[package]]
 name = "slab"

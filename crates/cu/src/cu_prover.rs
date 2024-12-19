@@ -16,6 +16,7 @@
 
 use std::path::PathBuf;
 
+use ccp_randomx::cache::CACHE_LEN;
 use ccp_randomx::Cache;
 use ccp_randomx::DATASET_ITEM_SIZE;
 use futures::future::BoxFuture;
@@ -187,7 +188,12 @@ impl CUProver {
         cancel_token: CancellationToken,
     ) -> CUResult<()> {
         let dataset_size = dataset.items_count();
-        let dataset_phase0_size = dataset_size / 4;
+
+        let cache_len = CACHE_LEN;
+
+        assert_eq!(sizes::MIB % DATASET_ITEM_SIZE, 0);
+        // Add extra MIB for alignment, rounding etc
+        let dataset_phase0_size = (cache_len + sizes::MIB) / DATASET_ITEM_SIZE;
         let dataset_phase1_size = dataset_size - dataset_phase0_size;
 
         let threads_number = self.threads.len() as u64;
