@@ -304,7 +304,7 @@ checksum = "02f341c093d19155a6e41631ce5971aac4e9a868262212153124c15fa22d1cdc"
 
 [[package]]
 name = "ccp"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "axum",
  "ccp-config",
@@ -339,7 +339,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-config"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-cu"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "anyhow",
  "ccp-config",
@@ -384,7 +384,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-cu-rpc-client"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -400,7 +400,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-cu-worker"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "backoff",
  "ccp-cu",
@@ -416,7 +416,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-cu-worker-bin"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-config",
  "ccp-cu",
@@ -436,7 +436,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-main"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp",
  "ccp-config",
@@ -456,7 +456,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-msr"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-config",
  "ccp-shared",
@@ -471,7 +471,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-randomx"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "bitflags 2.5.0",
  "ccp-shared",
@@ -485,7 +485,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-client"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-shared",
  "hex",
@@ -496,7 +496,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-rpc-server"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "async-trait",
  "ccp",
@@ -511,7 +511,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "arbitrary",
  "hex",
@@ -523,7 +523,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-test-utils"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-randomx",
  "ccp-shared",
@@ -533,7 +533,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-utils"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-shared",
  "futures",
@@ -675,7 +675,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
 name = "cpu-utils"
-version = "0.14.3"
+version = "0.15.0"
 dependencies = [
  "ccp-shared",
  "ccp_core_affinity",
