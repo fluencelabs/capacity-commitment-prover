@@ -17,6 +17,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use ccp_cu::CoreIdAllocation;
 use futures::future;
 use futures::FutureExt;
 use tokio::sync::mpsc;
@@ -258,7 +259,7 @@ impl CUGovernor {
                 to_state_operating,
                 to_stats_collecting,
                 msr_enforcer,
-                Some(state.new_core_id),
+                CoreIdAllocation::PhysicalCoreId(state.new_core_id),
                 temp_dir,
             )
             .await?;

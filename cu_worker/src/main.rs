@@ -1,6 +1,10 @@
 use std::path::PathBuf;
 
+use ccp_cu::CoreIdAllocation;
 use clap::Parser;
+use cpu_utils::cpusets::parse_cpu_list;
+use cpu_utils::cpusets::read_cpu_list_string;
+use cpu_utils::NonEmpty;
 use envconfig::Envconfig;
 use eyre::WrapErr as _;
 use tokio::{select, sync::mpsc};
@@ -10,10 +14,14 @@ use tracing_subscriber::EnvFilter;
 
 use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
-use ccp_cu::{CUProver, CUProverConfig};
+use ccp_cu::CUProver;
+use ccp_cu::CUProverConfig;
 use ccp_cu_worker::retry_client::RetryClient;
 use ccp_msr::MSRModeEnforcer;
-use ccp_shared::types::{Difficulty, EpochParameters, GlobalNonce, CUID};
+use ccp_shared::types::Difficulty;
+use ccp_shared::types::EpochParameters;
+use ccp_shared::types::GlobalNonce;
+use ccp_shared::types::CUID;
 
 // same as ccp_main crate
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
@@ -25,6 +33,7 @@ struct TaskParameters {
     cu_id: CUID,
     upstream: String,
     temp_dir: PathBuf,
+    override_logical_cpu_list: Option<String>,
 }
 
 #[derive(Parser)]
@@ -60,24 +69,25 @@ async fn main() -> eyre::Result<()> {
     let (to_stats_collecting, from_stats_collecting) = mpsc::channel(config.utility_queue_size);
     let (to_state_operating, from_state_operating) = mpsc::channel(config.utility_queue_size);
 
-    // dummy disabled instance
+    let core_allocation = get_core_allocation_from_sys(parameters.override_logical_cpu_list);
+    tracing::info!("Core allocation: {core_allocation}");
+
     let msr_enforcer = MSRModeEnforcer::from_os(false);
-    let core_id = None;
+    let dummy_cancellation_token = CancellationToken::new();
+    let epoch = EpochParameters::new(parameters.global_nonce, parameters.difficulty);
 
     let mut cu_prover = CUProver::create(
         prover_config,
         to_state_operating,
         to_stats_collecting,
         msr_enforcer,
-        core_id,
+        core_allocation,
         parameters.temp_dir,
     )
     .await
     // error is not Send, convert it to a string
     .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
-    let dummy_cancellation_token = CancellationToken::new();
-    let epoch = EpochParameters::new(parameters.global_nonce, parameters.difficulty);
     cu_prover
         .new_epoch(epoch, parameters.cu_id, dummy_cancellation_token)
         .await
@@ -117,5 +127,31 @@ async fn message_dispatching_loop(
                     }
                 }
         }
+    }
+}
+
+fn get_core_allocation_from_sys(overriding_core_allocation: Option<String>) -> CoreIdAllocation {
+    let cpu_ids_string = overriding_core_allocation
+        .map(Ok)
+        .unwrap_or_else(read_cpu_list_string);
+
+    let core_ids = match cpu_ids_string {
+        Ok(cpu_list_str) => parse_cpu_list(&cpu_list_str),
+        Err(e) => {
+            tracing::error!("failed to load a cgroup cpuset CPU list, using single thread: {e}");
+            return CoreIdAllocation::SingleUnrestricted;
+        }
+    };
+    let core_ids = match core_ids {
+        Ok(cpu_list) => cpu_list,
+        Err(e) => {
+            tracing::error!("failed to parse a cgroup cpuset CPU list, using single thread: {e}");
+            return CoreIdAllocation::SingleUnrestricted;
+        }
+    };
+
+    match NonEmpty::from_vec(core_ids) {
+        Some(logical_core_ids) => CoreIdAllocation::LogicalCoreIds(logical_core_ids),
+        None => CoreIdAllocation::SingleUnrestricted,
     }
 }

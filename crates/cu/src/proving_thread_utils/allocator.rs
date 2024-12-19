@@ -40,7 +40,7 @@ pub(crate) struct ThreadAllocator {
 impl ThreadAllocator {
     pub(crate) fn new(
         policy: ThreadsPerCoreAllocationPolicy,
-        core_id: Option<PhysicalCoreId>,
+        core_id: CoreIdAllocation,
         topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocator> {
         let allocation_strategy = Self::create_allocate_strategy(policy, core_id, topology)?;
@@ -77,18 +77,19 @@ impl ThreadAllocator {
 
     pub(crate) fn create_allocate_strategy(
         policy: ThreadsPerCoreAllocationPolicy,
-        core_id: Option<PhysicalCoreId>,
+        core_id: CoreIdAllocation,
         topology: &HwlocCPUTopology,
     ) -> CUResult<ThreadAllocationStrategy> {
         use super::ThreadDistributionPolicy;
 
         let logical_cores = match core_id {
-            Some(core_id) => Some(
+            CoreIdAllocation::SingleUnrestricted => None,
+            CoreIdAllocation::PhysicalCoreId(core_id) => Some(
                 topology
                     .logical_cores_for_physical(core_id)
                     .map_err(ThreadAllocationError::TopologyError)?,
             ),
-            None => None,
+            CoreIdAllocation::LogicalCoreIds(logical_cores) => Some(logical_cores),
         };
 
         let threads_count = match policy {
@@ -97,10 +98,7 @@ impl ThreadAllocator {
             } => threads_per_physical_core,
             ThreadsPerCoreAllocationPolicy::Optimal => unsafe {
                 std::num::NonZeroUsize::new_unchecked(
-                    logical_cores
-                        .as_ref()
-                        .expect("Optimal core allocation strategy requires a valid core_id")
-                        .len(),
+                    logical_cores.as_ref().map(|cores| cores.len()).unwrap_or(1),
                 )
             },
         };
@@ -114,5 +112,32 @@ impl ThreadAllocator {
             })
             .collect::<Vec<_>>();
         Ok(NonEmpty::from_vec(strategy).unwrap())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CoreIdAllocation {
+    SingleUnrestricted,
+    PhysicalCoreId(PhysicalCoreId),
+    LogicalCoreIds(NonEmpty<LogicalCoreId>),
+}
+
+use std::fmt;
+impl fmt::Display for CoreIdAllocation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoreIdAllocation::SingleUnrestricted => write!(f, "single_unrestreacted"),
+            CoreIdAllocation::PhysicalCoreId(physical_core_id) => {
+                write!(f, "physical_core_id={physical_core_id}")
+            }
+            CoreIdAllocation::LogicalCoreIds(logical_core_ids) => {
+                use itertools::Itertools as _;
+                write!(
+                    f,
+                    "logical_core_ids={}",
+                    logical_core_ids.iter().format(",")
+                )
+            }
+        }
     }
 }

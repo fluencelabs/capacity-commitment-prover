@@ -18,6 +18,7 @@ ccp-cu.workspace = true
 ccp-cu-worker.workspace = true
 ccp-msr.workspace = true
 ccp-shared.workspace = true
+cpu-utils.workspace = true
 
 clap.workspace = true
 tokio.workspace = true

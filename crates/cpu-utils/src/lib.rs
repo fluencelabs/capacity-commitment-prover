@@ -27,6 +27,7 @@
 )]
 
 mod cpu_topology;
+pub mod cpusets;
 mod errors;
 pub mod pinning;
 

@@ -46,13 +46,14 @@ use super::CUResult;
 use crate::memory_dumper::MemoryDumper;
 use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
 use crate::CUProverError;
+use crate::CoreIdAllocation;
 
 /// Intended to prove that a specific physical core was assigned to the Fluence network
 /// by running PoW based on RandomX.
 #[derive(Debug)]
 pub struct CUProver {
     threads: nonempty::NonEmpty<ProvingThreadAsync>,
-    pinned_core_id: Option<PhysicalCoreId>,
+    core_id_allocation: CoreIdAllocation,
     randomx_flags: RandomXFlags,
     cpu_topology: HwlocCPUTopology,
     dataset: Dataset,
@@ -67,24 +68,28 @@ impl CUProver {
         to_state_operating: ToStateOperatingInlet,
         to_stats_collecting: ToStatsCollectingInlet,
         msr_enforcer: MSRModeEnforcer,
-        core_id: Option<PhysicalCoreId>,
+        core_id_allocation: CoreIdAllocation,
         temp_dir: PathBuf,
     ) -> CUResult<Self> {
         let topology = HwlocCPUTopology::new()?;
-        let mut threads = ThreadAllocator::new(config.threads_per_core_policy, core_id, &topology)?
-            .allocate(
-                msr_enforcer,
-                to_state_operating,
-                to_stats_collecting,
-                ProvingThreadConfig::from_cu_prover_config(&config),
-            )?;
+        let mut threads = ThreadAllocator::new(
+            config.threads_per_core_policy,
+            core_id_allocation.clone(),
+            &topology,
+        )?
+        .allocate(
+            msr_enforcer,
+            to_state_operating,
+            to_stats_collecting,
+            ProvingThreadConfig::from_cu_prover_config(&config),
+        )?;
 
         let thread = &mut threads.head;
         let dataset = thread.allocate_dataset(config.randomx_flags).await?;
 
         let prover = Self {
             threads,
-            pinned_core_id: core_id,
+            core_id_allocation,
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
             dataset,
@@ -133,7 +138,7 @@ impl CUProver {
             thread.pin(core_id).boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;
-        self.pinned_core_id = Some(new_core_id);
+        self.core_id_allocation = CoreIdAllocation::PhysicalCoreId(new_core_id);
 
         Ok(())
     }
@@ -177,7 +182,11 @@ impl CUProver {
     }
 
     pub fn pinned_core_id(&self) -> Option<PhysicalCoreId> {
-        self.pinned_core_id
+        match self.core_id_allocation {
+            CoreIdAllocation::SingleUnrestricted => None,
+            CoreIdAllocation::LogicalCoreIds(_) => None,
+            CoreIdAllocation::PhysicalCoreId(physical_core_id) => Some(physical_core_id),
+        }
     }
 
     #[allow(clippy::needless_lifetimes)]
