@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::str::FromStr;
 
 use ccp_shared::types::CPUIdType;
@@ -38,16 +37,15 @@ pub fn parse_cpu_list(content: &str) -> Result<Vec<LogicalCoreId>, CpuListParser
             error,
         })?;
 
-    // Remove possible duplicates.
-    let cpu_ids: HashSet<_> = ranges
+    let mut cpu_ids: Vec<_> = ranges
         .into_iter()
         .flatten()
         .map(LogicalCoreId::new)
         .collect();
 
-    let mut cpu_ids: Vec<_> = cpu_ids.into_iter().collect();
-    // Make output prettier.
+    // Make output consistent and remove possible duplicates.
     cpu_ids.sort_unstable();
+    cpu_ids.dedup();
 
     Ok(cpu_ids)
 }
@@ -61,7 +59,7 @@ mod tests {
         let list = parse_cpu_list("4,0-2,6-8,1").unwrap();
         assert_eq!(
             list,
-            maplit::hashset![
+            vec![
                 LogicalCoreId::new(0),
                 LogicalCoreId::new(1),
                 LogicalCoreId::new(2),
@@ -78,7 +76,7 @@ mod tests {
         let list = parse_cpu_list(" 4 , 0 - 2 , 6-8, 1  ").unwrap();
         assert_eq!(
             list,
-            maplit::hashset![
+            vec![
                 LogicalCoreId::new(0),
                 LogicalCoreId::new(1),
                 LogicalCoreId::new(2),
@@ -93,7 +91,7 @@ mod tests {
     #[test]
     fn test_empty() {
         let list = parse_cpu_list("").unwrap();
-        assert_eq!(list, HashSet::new());
+        assert!(list.is_empty());
     }
 
     #[test]
