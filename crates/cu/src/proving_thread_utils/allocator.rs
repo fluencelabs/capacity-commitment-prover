@@ -126,7 +126,7 @@ use std::fmt;
 impl fmt::Display for CoreIdAllocation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoreIdAllocation::SingleUnrestricted => write!(f, "single_unrestreacted"),
+            CoreIdAllocation::SingleUnrestricted => write!(f, "single_unrestricted"),
             CoreIdAllocation::PhysicalCoreId(physical_core_id) => {
                 write!(f, "physical_core_id={physical_core_id}")
             }
