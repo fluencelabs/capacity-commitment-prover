@@ -33,9 +33,9 @@ use tokio::time::Instant;
 
 /// Collects and analyzes hashrate comes from sync threads.
 #[derive(Clone, Debug, Default)]
-pub(crate) struct HashrateCollector {
+pub struct HashrateCollector {
     status: CollectorStatus,
-    entries: HashMap<LogicalCoreId, ThreadHashrateRaw>,
+    entries: HashMap<Option<LogicalCoreId>, ThreadHashrateRaw>,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -48,7 +48,7 @@ pub(crate) enum CollectorStatus {
     Idle,
 }
 
-pub(crate) type Hashrate = HashMap<LogicalCoreId, ThreadHashrate>;
+pub(crate) type Hashrate = HashMap<Option<LogicalCoreId>, ThreadHashrate>;
 
 /// Unprocessed cumulative hashrate for a sync thread.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -90,7 +90,7 @@ pub(crate) enum EpochObservation {
 }
 
 impl HashrateCollector {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 
@@ -101,7 +101,7 @@ impl HashrateCollector {
             .account_record(hashrate_record);
     }
 
-    pub(crate) fn collect(&self) -> HashMap<LogicalCoreId, ThreadHashrate> {
+    pub(crate) fn collect(&self) -> HashMap<Option<LogicalCoreId>, ThreadHashrate> {
         use super::hashratable::Hashratable;
         use super::hashratable::HashrateCalculator;
 
@@ -132,7 +132,7 @@ impl HashrateCollector {
             .collect::<HashMap<_, _>>()
     }
 
-    pub(crate) fn proof_found(&mut self, core_id: LogicalCoreId) {
+    pub(crate) fn proof_found(&mut self, core_id: Option<LogicalCoreId>) {
         self.entries
             .entry(core_id)
             .or_default()
@@ -188,10 +188,11 @@ impl HashrateCollector {
         );
 
         for (logical_core_id, thread_hashrate) in &self.entries {
-            let subreg = registry.sub_registry_with_label((
-                "logical_core_id".into(),
-                logical_core_id.to_string().into(),
-            ));
+            let core_name = logical_core_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "cpu_none".to_owned());
+            let subreg =
+                registry.sub_registry_with_label(("logical_core_id".into(), core_name.into()));
             subreg.register_collector(Box::new(thread_hashrate.clone()) as _);
         }
     }

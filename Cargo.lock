@@ -418,6 +418,7 @@ dependencies = [
 name = "ccp-cu-worker-bin"
 version = "0.15.0"
 dependencies = [
+ "ccp",
  "ccp-config",
  "ccp-cu",
  "ccp-cu-worker",

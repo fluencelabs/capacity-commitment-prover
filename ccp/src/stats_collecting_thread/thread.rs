@@ -26,14 +26,14 @@ use tokio_util::sync::CancellationToken;
 use super::STTResult;
 use crate::hashrate::HashrateHandler;
 
-pub(crate) struct StatsCollectingThread {
+pub struct StatsCollectingThread {
     to_stats_collecting: ToStatsCollectingInlet,
     cancellation: CancellationToken,
     handle: tokio::task::JoinHandle<()>,
 }
 
 impl StatsCollectingThread {
-    pub(crate) fn spawn(
+    pub fn spawn(
         hashrate_handler: HashrateHandler,
         stats_collecting_queue_size: usize,
         cumulative_hashrate_update_interval_secs: f64,
@@ -57,13 +57,13 @@ impl StatsCollectingThread {
         }
     }
 
-    pub(crate) async fn shutdown(&mut self) -> STTResult<()> {
+    pub async fn shutdown(&mut self) -> STTResult<()> {
         log::info!("Shutting down stats collecting thread");
         self.cancellation.cancel();
         Ok((&mut self.handle).await?)
     }
 
-    pub(crate) fn get_to_stats_collecting_channel(&self) -> ToStatsCollectingInlet {
+    pub fn get_to_stats_collecting_channel(&self) -> ToStatsCollectingInlet {
         self.to_stats_collecting.clone()
     }
 }

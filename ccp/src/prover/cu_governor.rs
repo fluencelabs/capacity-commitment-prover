@@ -52,7 +52,7 @@ pub(crate) struct CUGovernor {
     // in-memory statistics
     stats_collecting_inlet: ToStatsCollectingInlet,
     // collecting proofs
-    state_operating_inlnet: ToStateOperatingInlet,
+    state_operating_inlet: ToStateOperatingInlet,
     // collected proofs managment
     state_operating_control_inlet: StateOperatingControlInlet,
     msr_enforcer: MSRModeEnforcer,
@@ -64,8 +64,8 @@ impl CUGovernor {
     pub(crate) fn new(
         optimizations_config: Optimizations,
         workers_config: Workers,
-        stats_collecting_inlnet: ToStatsCollectingInlet,
-        state_operating_inlnet: ToStateOperatingInlet,
+        stats_collecting_inlet: ToStatsCollectingInlet,
+        state_operating_inlet: ToStateOperatingInlet,
         state_operating_control_inlet: StateOperatingControlInlet,
         msr_enforcer: MSRModeEnforcer,
         cancellation_token: CancellationToken,
@@ -83,8 +83,8 @@ impl CUGovernor {
             cu_provers: HashMap::new(),
             cu_prover_config,
             status,
-            stats_collecting_inlet: stats_collecting_inlnet,
-            state_operating_inlnet,
+            stats_collecting_inlet,
+            state_operating_inlet,
             state_operating_control_inlet,
             msr_enforcer,
             cancellation_token,
@@ -247,7 +247,7 @@ impl CUGovernor {
         epoch: EpochParameters,
     ) -> future::BoxFuture<'static, CUResult<AlignmentPostAction>> {
         let prover_config = self.cu_prover_config.clone();
-        let to_state_operating = self.state_operating_inlnet.clone();
+        let to_state_operating = self.state_operating_inlet.clone();
         let to_stats_collecting = self.stats_collecting_inlet.clone();
         let msr_enforcer = self.msr_enforcer.clone();
         let child_cancel_token = self.cancellation_token.clone();

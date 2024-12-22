@@ -111,7 +111,7 @@ impl ToStatsCollecting {
         }
     }
 
-    pub(crate) fn send_proof(&self, core_id: LogicalCoreId) -> STResult<()> {
+    pub(crate) fn send_proof(&self, core_id: Option<LogicalCoreId>) -> STResult<()> {
         let to_stats_collecting_message = ToStatsCollectingMessage::proof_found(core_id);
         self.to_stats_collecting
             .blocking_send(to_stats_collecting_message)

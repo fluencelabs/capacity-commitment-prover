@@ -28,21 +28,23 @@ use super::ThreadHashrateRecord;
 use crate::hashrate::collector::EpochObservation;
 use crate::hashrate::sliding_collector::SlidingHashrate;
 
-pub(crate) struct HashrateHandler {
+pub struct HashrateHandler {
     collector: Arc<Mutex<HashrateCollector>>,
     instant_hashrate_enabled: bool,
     sliding_collector: SlidingHashrateCollector,
-    saver: HashrateSaver,
+    saver: Option<HashrateSaver>,
 }
 
 impl HashrateHandler {
-    pub(crate) fn new(
+    pub fn new(
         collector: Arc<Mutex<HashrateCollector>>,
-        state_dir_path: PathBuf,
+        state_dir_path: Option<PathBuf>,
         instant_hashrate_enabled: bool,
     ) -> HResult<Self> {
         let sliding_collector = SlidingHashrateCollector::new();
-        let saver = HashrateSaver::from_directory(state_dir_path)?;
+        let saver = state_dir_path
+            .map(HashrateSaver::from_directory)
+            .transpose()?;
 
         let handler = Self {
             collector,
@@ -60,14 +62,16 @@ impl HashrateHandler {
         guard.account_record(record);
 
         self.sliding_collector.account_record(record);
-        if self.instant_hashrate_enabled {
-            self.saver.save_hashrate_entry(&record)?;
+        if let Some(saver) = self.saver.as_ref() {
+            if self.instant_hashrate_enabled {
+                saver.save_hashrate_entry(&record)?;
+            }
         }
 
         Ok(())
     }
 
-    pub(crate) fn proof_found(&mut self, core_id: LogicalCoreId) {
+    pub(crate) fn proof_found(&mut self, core_id: Option<LogicalCoreId>) {
         let mut guard = self.collector.lock().unwrap();
         guard.proof_found(core_id)
     }
@@ -75,7 +79,10 @@ impl HashrateHandler {
     pub(crate) fn handle_cum_tick(&self) -> HResult<()> {
         let guard = self.collector.lock().unwrap();
         let hashrate = guard.collect();
-        self.saver.save_hashrate_current(hashrate)
+        if let Some(saver) = self.saver.as_ref() {
+            saver.save_hashrate_current(hashrate)?;
+        }
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -85,12 +92,15 @@ impl HashrateHandler {
 
     pub(crate) fn handle_epoch(&self, epoch: EpochParameters) -> HResult<()> {
         let mut guard = self.collector.lock().unwrap();
-        if let EpochObservation::EpochChanged {
-            prev_epoch_hashrate,
-        } = guard.observe_epoch(epoch)
+        if let (
+            EpochObservation::EpochChanged {
+                prev_epoch_hashrate,
+            },
+            Some(saver),
+        ) = (guard.observe_epoch(epoch), self.saver.as_ref())
         {
-            self.saver.save_hashrate_previous(prev_epoch_hashrate)?;
-            self.saver.cleanup_sliding_hashrate()?;
+            saver.save_hashrate_previous(prev_epoch_hashrate)?;
+            saver.cleanup_sliding_hashrate()?;
         }
         Ok(())
     }

@@ -65,8 +65,11 @@ impl HashrateSaver {
     }
 
     pub(crate) fn save_hashrate_entry(&self, record: &ThreadHashrateRecord) -> HResult<()> {
-        let core_id: usize = record.core_id.into();
-        let path = self.instant_hashrate_path.join(core_id.to_string());
+        let core_id = record
+            .core_id
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "cpu_none".to_string());
+        let path = self.instant_hashrate_path.join(core_id);
         let file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)

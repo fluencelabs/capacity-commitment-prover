@@ -94,19 +94,15 @@ impl RandomXJob {
 
                 let proof = self.create_golden_proof(result_hash);
                 to_state_operating.send_proof(proof)?;
-                if let Some(core_id) = core_id {
-                    to_stats_collecting.send_proof(core_id)?;
-                }
+                to_stats_collecting.send_proof(core_id)?;
             }
         }
 
         let duration = start.elapsed();
 
-        if let Some(core_id) = core_id {
-            let message =
-                ThreadHashrateRecord::checked_hashes(core_id, duration, self.hashes_per_round);
-            to_stats_collecting.send_hashrate(message)?;
-        }
+        let message =
+            ThreadHashrateRecord::checked_hashes(core_id, duration, self.hashes_per_round);
+        to_stats_collecting.send_hashrate(message)?;
 
         Ok(())
     }

@@ -29,14 +29,14 @@
 mod alignment_roadmap;
 pub mod cpuids_handle;
 mod errors;
-mod hashrate;
+pub mod hashrate;
 mod persistence;
 mod proof_queue;
 mod proof_storage;
 pub mod prover;
 pub(crate) mod state_operating_thread;
 mod state_storage;
-pub(crate) mod stats_collecting_thread;
+pub mod stats_collecting_thread;
 pub mod status;
 
 pub use errors::CCProverError;

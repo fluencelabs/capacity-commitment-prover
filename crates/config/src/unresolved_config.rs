@@ -136,6 +136,12 @@ impl Default for UnresolvedLogs {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct UnresolvedSimpleLogs {
+    #[serde(default = "default_report_hashrate")]
+    pub report_hashrate: bool,
+
+    #[serde(default = "default_cumulative_hashrate_update_interval_secs")]
+    pub cumulative_hashrate_update_interval_secs: f64,
+
     #[serde(default = "default_log_level")]
     pub log_level: LogLevel,
 }
@@ -143,6 +149,9 @@ pub struct UnresolvedSimpleLogs {
 impl Default for UnresolvedSimpleLogs {
     fn default() -> Self {
         Self {
+            report_hashrate: default_report_hashrate(),
+            cumulative_hashrate_update_interval_secs:
+                default_cumulative_hashrate_update_interval_secs(),
             log_level: default_log_level(),
         }
     }
@@ -352,6 +361,8 @@ impl UnresolvedLogs {
 impl UnresolvedSimpleLogs {
     pub fn resolve(self) -> SimpleLogs {
         SimpleLogs {
+            report_hashrate: self.report_hashrate,
+            cumulative_hashrate_update_interval_secs: self.cumulative_hashrate_update_interval_secs,
             log_level: self.log_level.to_tracing_filter(),
         }
     }
