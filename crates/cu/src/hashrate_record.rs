@@ -80,7 +80,7 @@ impl std::fmt::Display for ThreadHashrateRecord {
             HashrateRecordType::CacheCreation => write!(
                 f,
                 "{}: spent {:?} for cache creation",
-                core_name(self.core_id),
+                core_name(&self.core_id),
                 self.duration
             ),
             HashrateRecordType::DatasetInitialization {
@@ -89,20 +89,20 @@ impl std::fmt::Display for ThreadHashrateRecord {
             } => write!(
                 f,
                 "{}: spent {:?} for dataset init in ({start_item}, {items_count})",
-                core_name(self.core_id),
+                core_name(&self.core_id),
                 self.duration
             ),
             HashrateRecordType::CheckedHashes {
                 count: hashes_count,
             } => {
                 let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
-                write!(f, "{}: hashrate {hashrate}", core_name(self.core_id))
+                write!(f, "{}: hashrate {hashrate}", core_name(&self.core_id))
             }
         }
     }
 }
 
-fn core_name(core_id: Option<LogicalCoreId>) -> std::borrow::Cow<'static, str> {
+pub fn core_name(core_id: &Option<LogicalCoreId>) -> std::borrow::Cow<'static, str> {
     core_id
         .map(|id| id.to_string().into())
         .unwrap_or_else(|| "cpu_none".into())

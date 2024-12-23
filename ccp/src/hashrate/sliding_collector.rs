@@ -22,9 +22,9 @@ use std::time::Instant;
 use ccp_cu::HashrateRecordType;
 use ccp_shared::types::LogicalCoreId;
 
-use super::record::ThreadHashrateRecord;
+use super::ThreadHashrateRecord;
 
-pub(crate) type SlidingHashrate = HashMap<LogicalCoreId, SlidingThreadHashrate>;
+pub(crate) type SlidingHashrate = HashMap<Option<LogicalCoreId>, SlidingThreadHashrate>;
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct SlidingThreadHashrate {
