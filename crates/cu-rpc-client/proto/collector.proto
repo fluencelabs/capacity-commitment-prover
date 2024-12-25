@@ -22,6 +22,27 @@ message ReportResponse {
     // empty
 }
 
+message StatsRequest {
+    repeated HashRate hashrates = 1;
+}
+
+message HashRate {
+    uint64 checked_hashes_count = 1;
+    uint64 found_proofs_count = 2;
+    // TODO how to account parallel execution for both values?
+    float cc_job_duration_secs = 3;
+    // TODO how to account parallel execution for both values?
+    float cache_creation = 4;
+    float dataset_initialization = 5;
+}
+
+message StatsResponse {
+    // empty
+}
 service Collector {
     rpc report_proof(ReportRequest) returns (ReportResponse) {}
+}
+
+service Stats {
+    rpc report_stats(StatsRequest) returns (StatsResponse) {}
 }
