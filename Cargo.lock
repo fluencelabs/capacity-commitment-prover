@@ -386,6 +386,7 @@ dependencies = [
 name = "ccp-cu-rpc-client"
 version = "0.15.0"
 dependencies = [
+ "ccp-cu",
  "ccp-shared",
  "hex",
  "hyper-util",
@@ -403,6 +404,7 @@ name = "ccp-cu-worker"
 version = "0.15.0"
 dependencies = [
  "backoff",
+ "ccp",
  "ccp-cu",
  "ccp-cu-rpc-client",
  "ccp-shared",

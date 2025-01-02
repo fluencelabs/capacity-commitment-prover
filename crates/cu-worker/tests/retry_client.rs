@@ -7,7 +7,7 @@ use ccp_cu_rpc_client::ccp_collector_rpc::collector_server::Collector;
 use ccp_cu_rpc_client::ccp_collector_rpc::collector_server::CollectorServer;
 use ccp_cu_rpc_client::ccp_collector_rpc::ReportResponse;
 use ccp_cu_rpc_client::ReportRequest;
-use ccp_cu_worker::retry_client::RetryClient;
+use ccp_cu_worker::retry_client::ProofRetryClient;
 use ccp_shared::types::ResultHash;
 use tokio::select;
 use tokio::sync::mpsc::Sender;
@@ -20,13 +20,14 @@ async fn test_normal() {
     let endpoint_url = format!("grpc://{listen_addr}");
     let mut proofs = gen_test_proofs();
 
-    let (sender, mut proof_receiver) = tokio::sync::mpsc::channel(100);
+    let (proof_sender, mut proof_receiver) = tokio::sync::mpsc::channel(100);
+    let (_stats_sender, stats_receiver) = tokio::sync::mpsc::channel(100);
 
-    let (server_cancel, server_stopped_notify) = start_server(sender, listen_addr.clone());
-    let (client, client_sender) = RetryClient::new(endpoint_url);
+    let (server_cancel, server_stopped_notify) = start_server(proof_sender, listen_addr.clone());
+    let (client, proof_sender) = ProofRetryClient::new(endpoint_url, stats_receiver);
 
     let next_proof = proofs.next().unwrap();
-    client_sender.send(next_proof.clone()).await.unwrap();
+    proof_sender.send(next_proof.clone()).await.unwrap();
 
     let client_cancel = CancellationToken::new();
     let client_cancel_cloned = client_cancel.clone();
@@ -54,11 +55,12 @@ async fn test_failing_server() {
     let mut proofs = gen_test_proofs();
 
     let (sender, mut proof_receiver) = tokio::sync::mpsc::channel(100);
+    let (_stats_sender, stats_receiver) = tokio::sync::mpsc::channel(100);
 
-    let (client, client_sender) = RetryClient::new(endpoint_url);
+    let (client, proof_sender) = ProofRetryClient::new(endpoint_url, stats_receiver);
 
     let next_proof_1 = proofs.next().unwrap();
-    client_sender.send(next_proof_1.clone()).await.unwrap();
+    proof_sender.send(next_proof_1.clone()).await.unwrap();
 
     let client_cancel = CancellationToken::new();
     let client_cancel_cloned = client_cancel.clone();
@@ -80,7 +82,7 @@ async fn test_failing_server() {
     server_stopped_notify.notified().await;
 
     let next_proof_2 = proofs.next().unwrap();
-    client_sender.send(next_proof_2.clone()).await.unwrap();
+    proof_sender.send(next_proof_2.clone()).await.unwrap();
 
     tokio::time::sleep(Duration::from_secs(20)).await;
 
@@ -110,7 +112,7 @@ impl TestServer {
 
 #[tonic::async_trait]
 impl Collector for TestServer {
-    async fn report_proof(
+    async fn report(
         &self,
         request: tonic::Request<ReportRequest>,
     ) -> std::result::Result<tonic::Response<ReportResponse>, tonic::Status> {

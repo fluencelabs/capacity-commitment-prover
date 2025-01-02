@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex as StdMutex;
 
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
+use ccp_cu_worker::metrics::RpcStatsCollector;
 use clap::Parser;
 use cpu_utils::cpusets::parse_cpu_list;
 use cpu_utils::cpusets::read_cpu_list_string;
@@ -20,7 +22,7 @@ use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOu
 use ccp_cu::CUProver;
 use ccp_cu::CUProverConfig;
 use ccp_cu::CoreIdAllocation;
-use ccp_cu_worker::retry_client::RetryClient;
+use ccp_cu_worker::retry_client::ProofRetryClient;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::Difficulty;
 use ccp_shared::types::EpochParameters;
@@ -86,10 +88,13 @@ async fn main() -> eyre::Result<()> {
         config.logs.report_hashrate,
     )?;
 
+    let (collector, collector_inlet) = RpcStatsCollector::new();
+
     let stats_collecting_thread = StatsCollectingThread::spawn(
         hashrate_handler,
         1024,
         config.logs.cumulative_hashrate_update_interval_secs,
+        vec![Box::new(collector)],
     );
 
     let mut cu_prover = CUProver::create(
@@ -110,14 +115,15 @@ async fn main() -> eyre::Result<()> {
         // error is not Send, convert it to a string
         .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
-    message_dispatching_loop(from_state_operating, parameters.upstream).await
+    message_dispatching_loop(from_state_operating, collector_inlet, parameters.upstream).await
 }
 
 async fn message_dispatching_loop(
     mut from_state_operating: ToStateOperatingOutlet,
+    to_stats_rpc_client: ToStatsCollectingOutlet,
     rpc_endpoint: String,
 ) -> eyre::Result<()> {
-    let (client, sender) = RetryClient::new(rpc_endpoint);
+    let (client, proof_sender) = ProofRetryClient::new(rpc_endpoint, to_stats_rpc_client);
     let _client_handle = tokio::task::spawn(client.run());
     loop {
         let msg = from_state_operating.recv().await;
@@ -125,7 +131,7 @@ async fn message_dispatching_loop(
         match msg.expect("worker thread failed") {
             ProofFound { proof } => {
                 tracing::info!("sending received proof upstream: {proof:?}");
-                if let Err(e) = sender.send(proof).await {
+                if let Err(e) = proof_sender.send(proof).await {
                     tracing::error!("failed to send proof: {e}")
                 }
             }

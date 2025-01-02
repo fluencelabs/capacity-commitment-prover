@@ -32,11 +32,17 @@ pub struct StatsCollectingThread {
     handle: tokio::task::JoinHandle<()>,
 }
 
+// This is a sync interface by design: its implementation should never wait.
+pub trait StatsSink: Send + Sync {
+    fn handle_stats(&self, record: &ToStatsCollectingMessage);
+}
+
 impl StatsCollectingThread {
     pub fn spawn(
         hashrate_handler: HashrateHandler,
         stats_collecting_queue_size: usize,
         cumulative_hashrate_update_interval_secs: f64,
+        stat_sinks: Vec<Box<dyn StatsSink>>,
     ) -> Self {
         let (to_stats_collecting, from_stats_collecting) =
             mpsc::channel(stats_collecting_queue_size);
@@ -47,6 +53,7 @@ impl StatsCollectingThread {
             cancellation.clone(),
             hashrate_handler,
             cumulative_hashrate_update_interval_secs,
+            stat_sinks,
         );
         let handle = tokio::spawn(sct_impl.stats_collecting_closure());
 
@@ -73,6 +80,7 @@ struct StatsCollectingThreadImpl {
     cancellation: CancellationToken,
     hashrate_handler: HashrateHandler,
     cumulative_hashrate_update_interval_secs: f64,
+    stats_sinks: Vec<Box<dyn StatsSink>>,
 }
 
 impl StatsCollectingThreadImpl {
@@ -81,12 +89,14 @@ impl StatsCollectingThreadImpl {
         cancellation: CancellationToken,
         hashrate_handler: HashrateHandler,
         cumulative_hashrate_update_interval_secs: f64,
+        stats_sinks: Vec<Box<dyn StatsSink>>,
     ) -> Self {
         Self {
             to_stats_collecting,
             cancellation,
             hashrate_handler,
             cumulative_hashrate_update_interval_secs,
+            stats_sinks,
         }
     }
 
@@ -119,6 +129,10 @@ impl StatsCollectingThreadImpl {
 
     async fn handle_to_stats_collecting_message(&mut self, message: ToStatsCollectingMessage) {
         use ToStatsCollectingMessage::*;
+
+        for sink in &self.stats_sinks {
+            sink.handle_stats(&message);
+        }
 
         match message {
             ProofFound { core_id } => {

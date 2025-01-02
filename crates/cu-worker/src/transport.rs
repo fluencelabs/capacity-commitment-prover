@@ -16,22 +16,28 @@
 
 use std::future::Future;
 
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
 use ccp_cu::RawProof;
 use ccp_cu_rpc_client::CcpCuRpcHttpClient;
 
-pub(crate) trait UpstreamTransport: Send {
+pub(crate) trait ProofUpstreamTransport: Send {
     type Error;
 
-    fn report_proof(
+    fn report(
         &mut self,
         proofs: &[RawProof],
+        stats: &[ToStatsCollectingMessage],
     ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
-impl UpstreamTransport for CcpCuRpcHttpClient {
+impl ProofUpstreamTransport for CcpCuRpcHttpClient {
     type Error = ccp_cu_rpc_client::ClientError;
 
-    async fn report_proof(&mut self, proof: &[RawProof]) -> Result<(), Self::Error> {
-        Self::report_proofs(self, proof).await
+    async fn report(
+        &mut self,
+        proof: &[RawProof],
+        stats: &[ToStatsCollectingMessage],
+    ) -> Result<(), Self::Error> {
+        Self::report(self, proof, stats).await
     }
 }

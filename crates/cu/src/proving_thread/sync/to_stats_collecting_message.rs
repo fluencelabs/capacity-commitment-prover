@@ -23,7 +23,7 @@ pub(crate) use crate::ThreadHashrateRecord;
 pub type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
 pub type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ToStatsCollectingMessage {
     ProofFound { core_id: Option<LogicalCoreId> },
     Hashrate(ThreadHashrateRecord),

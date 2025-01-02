@@ -157,11 +157,9 @@ async fn prover_get_batch_proofs_after() {
 
     tokio::time::sleep(GEN_PROOFS_DURATION).await;
 
-    dbg!(
-        wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
-            .await
-            .expect("reading proofs")
-    );
+    wait_for_proofs(&prover, 8 + cuids.len(), 10, PROOFS_RETRY_DURATION, &cuids)
+        .await
+        .expect("reading proofs");
 
     let reqs: HashMap<CUID, BatchRequest> = cu_allocation
         .values()

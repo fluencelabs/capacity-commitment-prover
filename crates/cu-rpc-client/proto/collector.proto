@@ -14,18 +14,6 @@ message RpcProof {
     string result_hash = 4;
 }
 
-message ReportRequest {
-    repeated RpcProof proofs = 1;
-}
-
-message ReportResponse {
-    // empty
-}
-
-message StatsRequest {
-    repeated HashRate hashrates = 1;
-}
-
 message HashRate {
     uint64 checked_hashes_count = 1;
     uint64 found_proofs_count = 2;
@@ -36,13 +24,16 @@ message HashRate {
     float dataset_initialization = 5;
 }
 
-message StatsResponse {
-    // empty
-}
-service Collector {
-    rpc report_proof(ReportRequest) returns (ReportResponse) {}
+message ReportRequest {
+    repeated RpcProof proofs = 1;
+    repeated HashRate metrics = 2;
 }
 
-service Stats {
-    rpc report_stats(StatsRequest) returns (StatsResponse) {}
+message ReportResponse {
+    // empty
+}
+
+
+service Collector {
+    rpc report(ReportRequest) returns (ReportResponse) {}
 }
