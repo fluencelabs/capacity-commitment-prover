@@ -15,9 +15,10 @@
  */
 
 use ccp::stats_collecting_thread::StatsSink;
-use ccp_cu::proving_thread::sync::to_stats_collecting_message::{
-    ToStatsCollectingInlet, ToStatsCollectingMessage, ToStatsCollectingOutlet,
-};
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingInlet;
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
+
 pub struct RpcStatsCollector {
     sender: ToStatsCollectingInlet,
 }

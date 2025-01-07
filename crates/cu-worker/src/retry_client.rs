@@ -5,8 +5,10 @@ use backoff::backoff::Backoff;
 use backoff::ExponentialBackoffBuilder;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
+use ccp_cu::EpochParameters;
 use ccp_cu::RawProof;
 use ccp_cu_rpc_client::CcpCuRpcHttpClient;
+use ccp_cu_rpc_client::HashRate;
 use eyre::Context;
 use tokio::select;
 use tokio::sync::mpsc::Receiver;
@@ -39,6 +41,7 @@ impl ProofRetryClient {
     pub async fn run(mut self) {
         let mut collected_proofs = vec![];
         let mut collected_stats = vec![];
+        let mut current_epoch = None;
 
         loop {
             assert!(collected_proofs.is_empty());
@@ -53,7 +56,10 @@ impl ProofRetryClient {
                 }
                 stats = self.stats_receiver.recv() => {
                     if let Some(stats) = stats {
-                         collected_stats.push(stats);
+                        match HashRate::new(&stats, current_epoch) {
+                            Ok(hashrate) => collected_stats.push(hashrate),
+                            Err(epoch) => current_epoch = Some(epoch),
+                        }
                     }
                 }
             }
@@ -90,6 +96,7 @@ impl ProofRetryClient {
                     next_backoff,
                     &mut collected_proofs,
                     &mut collected_stats,
+                    &mut current_epoch,
                 )
                 .await;
             }
@@ -99,7 +106,7 @@ impl ProofRetryClient {
     async fn try_sending_report(
         &self,
         collected_proofs: &[RawProof],
-        collected_stats: &[ToStatsCollectingMessage],
+        collected_stats: &[HashRate],
     ) -> eyre::Result<()> {
         let mut rpc_client = CcpCuRpcHttpClient::auto(self.rpc_endpoint.clone())
             .await
@@ -112,7 +119,8 @@ impl ProofRetryClient {
         &mut self,
         next_backoff: Duration,
         collected_proofs: &mut Vec<RawProof>,
-        collected_stats: &mut Vec<ToStatsCollectingMessage>,
+        collected_stats: &mut Vec<HashRate>,
+        current_epoch: &mut Option<EpochParameters>,
     ) {
         let deadline = tokio::time::sleep(next_backoff);
         let mut deadline = pin!(deadline);
@@ -129,7 +137,10 @@ impl ProofRetryClient {
                 }
                 stats = self.stats_receiver.recv() => {
                     if let Some(stats) = stats {
-                        collected_stats.push(stats);
+                        match HashRate::new(&stats, *current_epoch) {
+                            Ok(hashrate) => collected_stats.push(hashrate),
+                            Err(epoch) => *current_epoch = Some(epoch),
+                        }
                     }
                 }
                 _ = &mut deadline => {
