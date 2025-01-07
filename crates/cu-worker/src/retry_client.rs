@@ -66,8 +66,8 @@ impl ProofRetryClient {
 
             // Retry loop: untill the request succeeds.
             let mut backoff_gen = ExponentialBackoffBuilder::new()
-                .with_initial_interval(Duration::from_millis(100))
-                .with_max_interval(Duration::from_secs(5))
+                .with_initial_interval(Duration::from_secs(10))
+                .with_max_interval(Duration::from_secs(600))
                 .build();
             loop {
                 // We create a new client instance because if the endpoint restarts and Unix domain socket is used,
@@ -84,10 +84,7 @@ impl ProofRetryClient {
                     }
                     Err(e) => e,
                 };
-                tracing::error!(
-                    "failed to send {count} proofs upstream: {error}",
-                    count = collected_proofs.len(),
-                );
+                tracing::error!("failed to send connect to lightmare gRPC: {error:?}, retrying...",);
 
                 let next_backoff = backoff_gen.next_backoff().unwrap();
                 tracing::error!("retrying in {next_backoff:?}");
