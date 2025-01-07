@@ -18,6 +18,6 @@ mod errors;
 mod thread;
 
 pub use errors::StatsCollectingThreadError;
-pub(crate) use thread::*;
+pub use thread::StatsCollectingThread;
 
 pub(crate) type STTResult<T> = Result<T, errors::StatsCollectingThreadError>;

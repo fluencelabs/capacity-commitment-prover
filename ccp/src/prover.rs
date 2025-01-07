@@ -183,7 +183,7 @@ impl CCProver {
         let hashrate_collector = Arc::new(StdMutex::new(HashrateCollector::new()));
         let hashrate_handler = HashrateHandler::new(
             hashrate_collector.clone(),
-            config.state_dir.clone(),
+            Some(config.state_dir.clone()),
             config.logs.report_hashrate,
         )?;
 

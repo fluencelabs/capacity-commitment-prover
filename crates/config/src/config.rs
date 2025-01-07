@@ -76,6 +76,8 @@ pub struct Logs {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct SimpleLogs {
+    pub report_hashrate: bool,
+    pub cumulative_hashrate_update_interval_secs: f64,
     pub log_level: tracing_subscriber::filter::LevelFilter,
 }
 

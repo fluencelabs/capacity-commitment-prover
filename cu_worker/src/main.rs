@@ -1,21 +1,26 @@
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 
-use ccp_cu::CoreIdAllocation;
 use clap::Parser;
 use cpu_utils::cpusets::parse_cpu_list;
 use cpu_utils::cpusets::read_cpu_list_string;
 use cpu_utils::NonEmpty;
 use envconfig::Envconfig;
+use eyre::OptionExt;
 use eyre::WrapErr as _;
-use tokio::{select, sync::mpsc};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
+use ccp::hashrate::HashrateCollector;
+use ccp::hashrate::HashrateHandler;
+use ccp::stats_collecting_thread::StatsCollectingThread;
 use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
-use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::CUProver;
 use ccp_cu::CUProverConfig;
+use ccp_cu::CoreIdAllocation;
 use ccp_cu_worker::retry_client::RetryClient;
 use ccp_msr::MSRModeEnforcer;
 use ccp_shared::types::Difficulty;
@@ -25,6 +30,8 @@ use ccp_shared::types::CUID;
 
 // same as ccp_main crate
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
+
+const STATS_QUEUE_SIZE: usize = 1024;
 
 #[derive(Envconfig)]
 struct TaskParameters {
@@ -66,7 +73,6 @@ async fn main() -> eyre::Result<()> {
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
 
-    let (to_stats_collecting, from_stats_collecting) = mpsc::channel(config.utility_queue_size);
     let (to_state_operating, from_state_operating) = mpsc::channel(config.utility_queue_size);
 
     let core_allocation = get_core_allocation_from_sys(parameters.override_logical_cpu_list);
@@ -76,10 +82,23 @@ async fn main() -> eyre::Result<()> {
     let dummy_cancellation_token = CancellationToken::new();
     let epoch = EpochParameters::new(parameters.global_nonce, parameters.difficulty);
 
+    let hashrate_collector = Arc::new(StdMutex::new(HashrateCollector::new()));
+    let hashrate_handler = HashrateHandler::new(
+        hashrate_collector.clone(),
+        None,
+        config.logs.report_hashrate,
+    )?;
+
+    let stats_collecting_thread = StatsCollectingThread::spawn(
+        hashrate_handler,
+        STATS_QUEUE_SIZE,
+        config.logs.cumulative_hashrate_update_interval_secs,
+    );
+
     let mut cu_prover = CUProver::create(
         prover_config,
         to_state_operating,
-        to_stats_collecting,
+        stats_collecting_thread.get_to_stats_collecting_channel(),
         msr_enforcer,
         core_allocation,
         parameters.temp_dir,
@@ -94,38 +113,34 @@ async fn main() -> eyre::Result<()> {
         // error is not Send, convert it to a string
         .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
-    message_dispatching_loop(
-        from_stats_collecting,
-        from_state_operating,
-        parameters.upstream,
-    )
-    .await
+    message_dispatching_loop(from_state_operating, parameters.upstream).await
 }
 
 async fn message_dispatching_loop(
-    mut from_stats_collecting: ToStatsCollectingOutlet,
     mut from_state_operating: ToStateOperatingOutlet,
     rpc_endpoint: String,
 ) -> eyre::Result<()> {
     let (client, sender) = RetryClient::new(rpc_endpoint);
     let _client_handle = tokio::task::spawn(client.run());
+
     loop {
-        select! {
-                _ = from_stats_collecting.recv() => {}
-                msg = from_state_operating.recv() => {
-                    use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
-                    match msg.expect("worker thread failed") {
-                        ProofFound { proof } => {
-                            tracing::info!("sending received proof upstream: {proof:?}");
-                            if let Err(e) = sender.send(proof).await {
-                                tracing::error!("failed to send proof: {e}")
-                            }
-                        },
-                        ErrorHappened { core_id: _core_id, error } => {
-                            unreachable!("no error reported because of no valid core_id: {error:?}");
-                        },
-                    }
+        use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
+
+        let msg = from_state_operating
+            .recv()
+            .await
+            .ok_or_eyre("worker thread failed, terminating")?;
+
+        match msg {
+            ProofFound { proof } => {
+                tracing::info!("sending received proof upstream: {proof:?}");
+                if let Err(e) = sender.send(proof).await {
+                    tracing::error!("failed to send proof: {e}")
                 }
+            }
+            ErrorHappened { error, .. } => {
+                unreachable!("no error reported because of no valid core_id: {error:?}");
+            }
         }
     }
 }

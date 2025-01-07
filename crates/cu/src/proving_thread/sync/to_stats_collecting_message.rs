@@ -25,13 +25,13 @@ pub type ToStatsCollectingOutlet = mpsc::Receiver<ToStatsCollectingMessage>;
 
 #[derive(Debug)]
 pub enum ToStatsCollectingMessage {
-    ProofFound { core_id: LogicalCoreId },
+    ProofFound { core_id: Option<LogicalCoreId> },
     Hashrate(ThreadHashrateRecord),
     Epoch(EpochParameters),
 }
 
 impl ToStatsCollectingMessage {
-    pub(crate) fn proof_found(core_id: LogicalCoreId) -> Self {
+    pub(crate) fn proof_found(core_id: Option<LogicalCoreId>) -> Self {
         Self::ProofFound { core_id }
     }
 

@@ -18,9 +18,11 @@ use std::time::Duration;
 
 use ccp_shared::types::LogicalCoreId;
 
+const CPU_NONE: &str = "cpu_none";
+
 #[derive(Copy, Clone, Debug)]
 pub struct ThreadHashrateRecord {
-    pub core_id: LogicalCoreId,
+    pub core_id: Option<LogicalCoreId>,
     pub duration: Duration,
     pub variant: HashrateRecordType,
 }
@@ -35,7 +37,7 @@ pub enum HashrateRecordType {
 }
 
 impl ThreadHashrateRecord {
-    pub fn cache_creation(core_id: LogicalCoreId, duration: Duration) -> Self {
+    pub fn cache_creation(core_id: Option<LogicalCoreId>, duration: Duration) -> Self {
         Self {
             core_id,
             duration,
@@ -44,7 +46,7 @@ impl ThreadHashrateRecord {
     }
 
     pub fn dataset_initialization(
-        core_id: LogicalCoreId,
+        core_id: Option<LogicalCoreId>,
         duration: Duration,
         start_item: u64,
         items_count: u64,
@@ -59,7 +61,11 @@ impl ThreadHashrateRecord {
         }
     }
 
-    pub fn checked_hashes(core_id: LogicalCoreId, duration: Duration, hashes_count: usize) -> Self {
+    pub fn checked_hashes(
+        core_id: Option<LogicalCoreId>,
+        duration: Duration,
+        hashes_count: usize,
+    ) -> Self {
         Self {
             core_id,
             duration,
@@ -76,7 +82,8 @@ impl std::fmt::Display for ThreadHashrateRecord {
             HashrateRecordType::CacheCreation => write!(
                 f,
                 "{}: spent {:?} for cache creation",
-                self.core_id, self.duration
+                core_name(&self.core_id),
+                self.duration
             ),
             HashrateRecordType::DatasetInitialization {
                 start_item,
@@ -84,14 +91,21 @@ impl std::fmt::Display for ThreadHashrateRecord {
             } => write!(
                 f,
                 "{}: spent {:?} for dataset init in ({start_item}, {items_count})",
-                self.core_id, self.duration
+                core_name(&self.core_id),
+                self.duration
             ),
             HashrateRecordType::CheckedHashes {
                 count: hashes_count,
             } => {
                 let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
-                write!(f, "{}: hashrate {hashrate}", self.core_id)
+                write!(f, "{}: hashrate {hashrate}", core_name(&self.core_id))
             }
         }
     }
+}
+
+pub fn core_name(core_id: &Option<LogicalCoreId>) -> std::borrow::Cow<'static, str> {
+    core_id
+        .map(|id| id.to_string().into())
+        .unwrap_or_else(|| CPU_NONE.into())
 }

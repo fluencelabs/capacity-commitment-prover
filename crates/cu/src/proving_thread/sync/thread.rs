@@ -180,10 +180,9 @@ impl ProvingThreadSync {
                 to_async.send_cache(cache)?;
 
                 to_stats_collecting.send_epoch(params.epoch)?;
-                if let Some(core_id) = core_id {
-                    let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
-                    to_stats_collecting.send_hashrate(hashrate)?;
-                }
+
+                let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
+                to_stats_collecting.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
@@ -204,15 +203,13 @@ impl ProvingThreadSync {
 
                 to_async.notify_dataset_initialized()?;
 
-                if let Some(core_id) = core_id {
-                    let hashrate = ThreadHashrateRecord::dataset_initialization(
-                        core_id,
-                        duration,
-                        params.start_item,
-                        params.items_count,
-                    );
-                    to_stats_collecting.send_hashrate(hashrate)?;
-                }
+                let hashrate = ThreadHashrateRecord::dataset_initialization(
+                    core_id,
+                    duration,
+                    params.start_item,
+                    params.items_count,
+                );
+                to_stats_collecting.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
             }
