@@ -31,6 +31,8 @@ use serde::Deserialize;
 use serde::Serialize;
 use tokio::time::Instant;
 
+pub const CPU_NONE: &str = "cpu_none";
+
 /// Collects and analyzes hashrate comes from sync threads.
 #[derive(Clone, Debug, Default)]
 pub struct HashrateCollector {
@@ -189,8 +191,9 @@ impl HashrateCollector {
 
         for (logical_core_id, thread_hashrate) in &self.entries {
             let core_name = logical_core_id
-                .map(|id| id.to_string())
-                .unwrap_or_else(|| "cpu_none".to_owned());
+                .as_ref()
+                .map(ToString::to_string)
+                .unwrap_or_else(|| CPU_NONE.into());
             let subreg =
                 registry.sub_registry_with_label(("logical_core_id".into(), core_name.into()));
             subreg.register_collector(Box::new(thread_hashrate.clone()) as _);
