@@ -19,6 +19,8 @@ use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollecting
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 
+const RPC_STATS_QUEUE_SIZE: usize = 1024;
+
 pub struct RpcStatsCollector {
     sender: ToStatsCollectingInlet,
 }
@@ -26,7 +28,7 @@ pub struct RpcStatsCollector {
 impl RpcStatsCollector {
     pub fn new() -> (Self, ToStatsCollectingOutlet) {
         // TODO queue size
-        let (sender, receiver) = tokio::sync::mpsc::channel(1024);
+        let (sender, receiver) = tokio::sync::mpsc::channel(RPC_STATS_QUEUE_SIZE);
         (Self { sender }, receiver)
     }
 }
