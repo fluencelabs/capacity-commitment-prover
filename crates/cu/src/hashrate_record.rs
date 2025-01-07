@@ -18,6 +18,8 @@ use std::time::Duration;
 
 use ccp_shared::types::LogicalCoreId;
 
+const CPU_NONE: &str = "cpu_none";
+
 #[derive(Copy, Clone, Debug)]
 pub struct ThreadHashrateRecord {
     pub core_id: Option<LogicalCoreId>,
@@ -105,5 +107,5 @@ impl std::fmt::Display for ThreadHashrateRecord {
 pub fn core_name(core_id: &Option<LogicalCoreId>) -> std::borrow::Cow<'static, str> {
     core_id
         .map(|id| id.to_string().into())
-        .unwrap_or_else(|| "cpu_none".into())
+        .unwrap_or_else(|| CPU_NONE.into())
 }

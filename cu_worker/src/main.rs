@@ -7,6 +7,7 @@ use cpu_utils::cpusets::parse_cpu_list;
 use cpu_utils::cpusets::read_cpu_list_string;
 use cpu_utils::NonEmpty;
 use envconfig::Envconfig;
+use eyre::OptionExt;
 use eyre::WrapErr as _;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -29,6 +30,8 @@ use ccp_shared::types::CUID;
 
 // same as ccp_main crate
 const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
+
+const STATS_QUEUE_SIZE: usize = 1024;
 
 #[derive(Envconfig)]
 struct TaskParameters {
@@ -88,7 +91,7 @@ async fn main() -> eyre::Result<()> {
 
     let stats_collecting_thread = StatsCollectingThread::spawn(
         hashrate_handler,
-        1024,
+        STATS_QUEUE_SIZE,
         config.logs.cumulative_hashrate_update_interval_secs,
     );
 
@@ -119,20 +122,23 @@ async fn message_dispatching_loop(
 ) -> eyre::Result<()> {
     let (client, sender) = RetryClient::new(rpc_endpoint);
     let _client_handle = tokio::task::spawn(client.run());
+
     loop {
-        let msg = from_state_operating.recv().await;
         use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
-        match msg.expect("worker thread failed") {
+
+        let msg = from_state_operating
+            .recv()
+            .await
+            .ok_or_eyre("worker thread failed, terminating")?;
+
+        match msg {
             ProofFound { proof } => {
                 tracing::info!("sending received proof upstream: {proof:?}");
                 if let Err(e) = sender.send(proof).await {
                     tracing::error!("failed to send proof: {e}")
                 }
             }
-            ErrorHappened {
-                core_id: _core_id,
-                error,
-            } => {
+            ErrorHappened { error, .. } => {
                 unreachable!("no error reported because of no valid core_id: {error:?}");
             }
         }

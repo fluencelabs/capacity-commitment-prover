@@ -19,6 +19,7 @@ use std::path::Path;
 use std::path::PathBuf;
 
 use super::collector::Hashrate;
+use super::collector::CPU_NONE;
 use super::HResult;
 use super::ThreadHashrateRecord;
 use ccp_cu::HashrateRecordType;
@@ -68,7 +69,7 @@ impl HashrateSaver {
         let core_id = record
             .core_id
             .map(|id| id.to_string())
-            .unwrap_or_else(|| "cpu_none".to_string());
+            .unwrap_or_else(|| CPU_NONE.into());
         let path = self.instant_hashrate_path.join(core_id);
         let file = std::fs::OpenOptions::new()
             .create(true)
