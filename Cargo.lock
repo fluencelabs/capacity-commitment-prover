@@ -356,6 +356,7 @@ version = "0.16.0"
 dependencies = [
  "anyhow",
  "ccp-config",
+ "ccp-cu-rpc-client",
  "ccp-msr",
  "ccp-randomx",
  "ccp-shared",
@@ -386,7 +387,6 @@ dependencies = [
 name = "ccp-cu-rpc-client"
 version = "0.16.0"
 dependencies = [
- "ccp-cu",
  "ccp-shared",
  "hex",
  "hyper-util",

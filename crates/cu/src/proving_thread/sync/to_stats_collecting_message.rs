@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
+use ccp_cu_rpc_client::HashRate;
 use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
 use tokio::sync::mpsc;
 
+use crate::HashrateRecordType;
 pub(crate) use crate::ThreadHashrateRecord;
 
 pub type ToStatsCollectingInlet = mpsc::Sender<ToStatsCollectingMessage>;
@@ -44,5 +46,39 @@ impl ToStatsCollectingMessage {
 
     pub(crate) fn epoch(epoch: EpochParameters) -> Self {
         Self::Epoch(epoch)
+    }
+}
+
+impl TryFrom<&ToStatsCollectingMessage> for HashRate {
+    type Error = ();
+
+    fn try_from(value: &ToStatsCollectingMessage) -> Result<Self, Self::Error> {
+        match value {
+            &ToStatsCollectingMessage::ProofFound { epoch, .. } => {
+                Ok(HashRate::proofs_found(1, epoch))
+            }
+            ToStatsCollectingMessage::Hashrate(thread_hashrate_record) => {
+                let duration_secs = thread_hashrate_record.duration.as_secs_f32();
+
+                match thread_hashrate_record.variant {
+                    HashrateRecordType::CacheCreation => Ok(HashRate::cache_creation(
+                        duration_secs,
+                        thread_hashrate_record.epoch,
+                    )),
+                    HashrateRecordType::DatasetInitialization { .. } => {
+                        Ok(HashRate::dataset_initialization(
+                            duration_secs,
+                            thread_hashrate_record.epoch,
+                        ))
+                    }
+                    HashrateRecordType::CheckedHashes { count } => Ok(HashRate::checked_hashes(
+                        duration_secs,
+                        count,
+                        thread_hashrate_record.epoch,
+                    )),
+                }
+            }
+            ToStatsCollectingMessage::Epoch(_epoch_parameters) => Err(()),
+        }
     }
 }

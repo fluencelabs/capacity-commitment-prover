@@ -31,20 +31,18 @@ use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
-use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
 pub use ccp_shared::proof::raw::RawProof;
 pub use ccp_shared::types::EpochParameters;
 
 pub use crate::ccp_collector_rpc::collector_client::CollectorClient;
+pub use crate::ccp_collector_rpc::HashRate;
 pub use crate::ccp_collector_rpc::MalformedRpcProof;
 pub use crate::ccp_collector_rpc::ReportRequest;
 pub use crate::ccp_collector_rpc::RpcProof;
 
 pub mod ccp_collector_rpc {
-    use ccp_cu::EpochParameters;
-
+    use crate::EpochParameters;
     use crate::RawProof;
-    use crate::ToStatsCollectingMessage;
 
     pub const COLLECTOR_DESCRIPTOR_SET: &[u8] =
         tonic::include_file_descriptor_set!("collector_descriptor");
@@ -111,7 +109,7 @@ pub mod ccp_collector_rpc {
     }
 
     impl HashRate {
-        fn cache_creation(duration_secs: f32, epoch: EpochParameters) -> Self {
+        pub fn cache_creation(duration_secs: f32, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: duration_secs,
@@ -122,7 +120,7 @@ pub mod ccp_collector_rpc {
             }
         }
 
-        fn dataset_initialization(duration_secs: f32, epoch: EpochParameters) -> Self {
+        pub fn dataset_initialization(duration_secs: f32, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: 0.0,
@@ -133,7 +131,7 @@ pub mod ccp_collector_rpc {
             }
         }
 
-        fn checked_hashes(duration_secs: f32, count: usize, epoch: EpochParameters) -> Self {
+        pub fn checked_hashes(duration_secs: f32, count: usize, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: count as u64,
                 cache_creation: 0.0,
@@ -144,7 +142,7 @@ pub mod ccp_collector_rpc {
             }
         }
 
-        fn proofs_found(count: u64, epoch: EpochParameters) -> Self {
+        pub fn proofs_found(count: u64, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: 0.0,
@@ -152,43 +150,6 @@ pub mod ccp_collector_rpc {
                 cc_job_duration_secs: 0.0,
                 found_proofs_count: count,
                 epoch: Some(epoch.into()),
-            }
-        }
-    }
-
-    impl TryFrom<&ToStatsCollectingMessage> for HashRate {
-        type Error = ();
-
-        fn try_from(value: &ToStatsCollectingMessage) -> Result<Self, Self::Error> {
-            use ccp_cu::HashrateRecordType;
-            match value {
-                &ToStatsCollectingMessage::ProofFound { epoch, .. } => {
-                    Ok(HashRate::proofs_found(1, epoch))
-                }
-                ToStatsCollectingMessage::Hashrate(thread_hashrate_record) => {
-                    let duration_secs = thread_hashrate_record.duration.as_secs_f32();
-
-                    match thread_hashrate_record.variant {
-                        HashrateRecordType::CacheCreation => Ok(HashRate::cache_creation(
-                            duration_secs,
-                            thread_hashrate_record.epoch,
-                        )),
-                        HashrateRecordType::DatasetInitialization { .. } => {
-                            Ok(HashRate::dataset_initialization(
-                                duration_secs,
-                                thread_hashrate_record.epoch,
-                            ))
-                        }
-                        HashrateRecordType::CheckedHashes { count } => {
-                            Ok(HashRate::checked_hashes(
-                                duration_secs,
-                                count,
-                                thread_hashrate_record.epoch,
-                            ))
-                        }
-                    }
-                }
-                ToStatsCollectingMessage::Epoch(_epoch_parameters) => Err(()),
             }
         }
     }
@@ -246,13 +207,9 @@ impl CcpCuRpcHttpClient {
     pub async fn report(
         &mut self,
         proof: &[RawProof],
-        metrics: &[ToStatsCollectingMessage],
+        metrics: Vec<crate::ccp_collector_rpc::HashRate>,
     ) -> Result<(), ClientError> {
         let proofs: Vec<_> = proof.iter().map(Into::into).collect();
-        let metrics: Vec<_> = metrics
-            .iter()
-            .filter_map(|msg| TryInto::try_into(msg).ok())
-            .collect();
 
         // it can be empty because some metrics are skipped
         if !proofs.is_empty() || !metrics.is_empty() {

@@ -7,6 +7,7 @@ use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollecting
 use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::RawProof;
 use ccp_cu_rpc_client::CcpCuRpcHttpClient;
+use ccp_cu_rpc_client::HashRate;
 use eyre::Context;
 use tokio::select;
 use tokio::sync::mpsc::Receiver;
@@ -38,11 +39,12 @@ impl ProofRetryClient {
 
     pub async fn run(mut self) {
         let mut collected_proofs = vec![];
-        let mut collected_stats = vec![];
+        let mut collected_stats: Vec<HashRate> = vec![];
 
         loop {
             assert!(collected_proofs.is_empty());
             assert!(collected_stats.is_empty());
+
             select! {
                 raw_proof = self.proof_receiver.recv() => {
                     match raw_proof {
@@ -53,7 +55,10 @@ impl ProofRetryClient {
                 }
                 stats = self.stats_receiver.recv() => {
                     if let Some(stats) = stats {
-                         collected_stats.push(stats);
+                        // Error means here that stats record is not to be sent by gRPC
+                        if let Ok(stats) = (&stats).try_into() {
+                            collected_stats.push(stats);
+                        }
                     }
                 }
             }
@@ -96,7 +101,7 @@ impl ProofRetryClient {
     async fn try_sending_report(
         &self,
         collected_proofs: &[RawProof],
-        collected_stats: &[ToStatsCollectingMessage],
+        collected_stats: &[HashRate],
     ) -> eyre::Result<()> {
         let mut rpc_client = CcpCuRpcHttpClient::auto(self.rpc_endpoint.clone())
             .await
@@ -109,7 +114,7 @@ impl ProofRetryClient {
         &mut self,
         next_backoff: Duration,
         collected_proofs: &mut Vec<RawProof>,
-        collected_stats: &mut Vec<ToStatsCollectingMessage>,
+        collected_stats: &mut Vec<HashRate>,
     ) {
         let deadline = tokio::time::sleep(next_backoff);
         let mut deadline = pin!(deadline);
@@ -126,7 +131,9 @@ impl ProofRetryClient {
                 }
                 stats = self.stats_receiver.recv() => {
                     if let Some(stats) = stats {
-                        collected_stats.push(stats);
+                        if let Ok(stats) = (&stats).try_into() {
+                            collected_stats.push(stats);
+                        }
                     }
                 }
                 _ = &mut deadline => {
