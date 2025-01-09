@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.16.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.15.0...ccp-v0.16.0) (2025-01-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cu_worker:** send stats over gRPC ([#198](https://github.com/fluencelabs/capacity-commitment-prover/issues/198))
+
+### Features
+
+* **cu_worker:** cpu worker stats to console ([#196](https://github.com/fluencelabs/capacity-commitment-prover/issues/196)) ([ffba666](https://github.com/fluencelabs/capacity-commitment-prover/commit/ffba666643f8f9a5e8c5abda2cda82ce0f32d79e))
+* **cu_worker:** send stats over gRPC ([#198](https://github.com/fluencelabs/capacity-commitment-prover/issues/198)) ([23c7cda](https://github.com/fluencelabs/capacity-commitment-prover/commit/23c7cdab74ef3f48e84935c2fff964c9275e3819))
+
 ## [0.15.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.14.3...ccp-v0.15.0) (2024-12-19)
 
 
