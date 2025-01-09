@@ -14,14 +14,27 @@ message RpcProof {
     string result_hash = 4;
 }
 
+message HashRate {
+    uint64 checked_hashes_count = 1;
+    uint64 found_proofs_count = 2;
+    // TODO how to account parallel execution for both values?
+    float cc_job_duration_secs = 3;
+    // TODO how to account parallel execution for both values?
+    float cache_creation = 4;
+    float dataset_initialization = 5;
+    RpcEpochParameters epoch = 6;
+}
+
 message ReportRequest {
     repeated RpcProof proofs = 1;
+    repeated HashRate metrics = 2;
 }
 
 message ReportResponse {
     // empty
 }
 
+
 service Collector {
-    rpc report_proof(ReportRequest) returns (ReportResponse) {}
+    rpc report(ReportRequest) returns (ReportResponse) {}
 }

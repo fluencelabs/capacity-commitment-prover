@@ -39,6 +39,7 @@ pub trait ProvingThreadFacade {
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
+        epoch: EpochParameters,
     ) -> Result<(), Self::Error>;
 
     async fn run_cc_job(

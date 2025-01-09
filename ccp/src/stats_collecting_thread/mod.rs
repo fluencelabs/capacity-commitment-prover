@@ -19,5 +19,6 @@ mod thread;
 
 pub use errors::StatsCollectingThreadError;
 pub use thread::StatsCollectingThread;
+pub use thread::StatsSink;
 
 pub(crate) type STTResult<T> = Result<T, errors::StatsCollectingThreadError>;

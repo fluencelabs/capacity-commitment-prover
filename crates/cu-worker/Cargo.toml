@@ -8,6 +8,7 @@ repository.workspace = true
 publish = false
 
 [dependencies]
+ccp.workspace = true
 ccp-cu.workspace = true
 ccp-cu-rpc-client.workspace = true
 

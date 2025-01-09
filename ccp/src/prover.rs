@@ -209,6 +209,7 @@ impl CCProver {
             hashrate_handler,
             config.rpc_endpoint.utility_queue_size,
             config.logs.cumulative_hashrate_update_interval_secs,
+            vec![],
         );
 
         let prometheus_endpoint = config.prometheus_endpoint.as_ref().map(|endpoint_cfg| {

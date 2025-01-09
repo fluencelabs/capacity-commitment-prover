@@ -31,6 +31,7 @@ use tokio::net::UnixStream;
 use tonic::transport::{Channel, Endpoint, Uri};
 use tower::service_fn;
 
+use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingMessage;
 pub use ccp_shared::proof::raw::RawProof;
 pub use ccp_shared::types::EpochParameters;
 
@@ -40,7 +41,10 @@ pub use crate::ccp_collector_rpc::ReportRequest;
 pub use crate::ccp_collector_rpc::RpcProof;
 
 pub mod ccp_collector_rpc {
+    use ccp_cu::EpochParameters;
+
     use crate::RawProof;
+    use crate::ToStatsCollectingMessage;
 
     pub const COLLECTOR_DESCRIPTOR_SET: &[u8] =
         tonic::include_file_descriptor_set!("collector_descriptor");
@@ -105,19 +109,111 @@ pub mod ccp_collector_rpc {
             })
         }
     }
+
+    impl HashRate {
+        fn cache_creation(duration_secs: f32, epoch: EpochParameters) -> Self {
+            Self {
+                checked_hashes_count: 0,
+                cache_creation: duration_secs,
+                dataset_initialization: 0.0,
+                cc_job_duration_secs: 0.0,
+                found_proofs_count: 0,
+                epoch: Some(epoch.into()),
+            }
+        }
+
+        fn dataset_initialization(duration_secs: f32, epoch: EpochParameters) -> Self {
+            Self {
+                checked_hashes_count: 0,
+                cache_creation: 0.0,
+                dataset_initialization: duration_secs,
+                cc_job_duration_secs: 0.0,
+                found_proofs_count: 0,
+                epoch: Some(epoch.into()),
+            }
+        }
+
+        fn checked_hashes(duration_secs: f32, count: usize, epoch: EpochParameters) -> Self {
+            Self {
+                checked_hashes_count: count as u64,
+                cache_creation: 0.0,
+                dataset_initialization: 0.0,
+                cc_job_duration_secs: duration_secs,
+                found_proofs_count: 0,
+                epoch: Some(epoch.into()),
+            }
+        }
+
+        fn proofs_found(count: u64, epoch: EpochParameters) -> Self {
+            Self {
+                checked_hashes_count: 0,
+                cache_creation: 0.0,
+                dataset_initialization: 0.0,
+                cc_job_duration_secs: 0.0,
+                found_proofs_count: count,
+                epoch: Some(epoch.into()),
+            }
+        }
+    }
+
+    impl TryFrom<&ToStatsCollectingMessage> for HashRate {
+        type Error = ();
+
+        fn try_from(value: &ToStatsCollectingMessage) -> Result<Self, Self::Error> {
+            use ccp_cu::HashrateRecordType;
+            match value {
+                &ToStatsCollectingMessage::ProofFound { epoch, .. } => {
+                    Ok(HashRate::proofs_found(1, epoch))
+                }
+                ToStatsCollectingMessage::Hashrate(thread_hashrate_record) => {
+                    let duration_secs = thread_hashrate_record.duration.as_secs_f32();
+
+                    match thread_hashrate_record.variant {
+                        HashrateRecordType::CacheCreation => Ok(HashRate::cache_creation(
+                            duration_secs,
+                            thread_hashrate_record.epoch,
+                        )),
+                        HashrateRecordType::DatasetInitialization { .. } => {
+                            Ok(HashRate::dataset_initialization(
+                                duration_secs,
+                                thread_hashrate_record.epoch,
+                            ))
+                        }
+                        HashrateRecordType::CheckedHashes { count } => {
+                            Ok(HashRate::checked_hashes(
+                                duration_secs,
+                                count,
+                                thread_hashrate_record.epoch,
+                            ))
+                        }
+                    }
+                }
+                ToStatsCollectingMessage::Epoch(_epoch_parameters) => Err(()),
+            }
+        }
+    }
+
+    impl From<EpochParameters> for RpcEpochParameters {
+        fn from(value: EpochParameters) -> Self {
+            Self {
+                global_nonce: value.global_nonce.to_string(),
+                difficulty: value.difficulty.to_string(),
+            }
+        }
+    }
 }
 
 pub type ClientError = tonic::Status;
 
 // n.b.: the rpc macro also defines CcpCuRpcClient type which is a working async JSON RPC client.
 pub struct CcpCuRpcHttpClient {
-    inner: CollectorClient<Channel>,
+    proofs_inner: CollectorClient<Channel>,
 }
 
 impl CcpCuRpcHttpClient {
     pub async fn new_http(url: String) -> Result<Self, tonic::transport::Error> {
-        let inner = CollectorClient::connect(url).await?;
-        Ok(Self { inner })
+        let proofs_inner = CollectorClient::connect(url.clone()).await?;
+        Ok(Self { proofs_inner })
     }
 
     pub async fn new_unix_socket(path: String) -> Result<Self, tonic::transport::Error> {
@@ -131,8 +227,9 @@ impl CcpCuRpcHttpClient {
                 }
             }))
             .await?;
-        let inner = CollectorClient::new(channel);
-        Ok(Self { inner })
+        let proofs_inner = CollectorClient::new(channel.clone());
+
+        Ok(Self { proofs_inner })
     }
 
     pub async fn auto(endpoint: String) -> Result<Self, tonic::transport::Error> {
@@ -146,11 +243,22 @@ impl CcpCuRpcHttpClient {
         }
     }
 
-    pub async fn report_proofs(&mut self, proof: &[RawProof]) -> Result<(), ClientError> {
-        let proofs = proof.iter().map(Into::into).collect();
+    pub async fn report(
+        &mut self,
+        proof: &[RawProof],
+        metrics: &[ToStatsCollectingMessage],
+    ) -> Result<(), ClientError> {
+        let proofs: Vec<_> = proof.iter().map(Into::into).collect();
+        let metrics: Vec<_> = metrics
+            .iter()
+            .filter_map(|msg| TryInto::try_into(msg).ok())
+            .collect();
 
-        let report_request = ReportRequest { proofs };
-        self.inner.report_proof(report_request).await?;
+        // it can be empty because some metrics are skipped
+        if !proofs.is_empty() || !metrics.is_empty() {
+            let report_request = ReportRequest { proofs, metrics };
+            self.proofs_inner.report(report_request).await?;
+        }
         Ok(())
     }
 }

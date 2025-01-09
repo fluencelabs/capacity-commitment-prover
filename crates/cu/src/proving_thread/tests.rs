@@ -68,7 +68,13 @@ impl ThreadInitIngredients {
         let dataset = thread.allocate_dataset(flags).await.unwrap();
         let cache = thread.create_cache(epoch, cu_id, flags).await.unwrap();
         thread
-            .initialize_dataset(cache.handle(), dataset.handle(), 0, dataset.items_count())
+            .initialize_dataset(
+                cache.handle(),
+                dataset.handle(),
+                0,
+                dataset.items_count(),
+                epoch,
+            )
             .await
             .unwrap();
 
@@ -155,6 +161,7 @@ async fn dataset_creation_works() {
             actual_dataset.handle(),
             0,
             actual_dataset.items_count(),
+            epoch,
         )
         .await
         .unwrap();
@@ -227,7 +234,7 @@ async fn dataset_creation_works_with_three_threads() {
 
         async move {
             thread
-                .initialize_dataset(cache, dataset, start_item, items_count)
+                .initialize_dataset(cache, dataset, start_item, items_count, epoch)
                 .await
                 .unwrap();
 

@@ -16,6 +16,7 @@
 
 use std::time::Duration;
 
+use ccp_shared::types::EpochParameters;
 use ccp_shared::types::LogicalCoreId;
 
 const CPU_NONE: &str = "cpu_none";
@@ -25,6 +26,7 @@ pub struct ThreadHashrateRecord {
     pub core_id: Option<LogicalCoreId>,
     pub duration: Duration,
     pub variant: HashrateRecordType,
+    pub epoch: EpochParameters,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -37,11 +39,16 @@ pub enum HashrateRecordType {
 }
 
 impl ThreadHashrateRecord {
-    pub fn cache_creation(core_id: Option<LogicalCoreId>, duration: Duration) -> Self {
+    pub fn cache_creation(
+        core_id: Option<LogicalCoreId>,
+        duration: Duration,
+        epoch: EpochParameters,
+    ) -> Self {
         Self {
             core_id,
             duration,
             variant: HashrateRecordType::CacheCreation,
+            epoch,
         }
     }
 
@@ -50,6 +57,7 @@ impl ThreadHashrateRecord {
         duration: Duration,
         start_item: u64,
         items_count: u64,
+        epoch: EpochParameters,
     ) -> Self {
         Self {
             core_id,
@@ -58,6 +66,7 @@ impl ThreadHashrateRecord {
                 start_item,
                 items_count,
             },
+            epoch,
         }
     }
 
@@ -65,6 +74,7 @@ impl ThreadHashrateRecord {
         core_id: Option<LogicalCoreId>,
         duration: Duration,
         hashes_count: usize,
+        epoch: EpochParameters,
     ) -> Self {
         Self {
             core_id,
@@ -72,6 +82,7 @@ impl ThreadHashrateRecord {
             variant: HashrateRecordType::CheckedHashes {
                 count: hashes_count,
             },
+            epoch,
         }
     }
 }
@@ -81,24 +92,31 @@ impl std::fmt::Display for ThreadHashrateRecord {
         match self.variant {
             HashrateRecordType::CacheCreation => write!(
                 f,
-                "{}: spent {:?} for cache creation",
+                "{}: spent {:?} for cache creation for epoch {}",
                 core_name(&self.core_id),
-                self.duration
+                self.duration,
+                self.epoch,
             ),
             HashrateRecordType::DatasetInitialization {
                 start_item,
                 items_count,
             } => write!(
                 f,
-                "{}: spent {:?} for dataset init in ({start_item}, {items_count})",
+                "{}: spent {:?} for dataset init in ({start_item}, {items_count}), epoch {}",
                 core_name(&self.core_id),
-                self.duration
+                self.duration,
+                self.epoch,
             ),
             HashrateRecordType::CheckedHashes {
                 count: hashes_count,
             } => {
                 let hashrate = hashes_count as f64 / self.duration.as_secs_f64();
-                write!(f, "{}: hashrate {hashrate}", core_name(&self.core_id))
+                write!(
+                    f,
+                    "{}: hashrate {hashrate}, epoch {}",
+                    core_name(&self.core_id),
+                    self.epoch
+                )
             }
         }
     }
