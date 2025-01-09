@@ -41,6 +41,8 @@ pub use crate::ccp_collector_rpc::ReportRequest;
 pub use crate::ccp_collector_rpc::RpcProof;
 
 pub mod ccp_collector_rpc {
+    use ccp_cu::EpochParameters;
+
     use crate::RawProof;
     use crate::ToStatsCollectingMessage;
 
@@ -109,43 +111,47 @@ pub mod ccp_collector_rpc {
     }
 
     impl HashRate {
-        fn cache_creation(duration_secs: f32) -> Self {
+        fn cache_creation(duration_secs: f32, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: duration_secs,
                 dataset_initialization: 0.0,
                 cc_job_duration_secs: 0.0,
                 found_proofs_count: 0,
+                epoch: Some(epoch.into()),
             }
         }
 
-        fn dataset_initialization(duration_secs: f32) -> Self {
+        fn dataset_initialization(duration_secs: f32, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: 0.0,
                 dataset_initialization: duration_secs,
                 cc_job_duration_secs: 0.0,
                 found_proofs_count: 0,
+                epoch: Some(epoch.into()),
             }
         }
 
-        fn checked_hashes(duration_secs: f32, count: usize) -> Self {
+        fn checked_hashes(duration_secs: f32, count: usize, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: count as u64,
                 cache_creation: 0.0,
                 dataset_initialization: 0.0,
                 cc_job_duration_secs: duration_secs,
                 found_proofs_count: 0,
+                epoch: Some(epoch.into()),
             }
         }
 
-        fn proofs_found(count: u64) -> Self {
+        fn proofs_found(count: u64, epoch: EpochParameters) -> Self {
             Self {
                 checked_hashes_count: 0,
                 cache_creation: 0.0,
                 dataset_initialization: 0.0,
                 cc_job_duration_secs: 0.0,
                 found_proofs_count: count,
+                epoch: Some(epoch.into()),
             }
         }
     }
@@ -156,23 +162,42 @@ pub mod ccp_collector_rpc {
         fn try_from(value: &ToStatsCollectingMessage) -> Result<Self, Self::Error> {
             use ccp_cu::HashrateRecordType;
             match value {
-                ToStatsCollectingMessage::ProofFound { .. } => Ok(HashRate::proofs_found(1)),
+                &ToStatsCollectingMessage::ProofFound { epoch, .. } => {
+                    Ok(HashRate::proofs_found(1, epoch))
+                }
                 ToStatsCollectingMessage::Hashrate(thread_hashrate_record) => {
                     let duration_secs = thread_hashrate_record.duration.as_secs_f32();
 
                     match thread_hashrate_record.variant {
-                        HashrateRecordType::CacheCreation => {
-                            Ok(HashRate::cache_creation(duration_secs))
-                        }
+                        HashrateRecordType::CacheCreation => Ok(HashRate::cache_creation(
+                            duration_secs,
+                            thread_hashrate_record.epoch,
+                        )),
                         HashrateRecordType::DatasetInitialization { .. } => {
-                            Ok(HashRate::dataset_initialization(duration_secs))
+                            Ok(HashRate::dataset_initialization(
+                                duration_secs,
+                                thread_hashrate_record.epoch,
+                            ))
                         }
                         HashrateRecordType::CheckedHashes { count } => {
-                            Ok(HashRate::checked_hashes(duration_secs, count))
+                            Ok(HashRate::checked_hashes(
+                                duration_secs,
+                                count,
+                                thread_hashrate_record.epoch,
+                            ))
                         }
                     }
                 }
                 ToStatsCollectingMessage::Epoch(_epoch_parameters) => Err(()),
+            }
+        }
+    }
+
+    impl From<EpochParameters> for RpcEpochParameters {
+        fn from(value: EpochParameters) -> Self {
+            Self {
+                global_nonce: value.global_nonce.to_string(),
+                difficulty: value.difficulty.to_string(),
             }
         }
     }

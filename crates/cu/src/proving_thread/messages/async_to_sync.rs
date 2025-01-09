@@ -40,6 +40,7 @@ pub(crate) struct InitializeDataset {
     pub(crate) dataset: DatasetHandle,
     pub(crate) start_item: u64,
     pub(crate) items_count: u64,
+    pub(crate) epoch: EpochParameters,
 }
 
 #[derive(Debug)]
@@ -77,12 +78,14 @@ impl InitializeDataset {
         dataset: DatasetHandle,
         start_item: u64,
         items_count: u64,
+        epoch: EpochParameters,
     ) -> Self {
         Self {
             cache,
             dataset,
             start_item,
             items_count,
+            epoch,
         }
     }
 }

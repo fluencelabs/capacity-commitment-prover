@@ -117,7 +117,7 @@ impl CUProver {
         let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
 
         let dataset_handle = self.dataset.handle();
-        self.initialize_dataset(cache, dataset_handle.clone(), cancel_token)
+        self.initialize_dataset(cache, dataset_handle.clone(), cancel_token, epoch)
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
@@ -195,6 +195,7 @@ impl CUProver {
         cache: Cache,
         dataset: DatasetHandle,
         cancel_token: CancellationToken,
+        epoch: EpochParameters,
     ) -> CUResult<()> {
         let dataset_size = dataset.items_count();
 
@@ -216,6 +217,7 @@ impl CUProver {
             threads_number,
             chunk_size,
             cancel_token: cancel_token.clone(),
+            epoch,
         };
         run_unordered_with_params(self.threads.iter_mut(), params_phase0, initialization_body)
             .await
@@ -239,6 +241,7 @@ impl CUProver {
             threads_number,
             chunk_size,
             cancel_token,
+            epoch,
         };
         run_unordered_with_params(self.threads.iter_mut(), params_phase1, initialization_body)
             .await
@@ -283,6 +286,7 @@ struct InitializationState {
     threads_number: u64,
     chunk_size: u64,
     cancel_token: CancellationToken,
+    epoch: EpochParameters,
 }
 
 fn initialization_body(
@@ -300,6 +304,7 @@ fn initialization_body(
         threads_number,
         chunk_size,
         cancel_token,
+        epoch,
     } = state;
 
     let thread_id = thread_id as u64;
@@ -317,7 +322,13 @@ fn initialization_body(
             let start_item = chunk.start;
             let items_count = chunk.size;
             thread
-                .initialize_dataset(cache.clone(), dataset.clone(), start_item, items_count)
+                .initialize_dataset(
+                    cache.clone(),
+                    dataset.clone(),
+                    start_item,
+                    items_count,
+                    epoch,
+                )
                 .await?;
         }
         Ok(())

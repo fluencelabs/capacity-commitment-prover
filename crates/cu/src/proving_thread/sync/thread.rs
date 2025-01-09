@@ -181,7 +181,8 @@ impl ProvingThreadSync {
 
                 to_stats_collecting.send_epoch(params.epoch)?;
 
-                let hashrate = ThreadHashrateRecord::cache_creation(core_id, duration);
+                let hashrate =
+                    ThreadHashrateRecord::cache_creation(core_id, duration, params.epoch);
                 to_stats_collecting.send_hashrate(hashrate)?;
 
                 Ok(ThreadState::WaitForMessage)
@@ -208,6 +209,7 @@ impl ProvingThreadSync {
                     duration,
                     params.start_item,
                     params.items_count,
+                    params.epoch,
                 );
                 to_stats_collecting.send_hashrate(hashrate)?;
 

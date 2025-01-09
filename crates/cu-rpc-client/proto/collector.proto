@@ -22,6 +22,7 @@ message HashRate {
     // TODO how to account parallel execution for both values?
     float cache_creation = 4;
     float dataset_initialization = 5;
+    RpcEpochParameters epoch = 6;
 }
 
 message ReportRequest {

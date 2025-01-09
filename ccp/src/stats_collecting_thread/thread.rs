@@ -135,7 +135,7 @@ impl StatsCollectingThreadImpl {
         }
 
         match message {
-            ProofFound { core_id } => {
+            ProofFound { core_id, .. } => {
                 self.hashrate_handler.proof_found(core_id);
             }
             Hashrate(record) => {
