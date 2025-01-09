@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.0...ccp-v0.16.1) (2025-01-09)
+
+
+### Bug Fixes
+
+* decouple a public crate from a private one ([#200](https://github.com/fluencelabs/capacity-commitment-prover/issues/200)) ([205e772](https://github.com/fluencelabs/capacity-commitment-prover/commit/205e772dc4f251fb49d01fafe86329f3b629c3c9))
+
 ## [0.16.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.15.0...ccp-v0.16.0) (2025-01-09)
 
 
