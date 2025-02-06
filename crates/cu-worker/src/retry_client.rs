@@ -22,6 +22,8 @@ pub struct ProofRetryClient {
 }
 
 const BUFFER_SIZE: usize = 1000;
+const INITIAL_BACKOFF_INTERVAL_SECS: u64 = 10;
+const MAX_BACKOFF_INTERVAL_SECS: u64 = 600;
 
 impl ProofRetryClient {
     pub fn new(
@@ -42,15 +44,21 @@ impl ProofRetryClient {
         let mut collected_stats: Vec<HashRate> = vec![];
 
         loop {
-            assert!(collected_proofs.is_empty());
-            assert!(collected_stats.is_empty());
+            if !collected_stats.is_empty() || !collected_proofs.is_empty() {
+                tracing::error!("internal ERROR: either collected stats or collected proofs aren't empty after the cycle: {collected_stats:?}, {collected_proofs:?}");
+                collected_stats.clear();
+                collected_proofs.clear();
+            }
 
             select! {
                 raw_proof = self.proof_receiver.recv() => {
                     match raw_proof {
                         Some(raw_proof) => collected_proofs.push(raw_proof),
                         // nothing to read
-                        None => return,
+                        None => {
+                            tracing::warn!("RETRY CLIENT: the proof channel is closed by sender, exiting the retrying loop");
+                            return
+                        },
                     }
                 }
                 stats = self.stats_receiver.recv() => {
@@ -63,10 +71,11 @@ impl ProofRetryClient {
                 }
             }
 
-            // Retry loop: untill the request succeeds.
+            // Retry loop: until the request succeeds.
             let mut backoff_gen = ExponentialBackoffBuilder::new()
-                .with_initial_interval(Duration::from_secs(10))
-                .with_max_interval(Duration::from_secs(600))
+                .with_initial_interval(Duration::from_secs(INITIAL_BACKOFF_INTERVAL_SECS))
+                .with_max_interval(Duration::from_secs(MAX_BACKOFF_INTERVAL_SECS))
+                .with_max_elapsed_time(None)
                 .build();
             loop {
                 // We create a new client instance because if the endpoint restarts and Unix domain socket is used,
@@ -85,7 +94,7 @@ impl ProofRetryClient {
                 };
                 tracing::error!("failed to send connect to lightmare gRPC: {error:?}, retrying...",);
 
-                let next_backoff = backoff_gen.next_backoff().unwrap();
+                let next_backoff = backoff_gen.next_backoff().unwrap_or_else(|| Duration::from_secs(MAX_BACKOFF_INTERVAL_SECS));
                 tracing::error!("retrying in {next_backoff:?}");
 
                 self.wait_for_backoff_collecting(
