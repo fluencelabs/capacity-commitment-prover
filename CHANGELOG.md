@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.1...ccp-v0.16.2) (2025-02-06)
+
+
+### Bug Fixes
+
+* fix channel closing ([#202](https://github.com/fluencelabs/capacity-commitment-prover/issues/202)) ([4cc9d3d](https://github.com/fluencelabs/capacity-commitment-prover/commit/4cc9d3dc06a1b4cd58279fe9a72e4b390b98a48f))
+
 ## [0.16.1](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.0...ccp-v0.16.1) (2025-01-09)
 
 
