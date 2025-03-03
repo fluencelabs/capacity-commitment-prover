@@ -33,11 +33,11 @@ pub type ResultHashInner = [u8; RANDOMX_RESULT_SIZE];
 pub struct ResultHash(ResultHashInner);
 
 impl ResultHash {
-    pub fn from_slice(hash: ResultHashInner) -> Self {
+    pub const fn from_slice(hash: ResultHashInner) -> Self {
         Self(hash)
     }
 
-    pub fn into_slice(self) -> ResultHashInner {
+    pub const fn into_slice(self) -> ResultHashInner {
         self.0
     }
 }

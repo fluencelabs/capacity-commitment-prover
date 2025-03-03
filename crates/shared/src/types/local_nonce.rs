@@ -29,7 +29,7 @@ pub type LocalNonceInner = [u8; 32];
 pub struct LocalNonce(LocalNonceInner);
 
 impl LocalNonce {
-    pub fn new(inner: LocalNonceInner) -> Self {
+    pub const fn new(inner: LocalNonceInner) -> Self {
         Self(inner)
     }
 

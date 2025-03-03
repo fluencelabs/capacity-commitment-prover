@@ -94,7 +94,9 @@ impl ProofRetryClient {
                 };
                 tracing::error!("failed to send connect to lightmare gRPC: {error:?}, retrying...",);
 
-                let next_backoff = backoff_gen.next_backoff().unwrap_or_else(|| Duration::from_secs(MAX_BACKOFF_INTERVAL_SECS));
+                let next_backoff = backoff_gen
+                    .next_backoff()
+                    .unwrap_or_else(|| Duration::from_secs(MAX_BACKOFF_INTERVAL_SECS));
                 tracing::error!("retrying in {next_backoff:?}");
 
                 self.wait_for_backoff_collecting(

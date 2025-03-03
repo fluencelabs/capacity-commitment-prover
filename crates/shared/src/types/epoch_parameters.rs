@@ -30,7 +30,7 @@ pub struct EpochParameters {
 }
 
 impl EpochParameters {
-    pub fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
+    pub const fn new(global_nonce: GlobalNonce, difficulty: Difficulty) -> Self {
         Self {
             global_nonce,
             difficulty,
