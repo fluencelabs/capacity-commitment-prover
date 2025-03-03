@@ -31,7 +31,7 @@ pub type DifficultyInner = [u8; RANDOMX_RESULT_SIZE];
 pub struct Difficulty(DifficultyInner);
 
 impl Difficulty {
-    pub fn new(inner: DifficultyInner) -> Self {
+    pub const fn new(inner: DifficultyInner) -> Self {
         Self(inner)
     }
 }

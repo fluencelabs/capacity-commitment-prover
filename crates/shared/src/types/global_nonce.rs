@@ -29,7 +29,7 @@ pub type GlobalNonceInner = [u8; 32];
 pub struct GlobalNonce(GlobalNonceInner);
 
 impl GlobalNonce {
-    pub fn new(inner: GlobalNonceInner) -> Self {
+    pub const fn new(inner: GlobalNonceInner) -> Self {
         Self(inner)
     }
 }
