@@ -514,7 +514,7 @@ dependencies = [
 
 [[package]]
 name = "ccp-shared"
-version = "0.16.2"
+version = "0.16.3"
 dependencies = [
  "arbitrary",
  "hex",
