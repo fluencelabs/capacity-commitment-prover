@@ -109,7 +109,7 @@ async fn async_main() -> eyre::Result<()> {
         vec![Box::new(collector)],
     );
 
-    let mut cu_prover = CUProver::create(
+    let _cu_prover = CUProver::create(
         prover_config,
         to_state_operating,
         stats_collecting_thread.get_to_stats_collecting_channel(),
@@ -121,11 +121,11 @@ async fn async_main() -> eyre::Result<()> {
     // the error is not Send, convert it to a string
     .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
-    cu_prover
-        .new_epoch(epoch, parameters.cu_id, dummy_cancellation_token)
-        .await
-        // the error is not Send, convert it to a string
-        .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
+    // cu_prover
+    //     .new_epoch(epoch, parameters.cu_id, dummy_cancellation_token)
+    //     .await
+    //     // the error is not Send, convert it to a string
+    //     .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
     message_dispatching_loop(from_state_operating, collector_inlet, parameters.upstream).await
 }
