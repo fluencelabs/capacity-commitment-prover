@@ -51,8 +51,15 @@ struct Args {
     config: Option<String>,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> eyre::Result<()> {
+fn main() -> eyre::Result<()> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .max_blocking_threads(4)
+        .build()
+        .expect("Failed to build a tokio runtime");
+    runtime.block_on(async_main())
+}
+
+async fn async_main() -> eyre::Result<()> {
     use ccp_config::cu_config::load_cu_config;
 
     let args = Args::parse();
