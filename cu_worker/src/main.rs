@@ -54,6 +54,8 @@ struct Args {
 fn main() -> eyre::Result<()> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .max_blocking_threads(4)
+        .enable_time()
+        .enable_io()
         .build()
         .expect("Failed to build a tokio runtime");
     runtime.block_on(async_main())
