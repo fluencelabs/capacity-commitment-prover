@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.2...ccp-v0.16.3) (2025-03-03)
+
+
+### Features
+
+* **shared:** Add `const` to many `ccp-shared` methods ([#204](https://github.com/fluencelabs/capacity-commitment-prover/issues/204)) ([b4bcb93](https://github.com/fluencelabs/capacity-commitment-prover/commit/b4bcb93d8fb43cbb6618d03c94d2ae4e6e7eced0))
+
 ## [0.16.2](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.1...ccp-v0.16.2) (2025-02-06)
 
 
