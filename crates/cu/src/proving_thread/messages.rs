@@ -20,6 +20,7 @@ mod async_to_sync;
 mod sync_to_async;
 
 pub(crate) use async_to_sync::*;
+pub(crate) use sync_to_async::*;
 
 pub(crate) type AsyncToSyncInlet = mpsc::Sender<AsyncToSyncMessage>;
 pub(crate) type AsyncToSyncOutlet = mpsc::Receiver<AsyncToSyncMessage>;
@@ -29,6 +30,9 @@ pub(crate) type SyncToAsyncOutlet = mpsc::Receiver<SyncToAsyncMessage>;
 
 #[derive(Debug)]
 pub(crate) enum AsyncToSyncMessage {
+    CreateCache(CreateCache),
+    AllocateDataset(AllocateDataset),
+    InitializeDataset(InitializeDataset),
     NewCCJob {
         job: NewCCJob,
         hashes_per_round: usize,
@@ -40,6 +44,8 @@ pub(crate) enum AsyncToSyncMessage {
 
 #[derive(Debug)]
 pub(crate) enum SyncToAsyncMessage {
+    CacheCreated(CacheCreated),
+    DatasetAllocated(DatasetAllocated),
     DatasetInitialized,
     Paused,
 }

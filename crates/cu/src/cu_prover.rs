@@ -56,6 +56,7 @@ pub struct CUProver {
     core_id_allocation: CoreIdAllocation,
     randomx_flags: RandomXFlags,
     cpu_topology: HwlocCPUTopology,
+    dataset: Dataset,
     status: CUStatus,
     dataset_chunk_size: u64,
     temp_dir: PathBuf,
@@ -83,11 +84,15 @@ impl CUProver {
             ProvingThreadConfig::from_cu_prover_config(&config),
         )?;
 
+        let thread = &mut threads.head;
+        let dataset = thread.allocate_dataset(config.randomx_flags).await?;
+
         let prover = Self {
             threads,
             core_id_allocation,
             randomx_flags: config.randomx_flags,
             cpu_topology: topology,
+            dataset,
             status: CUStatus::Idle,
             dataset_chunk_size: config.dataset_chunk_size,
             temp_dir,
@@ -99,15 +104,23 @@ impl CUProver {
         &mut self,
         epoch: EpochParameters,
         cu_id: CUID,
-        _cancel_token: CancellationToken,
+        cancel_token: CancellationToken,
     ) -> CUResult<()> {
-        log::info!("Skipping Generating dataset for new epoch: {epoch:?}");
+        log::info!("Generating dataset for new epoch: {epoch:?}");
         // pause provers to not produce proofs with a changing dataset at the moment
         self.pause().await?;
 
         self.status = CUStatus::Running { cu_id };
 
-        self.run_proving_jobs(epoch, cu_id).await
+        let thread = &mut self.threads.head;
+        let randomx_flags = self.randomx_flags;
+        let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
+
+        let dataset_handle = self.dataset.handle();
+        self.initialize_dataset(cache, dataset_handle.clone(), cancel_token, epoch)
+            .await?;
+
+        self.run_proving_jobs(epoch, dataset_handle, cu_id).await
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -177,21 +190,150 @@ impl CUProver {
     }
 
     #[allow(clippy::needless_lifetimes)]
+    async fn initialize_dataset<'threads>(
+        &'threads mut self,
+        cache: Cache,
+        dataset: DatasetHandle,
+        cancel_token: CancellationToken,
+        epoch: EpochParameters,
+    ) -> CUResult<()> {
+        let dataset_size = dataset.items_count();
+
+        let cache_len = CACHE_LEN;
+
+        assert_eq!(sizes::MIB % DATASET_ITEM_SIZE, 0);
+        // Add extra MIB for alignment, rounding etc
+        let dataset_phase0_size = (cache_len + sizes::MIB) / DATASET_ITEM_SIZE;
+        let dataset_phase1_size = dataset_size - dataset_phase0_size;
+
+        let threads_number = self.threads.len() as u64;
+        let chunk_size = self.dataset_chunk_size;
+
+        let params_phase0 = InitializationState {
+            range_start: 0,
+            range_len: dataset_phase0_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token: cancel_token.clone(),
+            epoch,
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase0, initialization_body)
+            .await
+            .unwrap();
+
+        let dataset_phase0_len = (dataset_phase0_size * DATASET_ITEM_SIZE) as usize;
+
+        // Safety: dataset is valid, initialized, mmap-allocated memory range
+        let memory_dumper = unsafe {
+            let dataset_base = dataset.memory() as usize;
+            MemoryDumper::new(&self.temp_dir, dataset_base, dataset_phase0_len)
+        }
+        .await
+        .map_err(CUProverError::DumperError)?;
+
+        let params_phase1 = InitializationState {
+            range_start: dataset_phase0_size,
+            range_len: dataset_phase1_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token,
+            epoch,
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params_phase1, initialization_body)
+            .await
+            .unwrap();
+        std::mem::drop(cache);
+
+        // Safety: safe because memory_dumper refers to valid dataset memory range
+        unsafe { memory_dumper.restore() }
+            .await
+            .map_err(CUProverError::DumperError)?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::needless_lifetimes)]
     async fn run_proving_jobs<'threads>(
         &'threads mut self,
         epoch: EpochParameters,
+        dataset: DatasetHandle,
         cu_id: CUID,
     ) -> CUResult<()> {
         use futures::FutureExt;
 
         let randomx_flags = self.randomx_flags;
         let closure = |_: usize, thread: &'threads mut ProvingThreadAsync| {
-            thread.run_cc_job(epoch, randomx_flags, cu_id).boxed()
+            thread
+                .run_cc_job(epoch, dataset.clone(), randomx_flags, cu_id)
+                .boxed()
         };
         run_unordered(self.threads.iter_mut(), closure).await?;
 
         Ok(())
     }
+}
+
+#[derive(Debug, Clone)]
+struct InitializationState {
+    range_start: u64,
+    range_len: u64,
+    cache: CacheHandle,
+    dataset: DatasetHandle,
+    threads_number: u64,
+    chunk_size: u64,
+    cancel_token: CancellationToken,
+    epoch: EpochParameters,
+}
+
+fn initialization_body(
+    thread_id: usize,
+    state: InitializationState,
+    thread: &mut ProvingThreadAsync,
+) -> BoxFuture<'_, Result<(), <ProvingThreadAsync as ProvingThreadFacade>::Error>> {
+    use futures::FutureExt;
+
+    let InitializationState {
+        range_start,
+        range_len,
+        cache,
+        dataset,
+        threads_number,
+        chunk_size,
+        cancel_token,
+        epoch,
+    } = state;
+
+    let thread_id = thread_id as u64;
+
+    let start_item = range_start + (range_len * thread_id) / threads_number;
+    let next_start_item = range_start + (range_len * (thread_id + 1)) / threads_number;
+
+    let chunk_generator = ChunkGenerator::new(start_item, next_start_item, chunk_size);
+
+    async move {
+        for chunk in chunk_generator {
+            if cancel_token.is_cancelled() {
+                break;
+            }
+            let start_item = chunk.start;
+            let items_count = chunk.size;
+            thread
+                .initialize_dataset(
+                    cache.clone(),
+                    dataset.clone(),
+                    start_item,
+                    items_count,
+                    epoch,
+                )
+                .await?;
+        }
+        Ok(())
+    }
+    .boxed()
 }
 
 impl ToCUStatus for CUProver {

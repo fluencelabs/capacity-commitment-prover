@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use ccp_randomx::cache::CacheHandle;
+use ccp_randomx::dataset::DatasetHandle;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::EpochParameters;
 use cpu_utils::LogicalCoreId;
@@ -21,8 +23,30 @@ use cpu_utils::LogicalCoreId;
 use crate::CUID;
 
 #[derive(Debug)]
+pub(crate) struct CreateCache {
+    pub(crate) epoch: EpochParameters,
+    pub(crate) cu_id: CUID,
+    pub(crate) flags: RandomXFlags,
+}
+
+#[derive(Debug)]
+pub(crate) struct AllocateDataset {
+    pub(crate) flags: RandomXFlags,
+}
+
+#[derive(Debug)]
+pub(crate) struct InitializeDataset {
+    pub(crate) cache: CacheHandle,
+    pub(crate) dataset: DatasetHandle,
+    pub(crate) start_item: u64,
+    pub(crate) items_count: u64,
+    pub(crate) epoch: EpochParameters,
+}
+
+#[derive(Debug)]
 pub(crate) struct NewCCJob {
     pub(crate) epoch: EpochParameters,
+    pub(crate) dataset: DatasetHandle,
     pub(crate) flags: RandomXFlags,
     pub(crate) cu_id: CUID,
 }
@@ -32,10 +56,50 @@ pub(crate) struct PinThread {
     pub(crate) core_id: LogicalCoreId,
 }
 
-impl NewCCJob {
-    pub fn new(epoch: EpochParameters, flags: RandomXFlags, cu_id: CUID) -> Self {
+impl CreateCache {
+    pub(crate) fn new(epoch: EpochParameters, cu_id: CUID, flags: RandomXFlags) -> Self {
         Self {
             epoch,
+            cu_id,
+            flags,
+        }
+    }
+}
+
+impl AllocateDataset {
+    pub(crate) fn new(flags: RandomXFlags) -> Self {
+        Self { flags }
+    }
+}
+
+impl InitializeDataset {
+    pub fn new(
+        cache: CacheHandle,
+        dataset: DatasetHandle,
+        start_item: u64,
+        items_count: u64,
+        epoch: EpochParameters,
+    ) -> Self {
+        Self {
+            cache,
+            dataset,
+            start_item,
+            items_count,
+            epoch,
+        }
+    }
+}
+
+impl NewCCJob {
+    pub fn new(
+        epoch: EpochParameters,
+        dataset: DatasetHandle,
+        flags: RandomXFlags,
+        cu_id: CUID,
+    ) -> Self {
+        Self {
+            epoch,
+            dataset,
             flags,
             cu_id,
         }

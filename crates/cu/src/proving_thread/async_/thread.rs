@@ -73,13 +73,74 @@ impl ProvingThreadAsync {
 impl ProvingThreadFacade for ProvingThreadAsync {
     type Error = ProvingThreadAsyncError;
 
+    async fn create_cache(
+        &mut self,
+        epoch: EpochParameters,
+        cu_id: CUID,
+        flags: RandomXFlags,
+    ) -> Result<Cache, Self::Error> {
+        let message = CreateCache::new(epoch, cu_id, flags);
+        let message = AsyncToSyncMessage::CreateCache(message);
+        self.to_sync.send(message).await?;
+
+        match self.from_sync.recv().await {
+            Some(SyncToAsyncMessage::CacheCreated(params)) => Ok(params.cache),
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
+                "expected the CacheCreated event, but {message:?} received"
+            ))),
+            None => Err(ProvingThreadAsyncError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
+        }
+    }
+
+    async fn allocate_dataset(&mut self, flags: RandomXFlags) -> Result<Dataset, Self::Error> {
+        let message = AllocateDataset::new(flags);
+        let message = AsyncToSyncMessage::AllocateDataset(message);
+        self.to_sync.send(message).await?;
+
+        match self.from_sync.recv().await {
+            Some(SyncToAsyncMessage::DatasetAllocated(params)) => Ok(params.dataset),
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
+                "expected the DatasetAllocated event, but {message:?} received"
+            ))),
+            None => Err(ProvingThreadAsyncError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
+        }
+    }
+
+    async fn initialize_dataset(
+        &mut self,
+        cache: CacheHandle,
+        dataset: DatasetHandle,
+        start_item: u64,
+        items_count: u64,
+        epoch: EpochParameters,
+    ) -> Result<(), Self::Error> {
+        let message = InitializeDataset::new(cache, dataset, start_item, items_count, epoch);
+        let message = AsyncToSyncMessage::InitializeDataset(message);
+        self.to_sync.send(message).await?;
+
+        match self.from_sync.recv().await {
+            Some(SyncToAsyncMessage::DatasetInitialized) => Ok(()),
+            Some(message) => Err(ProvingThreadAsyncError::channel_error(format!(
+                "expected the DatasetInitialized event, but {message:?} received"
+            ))),
+            None => Err(ProvingThreadAsyncError::channel_error(
+                "sync to async channel is closed unexpectedly".to_string(),
+            )),
+        }
+    }
+
     async fn run_cc_job(
         &self,
         epoch: EpochParameters,
+        dataset: DatasetHandle,
         flags: RandomXFlags,
         cu_id: CUID,
     ) -> Result<(), Self::Error> {
-        let job = NewCCJob::new(epoch, flags, cu_id);
+        let job = NewCCJob::new(epoch, dataset, flags, cu_id);
         let message = AsyncToSyncMessage::NewCCJob {
             job,
             hashes_per_round: self.hashes_per_round,
