@@ -31,3 +31,5 @@ tracing-log.workspace = true
 tokio-util.workspace = true
 
 envconfig.workspace = true
+
+idna_adapter = "=1.0.0"
