@@ -14,38 +14,15 @@
  * limitations under the License.
  */
 
-use ccp_randomx::cache::CacheHandle;
-use ccp_randomx::dataset::DatasetHandle;
-use ccp_randomx::Cache;
-use ccp_randomx::Dataset;
 use ccp_randomx::RandomXFlags;
 use ccp_shared::types::*;
 
 pub trait ProvingThreadFacade {
     type Error;
 
-    async fn create_cache(
-        &mut self,
-        epoch: EpochParameters,
-        cu_id: CUID,
-        flags: RandomXFlags,
-    ) -> Result<Cache, Self::Error>;
-
-    async fn allocate_dataset(&mut self, flags: RandomXFlags) -> Result<Dataset, Self::Error>;
-
-    async fn initialize_dataset(
-        &mut self,
-        cache: CacheHandle,
-        dataset: DatasetHandle,
-        start_item: u64,
-        items_count: u64,
-        epoch: EpochParameters,
-    ) -> Result<(), Self::Error>;
-
     async fn run_cc_job(
         &self,
         epoch: EpochParameters,
-        dataset: DatasetHandle,
         flags: RandomXFlags,
         cu_id: CUID,
     ) -> Result<(), Self::Error>;

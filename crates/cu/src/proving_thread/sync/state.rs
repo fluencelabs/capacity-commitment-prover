@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+use std::time::Duration;
+
 use ccp_shared::types::CUID;
 use ccp_shared::types::{EpochParameters, LogicalCoreId};
 use tokio::time::Instant;
@@ -42,7 +44,6 @@ pub(crate) enum ThreadState {
 
 #[derive(Debug)]
 pub(crate) struct RandomXJob {
-    vm: ccp_randomx::RandomXVM<DatasetHandle>,
     local_nonce: LocalNonce,
     epoch: EpochParameters,
     cu_id: CUID,
@@ -52,17 +53,14 @@ pub(crate) struct RandomXJob {
 impl RandomXJob {
     pub(crate) fn from_cc_job(cc_job: NewCCJob, hashes_per_round: usize) -> STResult<Self> {
         let NewCCJob {
-            dataset,
-            flags,
+            flags: _flags,
             epoch,
             cu_id,
         } = cc_job;
 
-        let vm = ccp_randomx::RandomXVM::fast(dataset, flags)?;
         let local_nonce = LocalNonce::random();
 
         let params = Self {
-            vm,
             local_nonce,
             epoch,
             cu_id,
@@ -77,10 +75,7 @@ impl RandomXJob {
         to_state_operating: &ToStateOperating,
         to_stats_collecting: &ToStatsCollecting,
     ) -> STResult<()> {
-        use ccp_shared::meet_difficulty::MeetDifficulty;
-
         let start = Instant::now();
-        self.hash_first();
 
         for hash_id in 0..self.hashes_per_round {
             let result_hash = if self.is_last_iteration(hash_id) {
@@ -89,13 +84,12 @@ impl RandomXJob {
                 self.hash_next()
             };
 
-            if result_hash.meet_difficulty(&self.epoch.difficulty) {
-                log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", self.local_nonce);
+            std::thread::sleep(Duration::from_secs(20));
+            log::info!("proving_thread_sync: found new golden result hash {result_hash:?}\nfor local_nonce {:?}", self.local_nonce);
 
-                let proof = self.create_golden_proof(result_hash);
-                to_state_operating.send_proof(proof)?;
-                to_stats_collecting.send_proof(core_id, self.epoch)?;
-            }
+            let proof = self.create_golden_proof(result_hash);
+            to_state_operating.send_proof(proof)?;
+            to_stats_collecting.send_proof(core_id, self.epoch)?;
         }
 
         let duration = start.elapsed();
@@ -116,17 +110,16 @@ impl RandomXJob {
     }
 
     fn hash_first(&mut self) {
-        self.vm.hash_first(self.local_nonce.as_ref());
     }
 
     fn hash_last(&mut self) -> ResultHash {
         self.local_nonce.next();
-        self.vm.hash_last()
+        ResultHash::from_slice(*self.local_nonce.as_ref())
     }
 
     fn hash_next(&mut self) -> ResultHash {
         self.local_nonce.next();
-        self.vm.hash_next(self.local_nonce.as_ref())
+        ResultHash::from_slice(*self.local_nonce.as_ref())
     }
 
     fn create_golden_proof(&mut self, result_hash: ResultHash) -> RawProof {

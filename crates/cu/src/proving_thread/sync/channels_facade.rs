@@ -39,29 +39,6 @@ impl ToAsync {
         Self { to_async }
     }
 
-    pub(crate) fn send_cache(&self, cache: Cache) -> STResult<()> {
-        let to_async_message = CacheCreated::new(cache);
-        let to_async_message = SyncToAsyncMessage::CacheCreated(to_async_message);
-        self.to_async
-            .blocking_send(to_async_message)
-            .map_err(Into::into)
-    }
-
-    pub(crate) fn send_dataset(&self, dataset: Dataset) -> STResult<()> {
-        let to_async_message = DatasetAllocated::new(dataset);
-        let to_async_message = SyncToAsyncMessage::DatasetAllocated(to_async_message);
-        self.to_async
-            .blocking_send(to_async_message)
-            .map_err(Into::into)
-    }
-
-    pub(crate) fn notify_dataset_initialized(&self) -> STResult<()> {
-        let to_async_message = SyncToAsyncMessage::DatasetInitialized;
-        self.to_async
-            .blocking_send(to_async_message)
-            .map_err(Into::into)
-    }
-
     pub(crate) fn notify_paused(&self) -> STResult<()> {
         let to_async_message = SyncToAsyncMessage::Paused;
         self.to_async

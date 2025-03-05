@@ -14,14 +14,11 @@
  * limitations under the License.
  */
 
-use std::thread;
-use std::time::Instant;
+use std::thread as std_thread;
+use std::time::Duration;
 
 use ccp_msr::MSREnforce;
 use ccp_msr::MSRModeEnforcer;
-use ccp_randomx::Cache;
-use ccp_randomx::Dataset;
-use ccp_randomx::RandomXFlags;
 use cpu_utils::pinning::ThreadPinner;
 use cpu_utils::LogicalCoreId;
 
@@ -44,7 +41,7 @@ const CHANNEL_DROPPED_MESSAGE: &str =
 
 #[derive(Debug)]
 pub(crate) struct ProvingThreadSync {
-    handle: thread::JoinHandle<STFResult<()>>,
+    handle: std_thread::JoinHandle<STFResult<()>>,
 }
 
 impl ProvingThreadSync {
@@ -64,7 +61,7 @@ impl ProvingThreadSync {
             to_state_operating,
             to_stats_collecting,
         );
-        let handle = thread::spawn(thread_closure);
+        let handle = std_thread::spawn(thread_closure);
 
         Self { handle }
     }
@@ -167,55 +164,6 @@ impl ProvingThreadSync {
         log::trace!("proving_thread_sync: handle message from CUProver: {message:?}");
 
         match message {
-            AsyncToSyncMessage::CreateCache(params) => {
-                let start = Instant::now();
-
-                let global_nonce_cu = ccp_utils::hash::compute_global_nonce_cu(
-                    &params.epoch.global_nonce,
-                    &params.cu_id,
-                );
-                let cache = Cache::new(global_nonce_cu.as_slice(), params.flags)?;
-                let duration = start.elapsed();
-
-                to_async.send_cache(cache)?;
-
-                to_stats_collecting.send_epoch(params.epoch)?;
-
-                let hashrate =
-                    ThreadHashrateRecord::cache_creation(core_id, duration, params.epoch);
-                to_stats_collecting.send_hashrate(hashrate)?;
-
-                Ok(ThreadState::WaitForMessage)
-            }
-
-            AsyncToSyncMessage::AllocateDataset(params) => {
-                let dataset = Dataset::allocate(params.flags.contains(RandomXFlags::LARGE_PAGES))?;
-                to_async.send_dataset(dataset)?;
-
-                Ok(ThreadState::WaitForMessage)
-            }
-
-            AsyncToSyncMessage::InitializeDataset(mut params) => {
-                let start = Instant::now();
-                params
-                    .dataset
-                    .initialize(&params.cache, params.start_item, params.items_count);
-                let duration = start.elapsed();
-
-                to_async.notify_dataset_initialized()?;
-
-                let hashrate = ThreadHashrateRecord::dataset_initialization(
-                    core_id,
-                    duration,
-                    params.start_item,
-                    params.items_count,
-                    params.epoch,
-                );
-                to_stats_collecting.send_hashrate(hashrate)?;
-
-                Ok(ThreadState::WaitForMessage)
-            }
-
             AsyncToSyncMessage::NewCCJob {
                 job,
                 hashes_per_round,

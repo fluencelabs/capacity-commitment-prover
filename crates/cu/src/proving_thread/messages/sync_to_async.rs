@@ -13,28 +13,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-use ccp_randomx::Cache;
-use ccp_randomx::Dataset;
-
-#[derive(Debug)]
-pub(crate) struct CacheCreated {
-    pub(crate) cache: Cache,
-}
-
-#[derive(Debug)]
-pub(crate) struct DatasetAllocated {
-    pub(crate) dataset: Dataset,
-}
-
-impl CacheCreated {
-    pub(crate) fn new(cache: Cache) -> Self {
-        Self { cache }
-    }
-}
-
-impl DatasetAllocated {
-    pub(crate) fn new(dataset: Dataset) -> Self {
-        Self { dataset }
-    }
-}
