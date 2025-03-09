@@ -51,6 +51,7 @@ COPY Config.ccp-cu-worker.toml /fluence/Config.toml
 COPY entrypoint.sh /entrypoint.sh
 
 ENV OOM_SCORE_ADJ=1000
+ENV MALLOC_ARENA_MAX=1
 
 VOLUME /fluence/data
 
