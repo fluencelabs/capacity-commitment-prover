@@ -50,6 +50,8 @@ COPY Config.ccp-cu-worker.toml /fluence/Config.toml
 # copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
 
+ENV OOM_SCORE_ADJ=1000
+
 VOLUME /fluence/data
 
 ENTRYPOINT ["/entrypoint.sh"]

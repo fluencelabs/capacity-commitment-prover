@@ -43,6 +43,8 @@ struct TaskParameters {
     upstream: String,
     temp_dir: PathBuf,
     override_logical_cpu_list: Option<String>,
+    // 0-1000
+    oom_score_adj: Option<u16>,
 }
 
 #[derive(Parser)]
@@ -74,6 +76,13 @@ async fn main() -> eyre::Result<()> {
 
     let prover_config = CUProverConfig::new(config.optimizations, config.workers);
     let parameters: TaskParameters = Envconfig::init_from_env()?;
+
+    if let Some(oom_score_adj) = parameters.oom_score_adj {
+        let res = update_oom_score_adj(oom_score_adj);
+        if let Err(err) = res {
+            tracing::warn!("Failed to update oom_score_adj: {err:?}");
+        }
+    }
 
     let (to_state_operating, from_state_operating) = mpsc::channel(config.utility_queue_size);
 
@@ -175,4 +184,11 @@ fn get_core_allocation_from_sys(overriding_core_allocation: Option<String>) -> C
         Some(logical_core_ids) => CoreIdAllocation::LogicalCoreIds(logical_core_ids),
         None => CoreIdAllocation::SingleUnrestricted,
     }
+}
+
+fn update_oom_score_adj(oom_score_adj: u16) -> std::io::Result<()> {
+    let pid = std::process::id();
+    let path = format!("/proc/{pid}/oom_score_adj");
+
+    std::fs::write(path, &oom_score_adj.to_string())
 }
