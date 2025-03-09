@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.5](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.4...ccp-v0.16.5) (2025-03-09)
+
+
+### Features
+
+* Tune different parameters ([#209](https://github.com/fluencelabs/capacity-commitment-prover/issues/209)) ([2c0665b](https://github.com/fluencelabs/capacity-commitment-prover/commit/2c0665b446045e226d8de5a4df196ee14cf952e9))
+
 ## [0.16.4](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.3...ccp-v0.16.4) (2025-03-09)
 
 
