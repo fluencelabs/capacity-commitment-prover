@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.4](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.3...ccp-v0.16.4) (2025-03-09)
+
+
+### Bug Fixes
+
+* **cu_worker:** update oom_score_adj file ([#207](https://github.com/fluencelabs/capacity-commitment-prover/issues/207)) ([2a9e89b](https://github.com/fluencelabs/capacity-commitment-prover/commit/2a9e89bd0b02a4d0c3ddac6e7f72a17363d1d469))
+
 ## [0.16.3](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.2...ccp-v0.16.3) (2025-03-03)
 
 
