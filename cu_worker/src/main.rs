@@ -199,5 +199,5 @@ fn update_oom_score_adj(oom_score_adj: u16) -> std::io::Result<()> {
     let pid = std::process::id();
     let path = format!("/proc/{pid}/oom_score_adj");
 
-    std::fs::write(path, &oom_score_adj.to_string())
+    std::fs::write(path, oom_score_adj.to_string())
 }
