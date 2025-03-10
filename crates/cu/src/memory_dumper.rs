@@ -16,13 +16,15 @@
 
 use std::path::Path;
 
-use tempfile::tempfile_in;
 use tokio::fs::File;
+use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
 #[derive(Debug)]
 pub(crate) struct MemoryDumper {
     dump_file: File,
+    #[allow(unused)]
+    dump_path: tempfile::TempPath,
     dump_start: *mut u8,
     dump_len: usize,
 }
@@ -61,11 +63,17 @@ impl MemoryDumper {
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
-        let dump_file: File = tempfile_in(temp_dir)?.into();
+        let dump_path = tempfile::NamedTempFile::new_in(temp_dir)?.into_temp_path();
+        let mut dump_opts = OpenOptions::new();
+        dump_opts.read(true).write(true).create(true);
+        #[cfg(target_os = "linux")]
+        dump_opts.custom_flags(libc::O_DIRECT);
+        let dump_file = dump_opts.open(&dump_path).await?;
 
         // Hide the pointer into a Send object, otherwise async code fails to compile
         let mut self_ = Self {
             dump_file,
+            dump_path,
             dump_start: aligned_dump_start as _,
             dump_len: aligned_dump_len,
         };
