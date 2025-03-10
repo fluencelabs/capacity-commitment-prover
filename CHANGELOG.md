@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.7](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.6...ccp-v0.16.7) (2025-03-10)
+
+
+### Bug Fixes
+
+* **cu:** dump memory to disk in chunks with sync ([#213](https://github.com/fluencelabs/capacity-commitment-prover/issues/213)) ([58f2b44](https://github.com/fluencelabs/capacity-commitment-prover/commit/58f2b44391efb27009fd73a02cfb9f80bade59d3))
+
 ## [0.16.6](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.5...ccp-v0.16.6) (2025-03-10)
 
 
