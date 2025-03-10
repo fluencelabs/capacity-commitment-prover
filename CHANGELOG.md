@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.6](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.5...ccp-v0.16.6) (2025-03-10)
+
+
+### Features
+
+* **cu:** O_DIRECT for dump file ([#211](https://github.com/fluencelabs/capacity-commitment-prover/issues/211)) ([0cd0722](https://github.com/fluencelabs/capacity-commitment-prover/commit/0cd0722a2f75f850e940bcce758f43e812a47bd0))
+
 ## [0.16.5](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.4...ccp-v0.16.5) (2025-03-09)
 
 
