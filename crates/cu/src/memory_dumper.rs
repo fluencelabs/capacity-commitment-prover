@@ -16,15 +16,16 @@
 
 use std::path::Path;
 
+use anyhow::Context;
+use tempfile::tempfile_in;
 use tokio::fs::File;
-use tokio::fs::OpenOptions;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+
+const DUMPER_CHUNK_SIZE: usize = 1024 * 1024;
 
 #[derive(Debug)]
 pub(crate) struct MemoryDumper {
     dump_file: File,
-    #[allow(unused)]
-    dump_path: tempfile::TempPath,
     dump_start: *mut u8,
     dump_len: usize,
 }
@@ -41,7 +42,7 @@ impl MemoryDumper {
         // n.b.: this is actually a pointer, but async doesn't work well with pointer (they are not Send)
         dump_start: usize,
         dump_len: usize,
-    ) -> std::io::Result<Self> {
+    ) -> anyhow::Result<Self> {
         // aligning page size
         // madvise needs to aligned memory; but RandomX doesn't give an aligned base address (it stores header,
         // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
@@ -51,7 +52,8 @@ impl MemoryDumper {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "MemoryDumper dump_len has to be multiple of page_size".to_owned(),
-            ));
+            )
+            .into());
         }
         let aligned_dump_start = dump_start.next_multiple_of(page_alignment);
         let aligned_dump_len = if aligned_dump_start == dump_start {
@@ -63,23 +65,31 @@ impl MemoryDumper {
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
-        let dump_path = tempfile::NamedTempFile::new_in(temp_dir)?.into_temp_path();
-        let mut dump_opts = OpenOptions::new();
-        dump_opts.read(true).write(true).create(true);
-        #[cfg(target_os = "linux")]
-        dump_opts.custom_flags(libc::O_DIRECT);
-        let dump_file = dump_opts.open(&dump_path).await?;
+        let dump_file: File = tempfile_in(temp_dir)?.into();
 
         // Hide the pointer into a Send object, otherwise async code fails to compile
         let mut self_ = Self {
             dump_file,
-            dump_path,
             dump_start: aligned_dump_start as _,
             dump_len: aligned_dump_len,
         };
 
         let dump_buffer = std::slice::from_raw_parts(self_.dump_start, self_.dump_len);
-        self_.dump_file.write_all(dump_buffer).await?;
+        let dump_file = &mut self_.dump_file;
+        for chunk in dump_buffer.chunks(DUMPER_CHUNK_SIZE) {
+            dump_file
+                .write_all(chunk)
+                .await
+                .context("Failed to write to a dump file")?;
+            dump_file
+                .flush()
+                .await
+                .context("Failed to flush a dump file")?;
+            dump_file
+                .sync_all()
+                .await
+                .context("Failed to sync a dump file")?;
+        }
 
         release_memory(self_.dump_start as _, self_.dump_len);
 
@@ -87,10 +97,16 @@ impl MemoryDumper {
     }
 
     /// Safety: memory range passed to `new` is still valid and can be written to.
-    pub(crate) async unsafe fn restore(mut self) -> tokio::io::Result<()> {
-        self.dump_file.rewind().await?;
+    pub(crate) async unsafe fn restore(mut self) -> anyhow::Result<()> {
+        self.dump_file
+            .rewind()
+            .await
+            .context("Failed to rewind a dump file")?;
         let dump_buffer = std::slice::from_raw_parts_mut(self.dump_start, self.dump_len);
-        self.dump_file.read_exact(dump_buffer).await?;
+        self.dump_file
+            .read_exact(dump_buffer)
+            .await
+            .context("Failed to restore dump file")?;
         Ok(())
     }
 }
