@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.9](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.8...ccp-v0.16.9) (2025-03-11)
+
+
+### Bug Fixes
+
+* **cu:** display numeric errno code ([#220](https://github.com/fluencelabs/capacity-commitment-prover/issues/220)) ([038bf7d](https://github.com/fluencelabs/capacity-commitment-prover/commit/038bf7d523d838c0974d871178cbf1b8d99448a1))
+
 ## [0.16.8](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.7...ccp-v0.16.8) (2025-03-11)
 
 
