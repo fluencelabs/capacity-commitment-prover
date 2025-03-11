@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.10](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.9...ccp-v0.16.10) (2025-03-11)
+
+
+### Bug Fixes
+
+* **cu:** try MADV_PAGEOUT on Linux ([#222](https://github.com/fluencelabs/capacity-commitment-prover/issues/222)) ([460fa27](https://github.com/fluencelabs/capacity-commitment-prover/commit/460fa2731d8fc86e381fa9c5cf1064f5fd2b11db))
+
 ## [0.16.9](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.8...ccp-v0.16.9) (2025-03-11)
 
 
