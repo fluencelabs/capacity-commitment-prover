@@ -1,5 +1,6 @@
 [toolchain]
-channel = "nightly-2024-04-23"
+# International Mario Day
+channel = "nightly-2025-03-10"
 components = [
   "rustfmt",
   "clippy",
