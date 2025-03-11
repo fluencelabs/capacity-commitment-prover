@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.8](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.7...ccp-v0.16.8) (2025-03-11)
+
+
+### Bug Fixes
+
+* **cu:** Use MADV_REMOVE on Linux ([#217](https://github.com/fluencelabs/capacity-commitment-prover/issues/217)) ([35c1fd8](https://github.com/fluencelabs/capacity-commitment-prover/commit/35c1fd8a45dd5e058c0fff3f6c58a246e45d8714))
+
 ## [0.16.7](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.6...ccp-v0.16.7) (2025-03-10)
 
 
