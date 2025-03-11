@@ -115,6 +115,9 @@ impl MemoryDumper {
 ///
 /// Safety: dump_start is a pointer to a mmap-allocated memory range of length dump_len.
 unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
+    #[cfg(target_os = "linux")]
+    let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_REMOVE);
+    #[cfg(not(target_os = "linux"))]
     let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
     if ret != 0 {
         log::error!(
