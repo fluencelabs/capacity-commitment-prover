@@ -123,7 +123,7 @@ unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
         log::error!(
             "freeing madvice ret: {}, errno {}. Ignoring.",
             ret,
-            errno::errno()
+            errno::errno().0
         );
     }
 }
