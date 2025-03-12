@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.11](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.10...ccp-v0.16.11) (2025-03-12)
+
+
+### Bug Fixes
+
+* **cu:** mmap over mmap ([#224](https://github.com/fluencelabs/capacity-commitment-prover/issues/224)) ([0c7643b](https://github.com/fluencelabs/capacity-commitment-prover/commit/0c7643bbe9b8ccbecfaf710beb555577c8129573))
+
 ## [0.16.10](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.9...ccp-v0.16.10) (2025-03-11)
 
 
