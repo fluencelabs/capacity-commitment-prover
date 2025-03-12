@@ -115,15 +115,18 @@ impl MemoryDumper {
 ///
 /// Safety: dump_start is a pointer to a mmap-allocated memory range of length dump_len.
 unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
-    log::debug!("Releasing memory: {dump_start:p} of {dump_len} bytes");
-    #[cfg(target_os = "linux")]
-    let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_PAGEOUT);
-    #[cfg(not(target_os = "linux"))]
-    let ret = libc::madvise(dump_start as _, dump_len, libc::MADV_DONTNEED);
-    if ret != 0 {
+    log::info!("release memory: addr {dump_start:p}, len 0x{dump_len:x}");
+    let ret = libc::mmap(
+        dump_start as _,
+        dump_len,
+        libc::PROT_READ | libc::PROT_WRITE,
+        libc::MAP_ANONYMOUS | libc::MAP_PRIVATE | libc::MAP_FIXED,
+        -1,
+        0,
+    );
+    if ret as isize == -1 {
         log::error!(
-            "freeing madvice ret: {}, errno {}. Ignoring.",
-            ret,
+            "releasing memory with mmap error, errno {}. Ignoring.",
             errno::errno().0
         );
     }
