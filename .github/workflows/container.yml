@@ -86,11 +86,6 @@ jobs:
             echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
             echo "tag=${version}" >> "$GITHUB_OUTPUT"
             echo "latest-tag=latest" >> "$GITHUB_OUTPUT"
-          elif [[ ${branch} == "main" ]]; then
-            echo "ccp-repo=fluencelabs/ccp" >> "$GITHUB_OUTPUT"
-            echo "ccp-cu-worker-repo=fluencelabs/ccp-cu-worker" >> "$GITHUB_OUTPUT"
-            echo "tag=${{ steps.version.outputs.id }}" >> "$GITHUB_OUTPUT"
-            echo "latest-tag=main" >> "$GITHUB_OUTPUT"
           else
             echo "ccp-repo=docker.fluence.dev/ccp" >> "$GITHUB_OUTPUT"
             echo "ccp-cu-worker-repo=docker.fluence.dev/ccp-cu-worker" >> "$GITHUB_OUTPUT"
