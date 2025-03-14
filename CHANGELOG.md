@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.12](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.11...ccp-v0.16.12) (2025-03-14)
+
+
+### Features
+
+* use 2 GiB randomx ([#227](https://github.com/fluencelabs/capacity-commitment-prover/issues/227)) ([3f3f92a](https://github.com/fluencelabs/capacity-commitment-prover/commit/3f3f92a36323ebf108dab9a45a45177e51355e16))
+
 ## [0.16.11](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.10...ccp-v0.16.11) (2025-03-12)
 
 
