@@ -1,43 +1,25 @@
 mod config;
 
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::Mutex as StdMutex;
-
 use clap::Parser;
 use cpu_utils::cpusets::parse_cpu_list;
 use cpu_utils::cpusets::read_cpu_list_string;
 use cpu_utils::NonEmpty;
 use envconfig::Envconfig;
-use eyre::OptionExt;
 use eyre::WrapErr as _;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
-use tracing::level_filters::LevelFilter;
 use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
 
 use crate::config::TaskParameters;
-use ccp::hashrate::HashrateCollector;
-use ccp::hashrate::HashrateHandler;
-use ccp::stats_collecting_thread::StatsCollectingThread;
-use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingOutlet;
-use ccp_cu::proving_thread::sync::to_stats_collecting_message::ToStatsCollectingOutlet;
 use ccp_cu::CUProver;
 use ccp_cu::CUProverConfig;
 use ccp_cu::CoreIdAllocation;
-use ccp_cu_worker::metrics::RpcStatsCollector;
-use ccp_cu_worker::retry_client::ProofRetryClient;
 use ccp_msr::MSRModeEnforcer;
-use ccp_shared::types::Difficulty;
 use ccp_shared::types::EpochParameters;
-use ccp_shared::types::GlobalNonce;
-use ccp_shared::types::CUID;
 
 // same as ccp_main crate
-const CCP_LOG_ENV_VAR: &str = "CCP_LOG";
-
-const STATS_QUEUE_SIZE: usize = 1024;
+const CCP_INIT_LOG_ENV_VAR: &str = "CCP_INIT_LOG";
 
 #[derive(Parser)]
 struct Args {
@@ -62,7 +44,7 @@ async fn async_main() -> eyre::Result<()> {
     let config = load_cu_config(args.config.as_deref())?;
 
     let filter = EnvFilter::builder()
-        .with_env_var(CCP_LOG_ENV_VAR)
+        .with_env_var(CCP_INIT_LOG_ENV_VAR)
         .with_default_directive(Directive::from(config.logs.log_level))
         .from_env_lossy();
     let subscriber = tracing_subscriber::fmt()
@@ -106,36 +88,6 @@ async fn async_main() -> eyre::Result<()> {
         .map_err(|e| eyre::eyre!(format!("{e:?}")))?;
 
     Ok(())
-}
-
-async fn message_dispatching_loop(
-    mut from_state_operating: ToStateOperatingOutlet,
-    to_stats_rpc_client: ToStatsCollectingOutlet,
-    rpc_endpoint: String,
-) -> eyre::Result<()> {
-    let (client, proof_sender) = ProofRetryClient::new(rpc_endpoint, to_stats_rpc_client);
-    let _client_handle = tokio::task::spawn(client.run());
-
-    loop {
-        use ccp_cu::proving_thread::sync::to_state_operating_message::ToStateOperatingMessage::*;
-
-        let msg = from_state_operating
-            .recv()
-            .await
-            .ok_or_eyre("worker thread failed, terminating")?;
-
-        match msg {
-            ProofFound { proof } => {
-                tracing::info!("sending received proof upstream: {proof:?}");
-                if let Err(e) = proof_sender.send(proof).await {
-                    tracing::error!("failed to send proof: {e}")
-                }
-            }
-            ErrorHappened { error, .. } => {
-                unreachable!("no error reported because of no valid core_id: {error:?}");
-            }
-        }
-    }
 }
 
 fn get_core_allocation_from_sys(overriding_core_allocation: Option<String>) -> CoreIdAllocation {
