@@ -48,6 +48,7 @@
             pkgs.protobuf
             pkgs.iconv
             pkgs.cargo-udeps
+            pkgs.pkg-config
             pkgs.cmake
             pkgs.hwloc
           ] ++ lib.optionals pkgs.stdenv.isDarwin [ pkgs.darwin.apple_sdk.frameworks.SystemConfiguration ];
