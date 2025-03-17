@@ -290,7 +290,6 @@ impl CUProver {
         let dataset_size = dataset.items_count();
 
         assert_eq!(sizes::MIB % DATASET_ITEM_SIZE, 0);
-        // Add extra MIB for alignment, rounding etc
 
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;

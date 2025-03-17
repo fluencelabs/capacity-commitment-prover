@@ -44,13 +44,31 @@ impl MemoryDumper {
         dump_start: usize,
         dump_len: usize,
     ) -> anyhow::Result<Self> {
+        // aligning page size
+        // madvise needs to aligned memory; but RandomX doesn't give an aligned base address (it stores header,
+        // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
+        // data needed for generation of other parts.
+        let page_alignment = page_size::get();
+        if dump_len % page_alignment != 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "MemoryDumper dump_len has to be multiple of page_size".to_owned(),
+            )
+            .into());
+        }
+        let aligned_dump_start = dump_start.next_multiple_of(page_alignment);
+        let aligned_dump_len = if aligned_dump_start == dump_start {
+            dump_len
+        } else {
+            dump_len - page_alignment
+        };
+
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
         let mut dump_file: File = tempfile_in(temp_dir)?.into();
 
-        let (aligned_dump_start, aligned_dump_len) =
-            dump(&mut dump_file, dump_start, dump_len).await?;
+        dump(&mut dump_file, aligned_dump_start, aligned_dump_len).await?;
 
         // Hide the pointer into a Send object, otherwise async code fails to compile
         let self_ = Self {
@@ -97,15 +115,6 @@ unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
 
 #[derive(Error, Debug)]
 pub enum DumpError {
-    #[error("MemoryDumper dump_len {0} has to be multiple of page_size {1}")]
-    InvalidInput(usize, usize),
-
-    #[error(transparent)]
-    DumpFile(#[from] DumpFileError),
-}
-
-#[derive(Error, Debug)]
-pub enum DumpFileError {
     #[error(transparent)]
     Write(std::io::Error),
     #[error(transparent)]
@@ -119,41 +128,26 @@ pub async unsafe fn dump(
     // n.b.: this is actually a pointer, but async doesn't work well with pointer (they are not Send)
     dump_start: usize,
     dump_len: usize,
-) -> Result<(usize, usize), DumpError> {
-    // aligning page size
-    // madvise needs to aligned memory; but RandomX doesn't give an aligned base address (it stores header,
-    // probably).  Round to upper size, as it is better to dump and remove only subset of data than remove
-    // data needed for generation of other parts.
-    let page_alignment = page_size::get();
-    if dump_len % page_alignment != 0 {
-        return Err(DumpError::InvalidInput(dump_len, page_alignment));
-    }
-    let aligned_dump_start = dump_start.next_multiple_of(page_alignment);
-    let aligned_dump_len = if aligned_dump_start == dump_start {
-        dump_len
-    } else {
-        dump_len - page_alignment
-    };
-
-    let dump_buffer = std::slice::from_raw_parts(aligned_dump_start as _, aligned_dump_len);
+) -> Result<(), DumpError> {
+    let dump_buffer = std::slice::from_raw_parts(dump_start as _, dump_len);
     for chunk in dump_buffer.chunks(DUMPER_CHUNK_SIZE) {
         dump_file
             .write_all(chunk)
             .await
-            .map_err(|err| DumpFileError::Write(err))?;
+            .map_err(|err| DumpError::Write(err))?;
 
         dump_file
             .flush()
             .await
-            .map_err(|err| DumpFileError::Flush(err))?;
+            .map_err(|err| DumpError::Flush(err))?;
 
         dump_file
             .sync_all()
             .await
-            .map_err(|err| DumpFileError::Sync(err))?;
+            .map_err(|err| DumpError::Sync(err))?;
     }
 
-    release_memory(aligned_dump_start as _, aligned_dump_len);
+    release_memory(dump_start as _, dump_len);
 
-    Ok((aligned_dump_start, aligned_dump_len))
+    Ok(())
 }
