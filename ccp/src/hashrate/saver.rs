@@ -114,7 +114,7 @@ fn write_record_as_csv(
     };
 
     writer
-        .encode([
+        .write_record([
             format!("{:02}:{:02}:{:02}", now.hour(), now.minute(), now.second()),
             record_type.to_string(),
             measurement_result,

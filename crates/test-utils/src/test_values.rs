@@ -69,7 +69,7 @@ pub fn generate_random_allocation(
     range: std::ops::Range<u8>,
 ) -> CUAllocation {
     use rand::Rng;
-    let distr = rand::distributions::Uniform::from(range);
+    let distr = rand::distr::Uniform::try_from(range).expect("Wrong range");
     rng.sample_iter(distr)
         .take(size)
         .map(|core_id| {

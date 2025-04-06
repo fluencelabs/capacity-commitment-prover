@@ -21,8 +21,8 @@ tonic.workspace = true
 serde.workspace = true
 prost = "0.13.2"
 hyper-util = "0.1.7"
-tower = "0.4"
+tower = "0.5.2"
 thiserror.workspace = true
 
 [build-dependencies]
-tonic-build = "0.12.3"
+tonic-build = "0.13.0"

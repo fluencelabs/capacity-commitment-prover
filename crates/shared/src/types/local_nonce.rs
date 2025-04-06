@@ -39,7 +39,7 @@ impl LocalNonce {
     pub fn random() -> Self {
         use rand::RngCore;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut nonce_inner = LocalNonceInner::default();
 
         rng.fill_bytes(&mut nonce_inner);

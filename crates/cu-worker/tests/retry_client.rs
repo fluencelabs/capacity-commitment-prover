@@ -130,8 +130,8 @@ impl Collector for TestServer {
 fn gen_endpoint_address() -> String {
     use rand::prelude::*;
 
-    let mut rng = rand::thread_rng();
-    let port = rng.gen_range(40000..60000);
+    let mut rng = rand::rng();
+    let port = rng.random_range(40000..60000);
     format!("127.0.0.1:{}", port)
 }
 
