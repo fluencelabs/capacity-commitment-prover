@@ -1981,9 +1981,9 @@ dependencies = [
 
 [[package]]
 name = "nonempty"
-version = "0.9.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "995defdca0a589acfdd1bd2e8e3b896b4d4f7675a31fd14c32611440c7f608e6"
+checksum = "549e471b99ccaf2f89101bec68f4d244457d5a95a9c3d0672e9564124397741d"
 
 [[package]]
 name = "nu-ansi-term"
