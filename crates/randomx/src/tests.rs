@@ -67,10 +67,10 @@ fn fast_equals_to_light() {
     use rand::RngCore;
 
     let mut global_nonce = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut global_nonce);
+    rand::rng().fill_bytes(&mut global_nonce);
 
     let mut local_nonce = [0u8; 32];
-    rand::thread_rng().fill_bytes(&mut local_nonce);
+    rand::rng().fill_bytes(&mut local_nonce);
 
     let light_flags = RandomXFlags::recommended();
     let light_result = run_light_randomx(&global_nonce, &local_nonce, light_flags);

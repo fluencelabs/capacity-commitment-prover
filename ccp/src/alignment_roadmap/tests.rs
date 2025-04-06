@@ -448,7 +448,7 @@ fn consecutive_repinnings() {
     const SEED: u64 = 0x0123456789ABCDEF;
 
     let mut rng = SmallRng::seed_from_u64(SEED);
-    let cores_distribution = rand::distributions::Uniform::from(0..CORES + 1);
+    let cores_distribution = rand::distr::Uniform::new(0, CORES + 1).expect("Wrong range");
 
     let mut current_allocation: Option<CUAllocation> = None;
     let mut prover_state = HashMap::<PhysicalCoreId, MockProver>::new();
