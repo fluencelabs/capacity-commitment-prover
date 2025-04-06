@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.17.0](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.12...ccp-v0.17.0) (2025-04-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* update crates ([#230](https://github.com/fluencelabs/capacity-commitment-prover/issues/230))
+
+### Bug Fixes
+
+* update crates ([#230](https://github.com/fluencelabs/capacity-commitment-prover/issues/230)) ([f4476a9](https://github.com/fluencelabs/capacity-commitment-prover/commit/f4476a96eea830f895e7cc96a105725f1550d6d5))
+
 ## [0.16.12](https://github.com/fluencelabs/capacity-commitment-prover/compare/ccp-v0.16.11...ccp-v0.16.12) (2025-03-14)
 
 
