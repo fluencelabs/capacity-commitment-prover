@@ -393,6 +393,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ccp-cu-worker-init-bin"
+version = "0.16.9"
+dependencies = [
+ "ccp",
+ "ccp-config",
+ "ccp-cu",
+ "ccp-cu-worker",
+ "ccp-msr",
+ "ccp-shared",
+ "clap",
+ "config",
+ "cpu-utils",
+ "envconfig",
+ "eyre",
+ "serde",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "ccp-main"
 version = "0.17.0"
 dependencies = [

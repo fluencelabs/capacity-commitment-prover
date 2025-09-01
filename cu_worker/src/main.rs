@@ -44,7 +44,7 @@ struct TaskParameters {
     temp_dir: PathBuf,
     override_logical_cpu_list: Option<String>,
     // 0-1000
-    oom_score_adj: Option<u16>,
+    oom_score_adj: Option<i16>,
 }
 
 #[derive(Parser)]
@@ -195,7 +195,7 @@ fn get_core_allocation_from_sys(overriding_core_allocation: Option<String>) -> C
     }
 }
 
-fn update_oom_score_adj(oom_score_adj: u16) -> std::io::Result<()> {
+fn update_oom_score_adj(oom_score_adj: i16) -> std::io::Result<()> {
     let pid = std::process::id();
     let path = format!("/proc/{pid}/oom_score_adj");
 

@@ -18,6 +18,7 @@ use std::path::Path;
 
 use anyhow::Context;
 use tempfile::tempfile_in;
+use thiserror::Error;
 use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
 
@@ -65,33 +66,16 @@ impl MemoryDumper {
         // N.B. tempfile_in creates and removes a file, keeping an open handle to it.
         // So, the file is removed automagically when the handle is closed, e.g. when
         // the file object is dropped.
-        let dump_file: File = tempfile_in(temp_dir)?.into();
+        let mut dump_file: File = tempfile_in(temp_dir)?.into();
+
+        dump(&mut dump_file, aligned_dump_start, aligned_dump_len).await?;
 
         // Hide the pointer into a Send object, otherwise async code fails to compile
-        let mut self_ = Self {
+        let self_ = Self {
             dump_file,
             dump_start: aligned_dump_start as _,
             dump_len: aligned_dump_len,
         };
-
-        let dump_buffer = std::slice::from_raw_parts(self_.dump_start, self_.dump_len);
-        let dump_file = &mut self_.dump_file;
-        for chunk in dump_buffer.chunks(DUMPER_CHUNK_SIZE) {
-            dump_file
-                .write_all(chunk)
-                .await
-                .context("Failed to write to a dump file")?;
-            dump_file
-                .flush()
-                .await
-                .context("Failed to flush a dump file")?;
-            dump_file
-                .sync_all()
-                .await
-                .context("Failed to sync a dump file")?;
-        }
-
-        release_memory(self_.dump_start as _, self_.dump_len);
 
         Ok(self_)
     }
@@ -130,4 +114,43 @@ unsafe fn release_memory(dump_start: *mut u8, dump_len: usize) {
             errno::errno().0
         );
     }
+}
+
+#[derive(Error, Debug)]
+pub enum DumpError {
+    #[error(transparent)]
+    Write(std::io::Error),
+    #[error(transparent)]
+    Flush(std::io::Error),
+    #[error(transparent)]
+    Sync(std::io::Error),
+}
+
+pub async unsafe fn dump(
+    dump_file: &mut File,
+    // n.b.: this is actually a pointer, but async doesn't work well with pointer (they are not Send)
+    dump_start: usize,
+    dump_len: usize,
+) -> Result<(), DumpError> {
+    let dump_buffer = std::slice::from_raw_parts(dump_start as _, dump_len);
+    for chunk in dump_buffer.chunks(DUMPER_CHUNK_SIZE) {
+        dump_file
+            .write_all(chunk)
+            .await
+            .map_err(|err| DumpError::Write(err))?;
+
+        dump_file
+            .flush()
+            .await
+            .map_err(|err| DumpError::Flush(err))?;
+
+        dump_file
+            .sync_all()
+            .await
+            .map_err(|err| DumpError::Sync(err))?;
+    }
+
+    release_memory(dump_start as _, dump_len);
+
+    Ok(())
 }

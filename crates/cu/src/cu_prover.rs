@@ -43,7 +43,7 @@ use super::proving_thread_utils::ThreadAllocator;
 use super::status::CUStatus;
 use super::status::ToCUStatus;
 use super::CUResult;
-use crate::memory_dumper::MemoryDumper;
+use crate::memory_dumper::{dump, MemoryDumper};
 use crate::proving_thread::sync::to_state_operating_message::ToStateOperatingInlet;
 use crate::CUProverError;
 use crate::CoreIdAllocation;
@@ -121,6 +121,29 @@ impl CUProver {
             .await?;
 
         self.run_proving_jobs(epoch, dataset_handle, cu_id).await
+    }
+
+    pub async fn prepare_dataset(
+        &mut self,
+        epoch: EpochParameters,
+        cu_id: CUID,
+        cancel_token: CancellationToken,
+    ) -> CUResult<()> {
+        log::info!("Generating dataset for new epoch: {epoch:?}");
+        // pause provers to not produce proofs with a changing dataset at the moment
+        self.pause().await?;
+
+        self.status = CUStatus::Running { cu_id };
+
+        let thread = &mut self.threads.head;
+        let randomx_flags = self.randomx_flags;
+        let cache = thread.create_cache(epoch, cu_id, randomx_flags).await?;
+
+        let dataset_handle = self.dataset.handle();
+        self.initialize_and_dump_dataset(cache, dataset_handle.clone(), cancel_token, epoch)
+            .await?;
+
+        Ok(())
     }
 
     #[allow(clippy::needless_lifetimes)]
@@ -252,6 +275,51 @@ impl CUProver {
         unsafe { memory_dumper.restore() }
             .await
             .map_err(CUProverError::DumperError)?;
+
+        Ok(())
+    }
+
+    #[allow(clippy::needless_lifetimes)]
+    pub async fn initialize_and_dump_dataset<'threads>(
+        &'threads mut self,
+        cache: Cache,
+        dataset: DatasetHandle,
+        cancel_token: CancellationToken,
+        epoch: EpochParameters,
+    ) -> CUResult<()> {
+        let dataset_size = dataset.items_count();
+
+        assert_eq!(sizes::MIB % DATASET_ITEM_SIZE, 0);
+
+        let threads_number = self.threads.len() as u64;
+        let chunk_size = self.dataset_chunk_size;
+
+        let params = InitializationState {
+            range_start: 0,
+            range_len: dataset_size,
+            cache: cache.handle(),
+            dataset: dataset.clone(),
+            threads_number,
+            chunk_size,
+            cancel_token: cancel_token.clone(),
+            epoch,
+        };
+        run_unordered_with_params(self.threads.iter_mut(), params, initialization_body)
+            .await
+            .unwrap();
+
+        let dataset_len = (dataset_size * DATASET_ITEM_SIZE) as usize;
+
+        let dataset_file_path = self.temp_dir.join("dataset");
+        let mut dataset_file = tokio::fs::File::create(&dataset_file_path).await.unwrap(); //TODO:
+
+        // Safety: dataset is valid, initialized, mmap-allocated memory range
+        unsafe {
+            let dataset_base = dataset.memory() as usize;
+            dump(&mut dataset_file, dataset_base, dataset_len)
+        }
+        .await
+        .map_err(|err| CUProverError::DumperError(err.into()))?;
 
         Ok(())
     }
