@@ -203,8 +203,10 @@ impl CUProver {
 
         assert_eq!(sizes::MIB % DATASET_ITEM_SIZE, 0);
         // Add extra MIB for alignment, rounding etc
-        let dataset_phase0_size = (cache_len + sizes::MIB) / DATASET_ITEM_SIZE;
-        let dataset_phase1_size = dataset_size - dataset_phase0_size;
+        let dataset_phase0_size = (2 * cache_len) / DATASET_ITEM_SIZE;
+        let dataset_phase1_size = dataset_size
+            .checked_sub(dataset_phase0_size)
+            .expect("internal error: dataset is smaller than dump size");
 
         let threads_number = self.threads.len() as u64;
         let chunk_size = self.dataset_chunk_size;
